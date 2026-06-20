@@ -861,6 +861,76 @@ async function encryptLog(plaintext, password) {
             <span>Page 15</span>
         </div>
     </div>
+
+    <!-- 📄 PAGE 11: DEPLOYMENT & LOCAL SERVER -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 11</span>
+        </div>
+
+        <h1 class="sec-title">11. Deployment & Local Server Architecture</h1>
+        <p>
+            The Dista tools portal is served locally using a custom Node.js static server, and deployed to GCP Firebase Hosting.
+        </p>
+
+        <h2 class="subsec-title">11.1 Local Static Server Routing</h2>
+        <p>
+            The micro HTTP server maps requested paths to directories or static files, returning appropriate content-type headers:
+        </p>
+        <pre><code>// Local server routing logic (server.js)
+const server = http.createServer((req, res) => {
+    let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(filePath, 'index.html');
+    }
+    fs.readFile(filePath, (err, content) => {
+        res.writeHead(err ? 404 : 200, { 'Content-Type': getContentType(filePath) });
+        res.end(err ? '404 Not Found' : content);
+    });
+});</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 16</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 12: VISUAL AUTOMATION TEST SUITE -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 12</span>
+        </div>
+
+        <h1 class="sec-title">12. Visual Automation Test Suite (Puppeteer)</h1>
+        <p>
+            To verify user registration, auth, and database logs, a visual end-to-end automation suite runs headful actions in Chrome.
+        </p>
+
+        <h2 class="subsec-title">12.1 Trajectory Mouse Interpolation</h2>
+        <p>
+            The testing framework injects a virtual mouse cursor overlay and moves it toward targeted buttons smoothly to mimic human action:
+        </p>
+        <pre><code>// Smooth cursor movement interpolation (smoothMove)
+async function smoothMove(page, selector) {
+    const rect = await page.evaluate(s => {
+        const r = document.querySelector(s).getBoundingClientRect();
+        return { x: r.left + r.width/2, y: r.top + r.height/2 };
+    }, selector);
+    for (let i = 1; i &lt;= 15; i++) {
+        const ratio = i / 15;
+        const curX = startX + (rect.x - startX) * ratio;
+        const curY = startY + (rect.y - startY) * ratio;
+        await page.evaluate((x, y) => moveVirtualCursor(x, y), curX, curY);
+    }
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 17</span>
+        </div>
+    </div>
 </body>
 </html>
 `;
