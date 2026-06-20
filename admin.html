@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dista Admin Panel - Operations Logs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #070a0f;
+            --bg-card: rgba(13, 20, 30, 0.45);
+            --fg: #f3f4f6;
+            --muted: #9ca3af;
+            --accent: #f7941d;
+            --accent-glow: rgba(247, 148, 29, 0.15);
+            --brd: rgba(247, 148, 29, 0.15);
+            --brd-hover: rgba(247, 148, 29, 0.35);
+            --danger: #ef4444;
+            --ok: #10b981;
+            --font: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--fg);
+            font-family: var(--font);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(247, 148, 29, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(247, 148, 29, 0.05) 0px, transparent 50%);
+        }
+
+        /* Notifications / Toasts */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-col: column;
+            gap: 12px;
+        }
+        .toast {
+            background: rgba(13, 20, 30, 0.9);
+            border: 1px solid var(--brd);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: var(--fg);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%) translateY(-10px); opacity: 0; }
+            to { transform: translateX(0) translateY(0); opacity: 1; }
+        }
+
+        /* Glassmorphic Cards */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--brd);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px -15px rgba(0,0,0,0.7);
+            transition: all 0.3s ease;
+        }
+
+        /* LOGIN INTERFACE */
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 2.5rem;
+            text-align: center;
+            animation: fadeInScale 0.4s ease-out;
+        }
+        @keyframes fadeInScale {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .logo-area {
+            margin-bottom: 2rem;
+        }
+        .logo-icon {
+            font-size: 2.5rem;
+            color: var(--accent);
+            text-shadow: 0 0 20px var(--accent-glow);
+            margin-bottom: 0.5rem;
+            display: inline-block;
+        }
+        .title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.25rem;
+        }
+        .subtitle {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 1.25rem;
+        }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .input-wrapper {
+            position: relative;
+        }
+        .input-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .inp {
+            width: 100%;
+            background: rgba(7, 10, 15, 0.6);
+            border: 1px solid var(--brd);
+            border-radius: 8px;
+            padding: 11px 16px 11px 40px;
+            color: var(--fg);
+            font-family: var(--font);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .inp:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .btn {
+            width: 100%;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            color: #070a0f;
+            font-family: var(--font);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            opacity: 0.95;
+            box-shadow: 0 0 20px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        /* ADMIN WORKSPACE (HIDDEN BY DEFAULT) */
+        .workspace {
+            display: none;
+            width: 100%;
+            max-width: 1200px;
+            margin: 2rem;
+            flex-direction: column;
+            gap: 1.5rem;
+            animation: fadeInUp 0.4s ease-out;
+        }
+        @keyframes fadeInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .btn-sec {
+            background: rgba(247, 148, 29, 0.08);
+            border: 1px solid var(--brd);
+            color: var(--accent);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-sec:hover {
+            background: rgba(247, 148, 29, 0.15);
+            border-color: var(--accent);
+        }
+
+        /* Stats Widgets */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+        .stat-card {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--fg);
+        }
+        .stat-icon {
+            font-size: 28px;
+            color: var(--accent);
+            opacity: 0.8;
+        }
+
+        /* Filter Controls */
+        .controls-card {
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .search-wrapper {
+            position: relative;
+            flex: 1;
+        }
+        .search-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+        }
+        .search-inp {
+            padding-left: 40px;
+        }
+
+        /* Table Card */
+        .table-card {
+            overflow: hidden;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 550px;
+        }
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+        }
+        .table th {
+            background: rgba(7, 10, 15, 0.4);
+            border-bottom: 1px solid var(--brd);
+            padding: 12px 20px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .table td {
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(247, 148, 29, 0.05);
+            vertical-align: middle;
+        }
+        .table tr:hover td {
+            background: rgba(247, 148, 29, 0.02);
+        }
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-op {
+            background: rgba(247, 148, 29, 0.1);
+            color: var(--accent);
+            border: 1px solid var(--brd);
+        }
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--ok);
+        }
+        .badge-failed {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .mono {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Toast Notification Area -->
+    <div class="toast-container" id="toast-root"></div>
+
+    <!-- 1. LOGIN CARD -->
+    <div class="card login-container" id="login-panel">
+        <div class="logo-area">
+            <i class="bi bi-shield-lock-fill logo-icon"></i>
+            <h1 class="title">Dista Consolidated Logs</h1>
+            <p class="subtitle">Enter credentials to access all user operations logs</p>
+        </div>
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <div class="input-wrapper">
+                    <i class="bi bi-person-fill"></i>
+                    <input type="text" id="username" class="inp" placeholder="Enter username" autocomplete="off" required>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label class="form-label">Password</label>
+                <div class="input-wrapper">
+                    <i class="bi bi-key-fill"></i>
+                    <input type="password" id="password" class="inp" placeholder="Enter password" required>
+                </div>
+            </div>
+            <button type="submit" class="btn">
+                <i class="bi bi-box-arrow-in-right"></i> Log In
+            </button>
+        </form>
+    </div>
+
+    <!-- 2. ADMIN WORKSPACE (Consolidated Logs) -->
+    <div class="workspace" id="admin-panel">
+        <div class="header">
+            <div class="header-title-group">
+                <h1 style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px;"><i class="bi bi-database-fill-lock" style="color:var(--accent); margin-right: 8px;"></i>Consolidated Operations Logs</h1>
+                <p style="font-size: 13px; color:var(--muted)">Viewing and auditing all browser operations records</p>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-sec" onclick="exportConsolidatedJSON()"><i class="bi bi-filetype-json"></i> Export JSON</button>
+                <button class="btn-sec" style="color:var(--danger); background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2)" onclick="handleLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
+            </div>
+        </div>
+
+        <!-- Stats Widgets -->
+        <div class="stats-grid">
+            <div class="card stat-card">
+                <div>
+                    <div class="stat-label">Total Audit Events</div>
+                    <div class="stat-value" id="stat-total-events">0</div>
+                </div>
+                <i class="bi bi-list-task stat-icon"></i>
+            </div>
+            <div class="card stat-card">
+                <div>
+                    <div class="stat-label">Distinct Users Logged</div>
+                    <div class="stat-value" id="stat-distinct-users">0</div>
+                </div>
+                <i class="bi bi-people-fill stat-icon"></i>
+            </div>
+            <div class="card stat-card">
+                <div>
+                    <div class="stat-label">Successful Actions</div>
+                    <div class="stat-value" id="stat-success-rate">0%</div>
+                </div>
+                <i class="bi bi-patch-check-fill stat-icon" style="color:var(--ok)"></i>
+            </div>
+        </div>
+
+        <!-- Controls / Search -->
+        <div class="card controls-card">
+            <div class="search-wrapper">
+                <i class="bi bi-search"></i>
+                <input type="text" id="log-search" class="inp search-inp" placeholder="Search by email, operation, target project, or details..." oninput="filterLogs()">
+            </div>
+            <button class="btn-sec" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="card table-card">
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width:160px">Timestamp</th>
+                            <th style="width:240px">User (Gmail)</th>
+                            <th style="width:160px">Operation</th>
+                            <th>Projects</th>
+                            <th style="width:110px">Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-table-body">
+                        <tr>
+                            <td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)">No log data loaded.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crypto Decryption Engine -->
+    <script>
+        const Crypto = {
+            getKey: async (passphrase) => {
+                const enc = new TextEncoder();
+                const keyMaterial = await window.crypto.subtle.importKey(
+                    "raw",
+                    enc.encode(passphrase),
+                    "PBKDF2",
+                    false,
+                    ["deriveBits", "deriveKey"]
+                );
+                return window.crypto.subtle.deriveKey(
+                    {
+                        name: "PBKDF2",
+                        salt: enc.encode("dista-salt-12345"),
+                        iterations: 100000,
+                        hash: "SHA-256"
+                    },
+                    keyMaterial,
+                    { name: "AES-GCM", length: 256 },
+                    true,
+                    ["encrypt", "decrypt"]
+                );
+            },
+            decrypt: async (encryptedBase64, passphrase) => {
+                try {
+                    const key = await Crypto.getKey(passphrase);
+                    const binaryString = atob(encryptedBase64);
+                    const combined = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        combined[i] = binaryString.charCodeAt(i);
+                    }
+                    const iv = combined.slice(0, 12);
+                    const ciphertext = combined.slice(12);
+                    const decrypted = await window.crypto.subtle.decrypt(
+                        { name: "AES-GCM", iv: iv },
+                        key,
+                        ciphertext
+                    );
+                    return new TextDecoder().decode(decrypted);
+                } catch(e) {
+                    console.error("Decryption failed:", e);
+                    return null;
+                }
+            }
+        };
+
+        let cachedLogs = [];
+
+        function toast(message, type = "info") {
+            const container = document.getElementById("toast-root");
+            const el = document.createElement("div");
+            el.className = "toast";
+            
+            let icon = '<i class="bi bi-info-circle-fill"></i>';
+            if (type === "ok") icon = '<i class="bi bi-check-circle-fill" style="color:var(--ok)"></i>';
+            if (type === "err") icon = '<i class="bi bi-exclamation-triangle-fill" style="color:var(--danger)"></i>';
+            
+            el.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(el);
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transition = 'opacity 0.4s';
+                setTimeout(() => el.remove(), 400);
+            }, 3000);
+        }
+
+        // Login Handler
+        function handleLogin(event) {
+            event.preventDefault();
+            const user = document.getElementById("username").value.trim();
+            const pass = document.getElementById("password").value;
+
+            if (user === "Shreyash" && pass === "Vai@12345") {
+                toast("Authentication successful!", "ok");
+                document.getElementById("login-panel").style.display = "none";
+                document.getElementById("admin-panel").style.display = "flex";
+                refreshLogs();
+            } else {
+                toast("Invalid username or password.", "err");
+            }
+        }
+
+        // Logout Handler
+        function handleLogout() {
+            document.getElementById("login-form").reset();
+            document.getElementById("admin-panel").style.display = "none";
+            document.getElementById("login-panel").style.display = "block";
+            toast("Logged out successfully.", "info");
+        }
+
+        // Load & Decrypt all logs dynamically
+        async function refreshLogs() {
+            const tbody = document.getElementById("logs-table-body");
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Decrypting and parsing audit logs...</td></tr>`;
+
+            const allLogs = [];
+            const prefix = 'dista_encrypted_audit_logs_';
+            const usersSet = new Set();
+            let successCount = 0;
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(prefix)) {
+                    const email = key.substring(prefix.length);
+                    try {
+                        const raw = localStorage.getItem(key);
+                        if (raw) {
+                            const encryptedList = JSON.parse(raw);
+                            if (Array.isArray(encryptedList)) {
+                                for (const item of encryptedList) {
+                                    const decryptedStr = await Crypto.decrypt(item, email);
+                                    if (decryptedStr) {
+                                        const entry = JSON.parse(decryptedStr);
+                                        allLogs.push(entry);
+                                        usersSet.add(entry.user);
+                                        if (entry.status === 'SUCCESS') successCount++;
+                                    }
+                                }
+                            }
+                        }
+                    } catch(e) {
+                        console.error("Error reading key " + key, e);
+                    }
+                }
+            }
+
+            allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            cachedLogs = allLogs;
+
+            // Update stats widgets
+            document.getElementById("stat-total-events").textContent = allLogs.length;
+            document.getElementById("stat-distinct-users").textContent = usersSet.size;
+            const successRate = allLogs.length > 0 ? Math.round((successCount / allLogs.length) * 100) : 0;
+            document.getElementById("stat-success-rate").textContent = `${successRate}%`;
+
+            renderLogsTable(allLogs);
+        }
+
+        function renderLogsTable(logs) {
+            const tbody = document.getElementById("logs-table-body");
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)">No audit logs recorded in local storage yet.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => {
+                const dateStr = new Date(log.timestamp).toLocaleString();
+                const statusBadge = log.status === 'SUCCESS' 
+                    ? '<span class="badge badge-success">Success</span>' 
+                    : '<span class="badge badge-failed">Failed</span>';
+                
+                return `
+                    <tr>
+                        <td class="mono" style="color:var(--muted)">${dateStr}</td>
+                        <td style="font-weight:600">${escapeHtml(log.user)}</td>
+                        <td><span class="badge badge-op">${escapeHtml(log.operation)}</span></td>
+                        <td>
+                            <div style="display:flex; flex-direction:column; gap:2px;">
+                                <span class="mono" style="font-size:11px"><span style="color:var(--muted)">Src:</span> ${escapeHtml(log.srcProject)}</span>
+                                <span class="mono" style="font-size:11px"><span style="color:var(--muted)">Tgt:</span> ${escapeHtml(log.tgtProject)}</span>
+                            </div>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td style="color:var(--muted); line-height:1.4">${escapeHtml(log.details)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterLogs() {
+            const query = document.getElementById("log-search").value.toLowerCase().trim();
+            if (!query) {
+                renderLogsTable(cachedLogs);
+                return;
+            }
+
+            const filtered = cachedLogs.filter(log => {
+                return (log.user || '').toLowerCase().includes(query) ||
+                       (log.operation || '').toLowerCase().includes(query) ||
+                       (log.srcProject || '').toLowerCase().includes(query) ||
+                       (log.tgtProject || '').toLowerCase().includes(query) ||
+                       (log.details || '').toLowerCase().includes(query) ||
+                       (log.status || '').toLowerCase().includes(query);
+            });
+
+            renderLogsTable(filtered);
+        }
+
+        // Export Consolidated logs as JSON
+        function exportConsolidatedJSON() {
+            if (cachedLogs.length === 0) {
+                toast("No logs to export", "err");
+                return;
+            }
+            const jsonStr = JSON.stringify(cachedLogs, null, 2);
+            const blob = new Blob([jsonStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `dista_consolidated_audit_logs_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast("Consolidated logs exported successfully!", "ok");
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

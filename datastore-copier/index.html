@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCP Infrastructure Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root{--bg:#0c1117;--bg2:#131b26;--card:#1a2433;--hover:#1f2d3f;--fg:#e2e8f0;--muted:#5a6f87;--accent:#00d4aa;--accent2:#00f0c0;--accent-dim:rgba(0,212,170,.12);--danger:#f87171;--danger-dim:rgba(248,113,113,.12);--warn:#fbbf24;--warn-dim:rgba(251,191,36,.12);--ok:#34d399;--ok-dim:rgba(52,211,153,.12);--info:#60a5fa;--info-dim:rgba(96,165,250,.12);--brd:#1e2d3d;--brd2:#2a3a4e}
+        *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;overflow-x:hidden}.mono{font-family:'JetBrains Mono',monospace}
+        ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
+        .bg-grid{background-image:linear-gradient(rgba(0,212,170,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,.02) 1px,transparent 1px);background-size:48px 48px}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes spin{to{transform:rotate(360deg)}}
+        .anim-up{animation:fadeUp .45s ease-out both}.d1{animation-delay:.08s}
+        .spinner{width:18px;height:18px;border:2px solid var(--brd2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+        .spinner-lg{width:36px;height:36px;border:3px solid var(--brd2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+        .btn{padding:9px 18px;border-radius:8px;font-weight:600;font-size:13px;transition:all .18s;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:7px;font-family:inherit;white-space:nowrap}
+        .btn:disabled{opacity:.45;cursor:not-allowed}.btn-p{background:var(--accent);color:#0c1117}.btn-p:hover:not(:disabled){background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,212,170,.28)}
+        .btn-s{background:var(--hover);color:var(--fg);border:1px solid var(--brd2)}.btn-s:hover:not(:disabled){background:var(--brd2)}.btn-d{background:var(--danger-dim);color:var(--danger);border:1px solid rgba(248,113,113,.25)}.btn-g{background:transparent;color:var(--muted)}.btn-g:hover:not(:disabled){background:var(--hover);color:var(--fg)}
+        .inp{background:var(--bg);border:1px solid var(--brd2);border-radius:8px;padding:10px 14px;color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;transition:border-color .2s,box-shadow .2s}
+        .inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}.inp::placeholder{color:var(--muted);opacity:.55}
+        .card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:20px}
+        .badge{padding:2px 9px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;display:inline-block}
+        .chk{width:17px;height:17px;border:2px solid var(--brd2);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+        .chk:hover{border-color:var(--accent)}.chk.on{background:var(--accent);border-color:var(--accent)}.chk.on::after{content:'✓';color:#0c1117;font-size:11px;font-weight:800}
+        .toast{position:fixed;bottom:20px;right:20px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;transform:translateX(140%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:8px;max-width:400px}
+        .toast.show{transform:translateX(0)}.toast-ok{background:#065f46;color:#a7f3d0;border:1px solid #059669}.toast-err{background:#7f1d1d;color:#fca5a5;border:1px solid #dc2626}.toast-info{background:#1e3a5f;color:#93c5fd;border:1px solid #2563eb}
+        .warning-box{background:var(--warn-dim);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5}
+        .warning-box i{color:var(--warn);margin-top:2px}.warning-box a{color:var(--warn);text-decoration:underline;font-weight:600}.warning-box a:hover{color:var(--fg)}
+        .dropdown-wrapper{position:relative}.dropdown-menu{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--brd2);border-radius:8px;margin-top:4px;max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 10px 25px rgba(0,0,0,.4);display:none}
+        .dropdown-menu.open{display:block}.dropdown-item{padding:10px 14px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;transition:background .1s}
+        .dropdown-item:hover{background:var(--hover)}.dropdown-item .id{font-family:'JetBrains Mono',monospace;color:var(--accent)}.dropdown-item .name{color:var(--muted);font-size:11px;margin-left:8px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .copyable-cmd{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--brd2);border-radius:8px;padding:8px 12px;margin-top:8px}
+        .copyable-cmd code{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);white-space:nowrap;overflow-x:auto}.copyable-cmd button{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;transition:color .15s}.copyable-cmd button:hover{color:var(--accent)}
+        .tab-btn{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--muted);background:transparent;border:1px solid var(--brd2);font-family:inherit}
+        .tab-btn:hover{background:var(--hover);color:var(--fg)}.tab-btn.on{color:#0c1117;background:var(--accent);border-color:var(--accent)}
+        .diff-add{background:var(--ok-dim);border-left:3px solid var(--ok)}.diff-rem{background:var(--danger-dim);border-left:3px solid var(--danger)}.diff-mod{background:var(--warn-dim);border-left:3px solid var(--warn)}
+        .filter-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}.filter-row .inp{flex:1}.filter-row select.inp{width:140px;flex:none}
+        .modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100;animation:fadeIn 0.25s ease-out}
+        .modal{width:100%;max-width:480px;background:var(--card);border:1px solid var(--brd2);box-shadow:0 20px 40px rgba(0,0,0,0.5);animation:fadeUp 0.3s cubic-bezier(0.16,1,0.3,1)}
+
+        /* Custom Premium Tooltips */
+        .has-tooltip {
+            position: relative;
+        }
+        .has-tooltip::before {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: 125%;
+            left: 50%;
+            transform: translate(-50%, -4px);
+            background: #111827; /* sleek dark background */
+            color: #f3f4f6; /* white text */
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 500;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--brd2);
+            z-index: 1000;
+        }
+        .has-tooltip:hover::before {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+        .has-tooltip::after {
+            content: '';
+            position: absolute;
+            top: calc(125% - 5px);
+            left: 50%;
+            transform: translate(-50%, -4px);
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent var(--brd2) transparent;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        .has-tooltip:hover::after {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        /* Welcome Screen Animations */
+        @keyframes pulseGlow {
+            0% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 212, 170, 0.2); }
+            100% { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 212, 170, 0.4); }
+        }
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleWidth {
+            0% { width: 0; }
+            100% { width: 40px; }
+        }
+    </style>
+</head>
+<body class="bg-grid">
+    <div id="toast-wrap"></div>
+    <div id="app" class="relative z-10 max-w-7xl mx-auto px-4 py-6" style="min-height:100vh">
+        <header class="flex items-center justify-between mb-8 anim-up">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:var(--accent-dim)"><i class="fa-solid fa-cloud" style="color:var(--accent);font-size:16px"></i></div>
+                <div><h1 class="text-lg font-bold tracking-tight">GCP Infrastructure Manager</h1><p class="text-xs" style="color:var(--muted)">Schema Migration & Datastore Management</p></div>
+            </div>
+            <div id="header-right" class="flex items-center gap-3"></div>
+        </header>
+
+        <section id="sec-auth" class="anim-up d1">
+            <div class="card max-w-xl mx-auto" style="border-color:var(--brd2)">
+                <h2 class="font-semibold text-base mb-4">1. Authenticate</h2>
+                <div class="copyable-cmd mb-4"><code>gcloud auth print-access-token</code><button onclick="Utils.copyText('gcloud auth print-access-token')"><i class="fa-regular fa-copy"></i></button></div>
+                <input id="inp-token" class="inp mb-4" placeholder="Paste access token here...">
+                <button id="btn-verify" class="btn btn-p w-full" disabled><i class="fa-solid fa-key"></i> Verify Token</button>
+            </div>
+        </section>
+
+        <section id="sec-modes" style="display:none" class="anim-up">
+            <div class="card max-w-2xl mx-auto text-center">
+                <h2 class="font-semibold text-base mb-6">2. Select Operation Mode</h2>
+                <div class="grid grid-cols-3 gap-4">
+                    <button class="tab-btn on" data-mode="bq"><i class="fa-solid fa-table mr-2"></i>BQ Schema</button>
+                    <button class="tab-btn" data-mode="query"><i class="fa-solid fa-clock mr-2"></i>Scheduled Queries</button>
+                    <button class="tab-btn" data-mode="ds"><i class="fa-solid fa-database mr-2"></i>Datastore</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-forms" style="display:none" class="max-w-3xl mx-auto mt-6 anim-up">
+            <!-- BQ FORM -->
+            <div id="form-bq" class="card" style="display:none">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="bq-src" class="inp" placeholder="Search..."><div id="dd-bq-src" class="dropdown-menu"></div></div>
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="bq-tgt" class="inp" placeholder="Search..."><div id="dd-bq-tgt" class="dropdown-menu"></div></div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">DATASET</label><input id="bq-ds" class="inp" placeholder="All"><div id="dd-bq-ds" class="dropdown-menu"></div></div>
+                    <div><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">LOCATION</label><input id="bq-loc" class="inp" value="us"></div>
+                    <div class="flex items-end"><button id="btn-bq-compare" class="btn btn-p w-full"><i class="fa-solid fa-code-compare"></i> Compare</button></div>
+                </div>
+            </div>
+            <!-- QUERY FORM -->
+            <div id="form-query" class="card" style="display:none">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="q-src" class="inp" placeholder="Search..."><div id="dd-q-src" class="dropdown-menu"></div></div>
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="q-tgt" class="inp" placeholder="Search..."><div id="dd-q-tgt" class="dropdown-menu"></div></div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE LOCATION</label><input id="q-src-loc" class="inp" value="us"></div>
+                    <div><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET LOCATION</label><input id="q-tgt-loc" class="inp" value="us"></div>
+                    <div class="flex items-end"><button id="btn-q-fetch" class="btn btn-p w-full"><i class="fa-solid fa-download"></i> Fetch Scheduled Queries</button></div>
+                </div>
+            </div>
+            <!-- DATASTORE FORM -->
+            <div id="form-ds" class="card" style="display:none">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="ds-src" class="inp" placeholder="Search..."><div id="dd-ds-src" class="dropdown-menu"></div></div>
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="ds-tgt" class="inp" placeholder="Search..."><div id="dd-ds-tgt" class="dropdown-menu"></div></div>
+                </div>
+                <div class="mb-4 dropdown-wrapper">
+                    <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">ENTITY KIND</label>
+                    <input id="ds-kind" class="inp" placeholder="Select source project first..."><div id="dd-ds-kind" class="dropdown-menu"></div>
+                </div>
+                <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                    <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">WHERE FILTERS</label>
+                    <div id="ds-filters-container"></div>
+                    <button id="btn-ds-add-filter" class="btn btn-s text-xs mt-1" style="padding:5px 10px"><i class="fa-solid fa-plus"></i> Add Filter</button>
+                </div>
+                <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                    <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">MODIFICATION (FIND & REPLACE)</label>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div class="dropdown-wrapper"><input id="ds-mod-field" class="inp" placeholder="Field to Modify..."><div id="dd-ds-mod" class="dropdown-menu"></div></div>
+                        <input id="ds-mod-target" class="inp" placeholder="Target Substring">
+                    </div>
+                    <input id="ds-mod-replace" class="inp" placeholder="Replacement Substring">
+                </div>
+                <button id="btn-ds-analyze" class="btn btn-p w-full"><i class="fa-solid fa-magnifying-glass-chart"></i> Analyze & Compare Entities</button>
+            </div>
+        </section>
+
+        <!-- PROGRESS OVERLAY -->
+        <section id="sec-loading" style="display:none">
+            <div class="card max-w-xl mx-auto text-center py-12">
+                <div class="spinner-lg mx-auto mb-4"></div>
+                <h3 class="font-semibold mb-2" id="load-title">Processing...</h3>
+                <p id="load-msg" class="text-sm mb-4" style="color:var(--muted)"></p>
+                <div class="grid grid-cols-3 gap-4 text-center" id="load-ds-stats" style="display:none">
+                    <div class="p-2 rounded-lg" style="background:var(--bg)"><div class="text-xl font-bold mono" style="color:var(--ok)" id="ld-identical">0</div><div class="text-xs" style="color:var(--muted)">Identical</div></div>
+                    <div class="p-2 rounded-lg" style="background:var(--bg)"><div class="text-xl font-bold mono" style="color:var(--warn)" id="ld-different">0</div><div class="text-xs" style="color:var(--muted)">Different</div></div>
+                    <div class="p-2 rounded-lg" style="background:var(--bg)"><div class="text-xl font-bold mono" style="color:var(--danger)" id="ld-missing">0</div><div class="text-xs" style="color:var(--muted)">Missing in Tgt</div></div>
+                </div>
+                <button id="btn-cancel-ds" class="btn btn-d mt-4" style="display:none"><i class="fa-solid fa-stop"></i> Cancel Process</button>
+            </div>
+        </section>
+
+        <!-- RESULTS -->
+        <section id="sec-results" style="display:none" class="mt-6">
+            <!-- BQ RESULTS -->
+            <div id="res-bq" style="display:none">
+                <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup before overwriting.</strong> <a href="https://cloud.google.com/bigquery/docs/table-snapshots-intro" target="_blank">Create Snapshots</a>.</div></div>
+                <div id="bq-summary" class="grid grid-cols-5 gap-3 mb-5"></div>
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div class="flex items-center gap-2"><input id="bq-search" class="inp" style="width:200px;font-size:12px;padding:7px 12px" placeholder="Search tables..."><button id="btn-bq-csv" class="btn btn-s" style="font-size:12px"><i class="fa-solid fa-file-csv"></i></button></div>
+                    <div class="flex items-center gap-3">
+                        <button id="btn-bq-copy-s2t" class="btn btn-p has-tooltip" style="font-size:12px" data-tooltip="Copy from Source to Target project" disabled><i class="fa-solid fa-arrow-right"></i> Copy Src → Tgt</button>
+                        <button id="btn-bq-copy-t2s" class="btn btn-p has-tooltip" style="font-size:12px" data-tooltip="Copy from Target to Source project" disabled><i class="fa-solid fa-arrow-left"></i> Copy Tgt → Src</button>
+                    </div>
+                </div>
+                <div id="bq-table-list" class="flex flex-col gap-2"></div>
+                <div id="bq-pagination" class="flex justify-center gap-2 mt-6"></div>
+            </div>
+            <!-- QUERY RESULTS -->
+            <div id="res-query" style="display:none">
+                <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Verify SQL projects before copying scheduled queries.</strong></div></div>
+                <div class="flex justify-end mb-4"><button id="btn-q-copy" class="btn btn-p" style="font-size:12px" disabled><i class="fa-solid fa-copy"></i> Copy Selected</button></div>
+                <div id="q-list" class="flex flex-col gap-2"></div>
+            </div>
+            <!-- DATASTORE RESULTS -->
+            <div id="res-ds" style="display:none">
+                <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Review changes carefully.</strong> Modifying Datastore entities is immediate. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank">Create Backup</a>.</div></div>
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div class="flex gap-2">
+                        <button class="btn btn-s" onclick="App.filterDsResults('all')">All <span id="ds-cnt-all" class="mono" style="font-size:10px">0</span></button>
+                        <button class="btn btn-s" onclick="App.filterDsResults('different')">Diff <span id="ds-cnt-diff" class="mono" style="font-size:10px;color:var(--warn)">0</span></button>
+                        <button class="btn btn-s" onclick="App.filterDsResults('missing')">Missing <span id="ds-cnt-miss" class="mono" style="font-size:10px;color:var(--danger)">0</span></button>
+                        <button class="btn btn-s" onclick="App.filterDsResults('identical')">Identical <span id="ds-cnt-eq" class="mono" style="font-size:10px;color:var(--ok)">0</span></button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btn-ds-csv" class="btn btn-s" style="font-size:12px"><i class="fa-solid fa-file-csv"></i> CSV</button>
+                        <button id="btn-ds-copy" class="btn btn-p" style="font-size:12px" disabled><i class="fa-solid fa-copy"></i> Copy Selected</button>
+                    </div>
+                </div>
+                <div class="card" style="padding:0;overflow:hidden">
+                    <table class="w-full text-xs mono" style="border-collapse:collapse">
+                        <thead><tr style="background:var(--bg2)">
+                            <th class="text-left px-4 py-3 w-10"><div class="chk" id="chk-all-ds" onclick="App.toggleAllDs()"></div></th>
+                            <th class="text-left px-4 py-3" style="color:var(--muted)">Key</th>
+                            <th class="text-left px-4 py-3 w-32" style="color:var(--muted)">Status</th>
+                            <th class="text-left px-4 py-3 w-64" style="color:var(--muted)">Diff Summary</th>
+                        </tr></thead>
+                        <tbody id="ds-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="ds-pagination" class="flex justify-center gap-2 mt-6"></div>
+        </section>
+
+        <!-- LOCAL AUDIT LOGS -->
+        <section id="sec-audit-logs" class="mt-8" style="display:none">
+            <div class="card" style="padding: 1.5rem;">
+                <div class="flex items-center justify-between border-b pb-3 mb-4" style="border-color:var(--brd2)">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-semibold text-base" style="color:var(--fg)"><i class="fa-solid fa-clock-rotate-left"></i> Local Operations Audit Logs</h3>
+                        <span class="badge" style="background:var(--brd2);color:var(--muted);font-size:10px"><i class="fa-solid fa-lock text-[9px] text-green-400"></i> Encrypted (AES-GCM)</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btn-audit-export" class="btn btn-s text-xs" style="padding: 5px 10px"><i class="fa-solid fa-file-export"></i> Export JSON</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto rounded-lg border" style="border-color:var(--brd2)">
+                    <table class="w-full text-xs text-left" style="border-collapse:collapse; min-width: 700px">
+                        <thead style="background:var(--bg2)">
+                            <tr style="border-bottom: 1px solid var(--brd2)">
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">TIMESTAMP</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">USER</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">OPERATION</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">PROJECTS</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">STATUS</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">DETAILS</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider text-center" style="color:var(--muted)">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-table-body">
+                            <tr>
+                                <td colspan="7" class="px-6 py-8 text-center text-xs" style="color:var(--muted)">
+                                    <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
+                                    No local audit logs recorded yet.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer / Audit Log Notice -->
+        <footer class="mt-12 text-xs py-6 border-t" style="border-color:var(--brd2); color:var(--muted); line-height: 1.6;">
+            <div class="max-w-2xl mx-auto text-left card" style="border-color:var(--brd2); background:var(--bg2)">
+                <h4 class="font-semibold mb-2 text-sm text-yellow-500"><i class="fa-solid fa-shield-halved me-1"></i> GCP Audit Logging Notice</h4>
+                <p class="mb-2"><strong>Operations that need to be enabled (Data Access Logs)</strong></p>
+                <p class="mb-2">Writing or overwriting entities in Datastore uses the Commit API (under <code>google.datastore.v1.Datastore.Commit</code>). To log these actions:</p>
+                <ol class="list-decimal list-inside space-y-1">
+                    <li>Go to the <strong>GCP Console</strong>.</li>
+                    <li>Navigate to <strong>IAM &amp; Admin &gt; Audit Logs</strong>.</li>
+                    <li>Select the <strong>Cloud Datastore API</strong> from the list of services.</li>
+                    <li>Check the <strong>Data Write</strong> (for creations, updates, overwrites, and deletes) and/or <strong>Data Read</strong> (for lookups and queries) audit log types and save.</li>
+                </ol>
+            </div>
+        </footer>
+    </div>
+    <div id="modal-root" style="display:none"></div>
+
+<script src="script.js?v=2.2"></script>
+</body>
+</html>

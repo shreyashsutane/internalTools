@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dista Internal Tools</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-main: #212529;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --dista-orange: #f7941d;
+            --dista-orange-dark: #e85d04;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
+            --input-bg: #ffffff;
+            --input-text: #212529;
+        }
+        [data-theme="dark"] {
+            --bg-body: #121212;
+            --bg-card: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: #444444;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-hover: 0 8px 24px rgba(0,0,0,0.5);
+            --input-bg: #2d2d2d;
+            --input-text: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Header */
+        .header-bar {
+            background: var(--bg-card);
+            box-shadow: var(--shadow);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .logo-img {
+            height: 45px;
+            width: auto;
+        }
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0;
+        }
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+        .theme-toggle:hover {
+            background: var(--dista-orange);
+            color: white;
+            border-color: var(--dista-orange);
+        }
+
+        /* Hero */
+        .hero-section {
+            background: linear-gradient(135deg, rgba(247,148,29,0.1) 0%, rgba(232,93,4,0.05) 100%);
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+        }
+        [data-theme="dark"] .hero-section {
+            background: linear-gradient(135deg, rgba(247,148,29,0.05) 0%, rgba(232,93,4,0.02) 100%);
+        }
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+        .hero-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+        }
+
+        /* Tool Cards */
+        .tool-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            height: 100%;
+            position: relative;
+            overflow: visible;
+        }
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--dista-orange);
+        }
+        .tool-card.active {
+            border-left: 4px solid var(--dista-orange);
+        }
+        .tool-card.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .tool-card.disabled:hover {
+            transform: none;
+            box-shadow: var(--shadow);
+            border-color: var(--border-color);
+        }
+
+        .tool-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+        .tool-card.active .tool-icon {
+            color: var(--dista-orange);
+        }
+
+        .tool-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+
+        /* Short description - always visible */
+        .tool-desc-short {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+
+        /* Full description - tooltip style */
+        .tool-desc-full {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            width: 280px;
+            box-shadow: var(--shadow-hover);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 100;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .tool-desc-full::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 8px solid transparent;
+            border-top-color: var(--border-color);
+        }
+        .tool-desc-full::before {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 7px solid transparent;
+            border-top-color: var(--bg-card);
+            z-index: 1;
+        }
+        .tool-card:hover .tool-desc-full {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-8px);
+        }
+
+        .btn-open-tool {
+            background: var(--dista-orange);
+            border: none;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-open-tool:hover {
+            background: var(--dista-orange-dark);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .btn-doc-link {
+            background: var(--bg-body);
+            border: 1px solid var(--dista-orange);
+            color: var(--dista-orange);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.85rem;
+        }
+        .btn-doc-link:hover {
+            background: var(--dista-orange);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .badge-locked {
+            background: var(--border-color);
+            color: var(--text-muted);
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .tool-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        /* Add Tool Section */
+        .add-tool-section {
+            background: var(--bg-card);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .add-tool-section:hover {
+            border-color: var(--dista-orange);
+        }
+        .add-tool-btn {
+            background: none;
+            border: 2px solid var(--dista-orange);
+            color: var(--dista-orange);
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .add-tool-btn:hover {
+            background: var(--dista-orange);
+            color: white;
+        }
+
+        /* Modal */
+        [data-theme="dark"] .modal-content {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .modal-header,
+        [data-theme="dark"] .modal-footer {
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .btn-close {
+            filter: invert(1);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 3rem;
+        }
+
+        /* Notes section */
+        .notes-card {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 1px solid #ffc107;
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+        [data-theme="dark"] .notes-card {
+            background: linear-gradient(135deg, #4a3f08 0%, #3d3406 100%);
+            border-color: #997404;
+        }
+        .notes-card h5 {
+            color: #856404;
+            margin-bottom: 0.75rem;
+        }
+        [data-theme="dark"] .notes-card h5 {
+            color: #ffda6a;
+        }
+        .notes-card ul {
+            margin: 0;
+            padding-left: 1.25rem;
+            color: #856404;
+        }
+        [data-theme="dark"] .notes-card ul {
+            color: #ffda6a;
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header-bar">
+        <div class="container" style="max-width: 1200px;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <img src="assets/dista-logo.png" alt="Dista Logo" class="logo-img" onerror="this.style.display='none'">
+                    <h1 class="header-title">Dista Internal Tools</h1>
+                </div>
+                <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">🌙</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container" style="max-width: 1200px;">
+            <div class="text-center">
+                <h2 class="hero-title">🛠️ Welcome to Dista Internal Tools</h2>
+                <p class="hero-subtitle mx-auto">
+                    A collection of utilities for internal development, data management, and operational tasks. 
+                    Click on any tool card to open it.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tools Grid -->
+    <section class="container" style="max-width: 1200px;">
+        <h3 class="mb-4 fw-bold"><i class="bi bi-grid-3x3-gap-fill me-2" style="color: var(--dista-orange);"></i>Available Tools</h3>
+
+        <div class="row g-4" id="toolsGrid">
+            <!-- Tools will be rendered here by JavaScript -->
+        </div>
+
+        <!-- Add Tool Button -->
+        <div class="mt-4">
+            <div class="add-tool-section">
+                <p class="text-muted mb-3">Want to add a new tool to this page?</p>
+                <button class="add-tool-btn" onclick="showAddToolModal()">
+                    <i class="bi bi-plus-lg me-2"></i>Add New Tool
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Important Notes -->
+    <section class="container mt-5" style="max-width: 1200px;">
+        <div class="notes-card">
+            <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Important Notes</h5>
+            <ul>
+                <li>Always backup your Datastore before using any copy tools</li>
+                <li>Tools require appropriate GCP permissions — ensure your account has access</li>
+                <li>Report any issues or bugs to the development team</li>
+                <li>Tools are for internal use only — do not share externally</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 Dista — Internal Use Only</p>
+        </div>
+    </footer>
+
+    <!-- Add Tool Modal -->
+    <div class="modal fade" id="addToolModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-plus-square me-2"></i>Add New Tool</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addToolForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tool Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="toolName" required placeholder="e.g., GCP Infrastructure Manager">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Icon (Emoji) <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="toolIcon" required placeholder="e.g., 🔄 or 🛠️" maxlength="2">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Short Description <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="toolDescShort" required placeholder="One line description shown on card">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Full Description <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="toolDescFull" rows="3" required placeholder="Detailed description shown on hover tooltip"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tool Path/Link <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="toolPath" required placeholder="e.g., datastore-copier/ or https://...">
+                            <div class="form-text text-muted">Folder path relative to this page, or full URL</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Documentation Path <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="toolDocPath" required placeholder="e.g., docs/DOCUMENTATION.md or https://...">
+                            <div class="form-text text-muted">Path to documentation file (Markdown, HTML, or URL)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Status</label>
+                            <select class="form-select" id="toolStatus">
+                                <option value="active">Active (Ready to use)</option>
+                                <option value="coming-soon">Coming Soon (Locked)</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="addNewTool()" style="background: var(--dista-orange); border: none;">
+                        <i class="bi bi-check-lg me-1"></i>Add Tool
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ==========================================
+        // DARK MODE
+        // ==========================================
+        const themeToggle = document.getElementById('themeToggle');
+        const htmlElement = document.documentElement;
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        function applyTheme(theme) {
+            htmlElement.setAttribute('data-theme', theme);
+            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', theme);
+        }
+        if (savedTheme) applyTheme(savedTheme);
+        else if (systemPrefersDark) applyTheme('dark');
+        themeToggle.addEventListener('click', () => applyTheme(htmlElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+        // ==========================================
+        // TOOLS DATA - EDIT THIS ARRAY TO ADD/MODIFY TOOLS
+        // ==========================================
+        // Each tool has:
+        // - id: unique identifier
+        // - name: display name
+        // - icon: emoji icon
+        // - descShort: one line shown on card
+        // - descFull: detailed tooltip on hover
+        // - path: link to tool (folder/ or https://...)
+        // - docPath: link to documentation (file path or URL)
+        // - status: "active" or "coming-soon"
+
+        let tools = JSON.parse(localStorage.getItem('dista_tools_v2')) || [
+            {
+                id: 'datastore-copier',
+                name: 'GCP Infrastructure Manager',
+                icon: '🔄',
+                descShort: 'Copy schemas, scheduled queries, and Datastore entities',
+                descFull: 'Compare and sync BigQuery table schemas, transfer scheduled queries, and copy Cloud Datastore entities between GCP projects. Features difference checking, query transfer, and batch copy logic.',
+                path: 'datastore-copier/',
+                docPath: 'docs/index.html',
+                status: 'active'
+            },
+            {
+                id: 'tool-2',
+                name: 'Sweep',
+                icon: '🧹',
+                descShort: 'Scan code locally for secrets before pasting',
+                descFull: 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href=\"https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b\" target=\"_blank\" style=\"color: var(--dista-orange); text-decoration: underline; word-break: break-all;\">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.',
+                path: 'tool-2/',
+                docPath: 'docs/index.html#section-sweep',
+                status: 'active'
+            },
+            {
+                id: 'tool-3',
+                name: 'Placeholder Tool 3',
+                icon: '⏳',
+                descShort: 'Coming soon — new utility',
+                descFull: 'This tool is under development. It will provide additional functionality for internal data operations. Check back later for updates.',
+                path: '#',
+                docPath: '#',
+                status: 'coming-soon'
+            }
+        ];
+
+        // Force update the old configurations in localStorage if they exist
+        let updated = false;
+        tools = tools.map(tool => {
+            if (tool.id === 'datastore-copier') {
+                if (tool.name === 'Datastore Copier' || tool.docPath === 'docs/DOCUMENTATION.md') {
+                    tool.name = 'GCP Infrastructure Manager';
+                    tool.docPath = 'docs/index.html';
+                    tool.descShort = 'Copy schemas, scheduled queries, and Datastore entities';
+                    tool.descFull = 'Compare and sync BigQuery table schemas, transfer scheduled queries, and copy Cloud Datastore entities between GCP projects. Features difference checking, query transfer, and batch copy logic.';
+                    updated = true;
+                }
+            } else if (tool.id === 'tool-2') {
+                if (tool.status === 'coming-soon' || tool.name === 'Placeholder Tool 2' || !tool.descFull.includes('claude.ai')) {
+                    tool.name = 'Sweep';
+                    tool.icon = '🧹';
+                    tool.descShort = 'Scan code locally for secrets before pasting';
+                    tool.descFull = 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href=\"https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b\" target=\"_blank\" style=\"color: var(--dista-orange); text-decoration: underline; word-break: break-all;\">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.';
+                    tool.path = 'tool-2/';
+                    tool.docPath = 'docs/index.html#section-sweep';
+                    tool.status = 'active';
+                    updated = true;
+                }
+            }
+            return tool;
+        });
+
+        // Save initial tools if not already saved or if updated
+        if (!localStorage.getItem('dista_tools_v2') || updated) {
+            saveTools();
+        }
+
+        function saveTools() {
+            localStorage.setItem('dista_tools_v2', JSON.stringify(tools));
+        }
+
+        // ==========================================
+        // RENDER TOOLS
+        // ==========================================
+        function renderTools() {
+            const grid = document.getElementById('toolsGrid');
+            grid.innerHTML = '';
+
+            tools.forEach(tool => {
+                const isActive = tool.status === 'active';
+                const hasDoc = tool.docPath && tool.docPath !== '#';
+                const card = document.createElement('div');
+                card.className = 'col-md-6 col-lg-4';
+
+                card.innerHTML = `
+                    <div class="tool-card ${isActive ? 'active' : 'disabled'}">
+                        <!-- Full description tooltip (appears on hover) -->
+                        <div class="tool-desc-full">
+                            <strong>${tool.name}</strong><br>
+                            ${tool.descFull}
+                        </div>
+
+                        <div class="tool-icon">${tool.icon}</div>
+                        <h4 class="tool-name">${tool.name}</h4>
+
+                        <!-- Short description always visible -->
+                        <p class="tool-desc-short">${tool.descShort}</p>
+
+                        <div class="tool-actions">
+                            ${isActive 
+                                ? `<a href="${tool.path}" class="btn-open-tool">
+                                     <i class="bi bi-box-arrow-up-right me-1"></i>Open Tool
+                                   </a>`
+                                : `<span class="badge-locked"><i class="bi bi-lock-fill me-1"></i>Coming Soon</span>`
+                            }
+                            ${hasDoc 
+                                ? `<a href="${tool.docPath}" class="btn-doc-link" title="View Documentation">
+                                     <i class="bi bi-file-text me-1"></i>Docs
+                                   </a>`
+                                : ''
+                            }
+                        </div>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        // ==========================================
+        // ADD TOOL MODAL
+        // ==========================================
+        const addToolModal = new bootstrap.Modal(document.getElementById('addToolModal'));
+
+        function showAddToolModal() {
+            document.getElementById('addToolForm').reset();
+            addToolModal.show();
+        }
+
+        function addNewTool() {
+            const form = document.getElementById('addToolForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const newTool = {
+                id: 'tool-' + Date.now(),
+                name: document.getElementById('toolName').value.trim(),
+                icon: document.getElementById('toolIcon').value.trim(),
+                descShort: document.getElementById('toolDescShort').value.trim(),
+                descFull: document.getElementById('toolDescFull').value.trim(),
+                path: document.getElementById('toolPath').value.trim(),
+                docPath: document.getElementById('toolDocPath').value.trim(),
+                status: document.getElementById('toolStatus').value
+            };
+
+            tools.push(newTool);
+            saveTools();
+            renderTools();
+            addToolModal.hide();
+        }
+
+        // ==========================================
+        // EASTER EGG
+        // ==========================================
+        let logoClicks = 0;
+        const logoImg = document.querySelector('.logo-img');
+        if (logoImg) {
+            logoImg.style.cursor = 'pointer';
+            logoImg.addEventListener('click', () => {
+                logoClicks++;
+                if (logoClicks === 3) {
+                    showEasterEgg();
+                    logoClicks = 0;
+                }
+            });
+        }
+
+        function showEasterEgg() {
+            const overlay = document.createElement('div');
+            overlay.className = 'easter-egg-overlay';
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            overlay.style.backdropFilter = 'blur(5px)';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.zIndex = '9999';
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.3s ease';
+
+            const card = document.createElement('div');
+            card.style.background = 'var(--bg-card)';
+            card.style.border = '2px solid var(--dista-orange)';
+            card.style.borderRadius = '16px';
+            card.style.padding = '2.5rem';
+            card.style.textAlign = 'center';
+            card.style.maxWidth = '450px';
+            card.style.width = '90%';
+            card.style.boxShadow = 'var(--shadow-hover)';
+            card.style.transform = 'scale(0.8)';
+            card.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+
+            card.innerHTML = `
+                <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
+                <h3 style="font-weight: 800; color: var(--text-main); margin-bottom: 1rem;">Credits</h3>
+                <p style="color: var(--text-muted); font-size: 1.05rem; line-height: 1.6; margin-bottom: 1.5rem;">
+                    Created by <strong style="color: var(--dista-orange);">Antigravity Gemini 3.5 flash</strong>, <strong>ZLM 5.1</strong>, <strong>Kimi K2.6</strong>, <strong>Claude</strong> &amp; reviewed by <strong>ChatGPT</strong>
+                </p>
+                <button class="btn-open-tool" style="cursor: pointer; border: none; font-weight: 600; padding: 0.5rem 1.5rem; border-radius: 8px;" onclick="this.closest('.easter-egg-overlay').remove()">Close</button>
+            `;
+
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+                card.style.transform = 'scale(1)';
+            });
+        }
+
+        // ==========================================
+        // INIT
+        // ==========================================
+        renderTools();
+    </script>
+</body>
+</html>

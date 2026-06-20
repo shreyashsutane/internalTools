@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCP Infrastructure Manager - Documentation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #f8f9fa;
+            --bg-card: #ffffff;
+            --bg-sidebar: #ffffff;
+            --text-main: #212529;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --dista-orange: #f7941d;
+            --dista-orange-dark: #e85d04;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
+            --code-bg: #f1f3f5;
+            --code-text: #d63384;
+            --accent-dim: rgba(247, 148, 29, 0.1);
+        }
+        [data-theme="dark"] {
+            --bg-body: #121212;
+            --bg-card: #1e1e1e;
+            --bg-sidebar: #181818;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: #333333;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-hover: 0 8px 24px rgba(0,0,0,0.5);
+            --code-bg: #2d2d2d;
+            --code-text: #f87171;
+            --accent-dim: rgba(247, 148, 29, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text-main) !important;
+        }
+
+        .text-muted {
+            color: var(--text-muted) !important;
+        }
+
+        [data-theme="dark"] .table {
+            color: var(--text-main) !important;
+            border-color: var(--border-color) !important;
+        }
+        [data-theme="dark"] .table-light {
+            background-color: #2d2d2d !important;
+            color: var(--text-main) !important;
+        }
+        [data-theme="dark"] .table-light th {
+            color: var(--text-main) !important;
+            background-color: #2d2d2d !important;
+        }
+        [data-theme="dark"] td, [data-theme="dark"] th {
+            color: var(--text-main) !important;
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+        [data-theme="dark"] .table-striped>tbody>tr:nth-of-type(odd)>* {
+            --bs-table-color-type: var(--text-main) !important;
+            --bs-table-bg-type: #242c37 !important;
+        }
+
+        /* Header */
+        .header-bar {
+            background: var(--bg-card);
+            box-shadow: var(--shadow);
+            padding: 0.8rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .logo-img {
+            height: 40px;
+            width: auto;
+        }
+        .header-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0;
+        }
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+        .theme-toggle:hover {
+            background: var(--dista-orange);
+            color: white;
+            border-color: var(--dista-orange);
+        }
+
+        /* Layout */
+        .doc-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: flex;
+        }
+        .sidebar {
+            width: 280px;
+            position: sticky;
+            top: 75px;
+            height: calc(100vh - 90px);
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            padding: 2rem 1rem 2rem 0;
+        }
+        .content-area {
+            flex: 1;
+            padding: 2rem 0 4rem 3rem;
+            max-width: calc(100% - 280px);
+        }
+
+        /* Nav links */
+        .nav-doc {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .nav-doc-item {
+            margin-bottom: 0.5rem;
+        }
+        .nav-doc-link {
+            display: flex;
+            align-items: center;
+            padding: 0.6rem 1rem;
+            color: var(--text-main);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .nav-doc-link:hover {
+            background: var(--accent-dim);
+            color: var(--dista-orange);
+        }
+        .nav-doc-link.active {
+            background: var(--dista-orange);
+            color: white !important;
+        }
+        .nav-doc-link i {
+            margin-right: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        /* Sections */
+        .doc-section {
+            margin-bottom: 4rem;
+            scroll-margin-top: 100px;
+        }
+        .doc-section-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .doc-section-title i {
+            color: var(--dista-orange);
+        }
+
+        /* Visual Cards */
+        .info-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+        }
+        .step-num {
+            width: 32px;
+            height: 32px;
+            background: var(--dista-orange);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+
+        /* Code highlight */
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            position: relative;
+            margin: 1rem 0;
+        }
+        code {
+            color: var(--code-text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+        pre code {
+            color: var(--text-main);
+            display: block;
+            overflow-x: auto;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--bg-body);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover {
+            background: var(--dista-orange);
+            color: white;
+            border-color: var(--dista-orange);
+        }
+
+        /* Badge Diff Styles */
+        .badge-diff {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .badge-add { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+        .badge-rem { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
+        .badge-mod { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+
+        /* API Table */
+        .api-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .method-badge {
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            display: inline-block;
+            width: 65px;
+            text-align: center;
+        }
+        .method-get { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+        .method-post { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+        .method-patch { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+
+        @media (max-width: 991px) {
+            .sidebar { display: none; }
+            .content-area { padding-left: 0; max-width: 100%; }
+        }
+    </style>
+<base target="_self">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="header-bar">
+        <div class="container-fluid px-4" style="max-width: 1300px;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <img src="../assets/dista-logo.png" alt="Dista Logo" class="logo-img" onerror="this.style.display='none'">
+                    <span class="header-title">Dista Documentation</span>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <a href="../" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
+                        <i class="bi bi-arrow-left"></i> Portal Home
+                    </a>
+                    <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">🌙</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container-fluid px-4">
+        <div class="doc-container">
+            
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <ul class="nav-doc">
+                    <li class="nav-doc-item">
+                        <a href="#section-overview" class="nav-doc-link active" onclick="activateLink(this)">
+                            <i class="bi bi-book"></i> Overview
+                        </a>
+                    </li>
+                    <li class="nav-doc-item">
+                        <a href="#section-auth" class="nav-doc-link" onclick="activateLink(this)">
+                            <i class="bi bi-shield-lock"></i> Authentication
+                        </a>
+                    </li>
+                    <li class="nav-doc-item">
+                        <a href="#section-bq" class="nav-doc-link" onclick="activateLink(this)">
+                            <i class="bi bi-table"></i> BigQuery Sync
+                        </a>
+                    </li>
+                    <li class="nav-doc-item">
+                        <a href="#section-queries" class="nav-doc-link" onclick="activateLink(this)">
+                            <i class="bi bi-clock-history"></i> Scheduled Queries
+                        </a>
+                    </li>
+                    <li class="nav-doc-item">
+                        <a href="#section-datastore" class="nav-doc-link" onclick="activateLink(this)">
+                            <i class="bi bi-database-fill-gear"></i> Datastore Transfer
+                        </a>
+                    </li>
+                    <li class="nav-doc-item">
+                        <a href="#section-sweep" class="nav-doc-link" onclick="activateLink(this)">
+                            <i class="bi bi-shield-shaded"></i> Sweep Scanner
+                        </a>
+                    </li>
+                    <li class="nav-doc-item">
+                        <a href="#section-api" class="nav-doc-link" onclick="activateLink(this)">
+                            <i class="bi bi-hdd-network"></i> API Reference
+                        </a>
+                    </li>
+                </ul>
+            </aside>
+
+            <!-- Content Area -->
+            <main class="content-area">
+
+                <!-- OVERVIEW -->
+                <section id="section-overview" class="doc-section">
+                    <h2 class="doc-section-title"><i class="bi bi-book"></i> Overview</h2>
+                    <p class="lead">
+                        The <strong>GCP Infrastructure Manager</strong> is a professional browser-based console designed to streamline schema audits, synchronized schema migration, query automation copy operations, and Cloud Datastore data sync between Google Cloud Platform environments.
+                    </p>
+                    <div class="row g-4 mt-2">
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-table me-2 text-warning"></i> BigQuery Schema Auditing</h5>
+                                <p class="text-muted mb-0">
+                                    Perform side-by-side schema analysis to view differences in datasets across project IDs. Sync changes incrementally or run a full dataset replication.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-clock me-2 text-warning"></i> Scheduled Query Copier</h5>
+                                <p class="text-muted mb-0">
+                                    Quickly retrieve scheduled queries from target regions and clone their sql parameters, execution routines, and destination tables to target GCP projects.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-database me-2 text-warning"></i> Datastore Data Sync</h5>
+                                <p class="text-muted mb-0">
+                                    Scan entities using complex property filters, preview modifications in real-time, execute substring find-and-replace alterations, and push bulk data changes.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-gpu-card me-2 text-warning"></i> Zero Infrastructure</h5>
+                                <p class="text-muted mb-0">
+                                    Runs entirely client-side using native GCP REST API endpoints under your direct IAM token credentials. Secure, lightweight, and extremely transparent.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AUTHENTICATION -->
+                <section id="section-auth" class="doc-section">
+                    <h2 class="doc-section-title"><i class="bi bi-shield-lock"></i> Authentication</h2>
+                    <p>
+                        GCP Infrastructure Manager requires a valid OAuth 2.0 access token corresponding to a user or service account with the required IAM access roles.
+                    </p>
+                    
+                    <div class="info-card">
+                        <div class="d-flex">
+                            <div class="step-num">1</div>
+                            <div>
+                                <h5 class="fw-bold">Generate Access Token</h5>
+                                <p class="text-muted mb-2">Ensure you have the Google Cloud CLI (`gcloud`) installed, authenticated, and configured. Run the following command in your terminal to print a temporary OAuth2 token:</p>
+                                <pre><code>gcloud auth print-access-token</code><button class="copy-btn" onclick="copyText('gcloud auth print-access-token', this)">Copy</button></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="d-flex">
+                            <div class="step-num">2</div>
+                            <div>
+                                <h5 class="fw-bold">Authenticate Console</h5>
+                                <p class="text-muted mb-0">Paste the generated token into the authentication form in the web app and click **Verify Token**. The app will validate the token against Google OAuth endpoints, retrieve the associated user email, and populate the project dropdown configurations.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- BIGQUERY SCHEMA SYNC -->
+                <section id="section-bq" class="doc-section">
+                    <h2 class="doc-section-title"><i class="bi bi-table"></i> BigQuery Schema Sync</h2>
+                    <p>
+                        Audit table properties, structural layouts, partition styles, and field attributes.
+                    </p>
+                    
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-primary"></i> BigQuery Schema Sync Process</h5>
+                        <div class="mermaid py-2">
+                        graph TD
+                            Start([Select Source & Target Projects]) --> GetDatasets[Fetch & Select Dataset]
+                            GetDatasets --> Compare[Compare Table Schemas]
+                            Compare --> AnalyzeDiffs{Analyze Diff Logs}
+                            AnalyzeDiffs -->|Missing in Target| CreateTgt[Create Table/Dataset in Target]
+                            AnalyzeDiffs -->|Schema Modified| PatchTgt[Patch Table Schema in Target]
+                            AnalyzeDiffs -->|Identical| Skip[Skip / No Action Required]
+                            CreateTgt --> Done([Sync Complete])
+                            PatchTgt --> Done
+                            Skip --> Done
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-layers me-2 text-primary"></i> Under the Hood: Schema Verification Log</h5>
+                        <p class="text-muted">When you run a dataset comparison, differences are classified per field and row using visual badges:</p>
+                        <table class="table table-bordered text-start align-middle mt-3">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Status Badge</th>
+                                    <th>Meaning / Implication</th>
+                                    <th>Resolution Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge-diff badge-add"><i class="bi bi-plus-lg me-1"></i> ADDED</span></td>
+                                    <td>The column exists in the Source table but is missing in the Target.</td>
+                                    <td>Sync will **patch** the target schema to insert this column safely without deleting data.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge-diff badge-rem"><i class="bi bi-dash-lg me-1"></i> REMOVED</span></td>
+                                    <td>The column exists in the Target table but is missing in the Source.</td>
+                                    <td>No destructive actions are taken. GCP BigQuery does not allow deleting columns via console schema patching.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge-diff badge-mod"><i class="bi bi-pencil me-1"></i> MODIFIED</span></td>
+                                    <td>The column exists in both tables, but attributes (data type or mode) differ.</td>
+                                    <td>Review carefully. Sync will attempt to patch, but incompatible type changes will throw validation warnings.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SCHEDULED QUERIES -->
+                <section id="section-queries" class="doc-section">
+                    <h2 class="doc-section-title"><i class="bi bi-clock-history"></i> Scheduled Queries</h2>
+                    <p>
+                        Sync scheduled queries across environments or migrate queries to a different cloud region seamlessly.
+                    </p>
+                    
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-primary"></i> Scheduled Query Copy Process</h5>
+                        <div class="mermaid py-2">
+                        graph TD
+                            Start([Select Source & Target Projects]) --> SelectLoc[Select Source & Target Locations]
+                            SelectLoc --> Fetch[Fetch Scheduled Queries]
+                            Fetch --> SelectQ[Select Queries to Copy]
+                            SelectQ --> ReplaceIDs[Replace Source Project IDs with Target IDs]
+                            ReplaceIDs --> CreateConfig[Create Transfer Configurations in Target]
+                            CreateConfig --> Done([Transfer Complete])
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3">Cross-Location Handling</h5>
+                        <p class="text-muted mb-0">
+                            The transfer config utilizes the GCP Data Transfer Service API. You can specify a source location (e.g., `us`) and a target location (e.g., `eu`). During copy, project identifiers inside the query parameters and destination tables are modified if they reference the source project ID, replacing them dynamically with target identifiers.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- DATASTORE -->
+                <section id="section-datastore" class="doc-section">
+                    <h2 class="doc-section-title"><i class="bi bi-database-fill-gear"></i> Datastore Entity Transfer</h2>
+                    <p>
+                        Allows granular selection, scanning, and transfer of entity states between project datastores.
+                    </p>
+                    
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-success"></i> Datastore Entity Transfer Process</h5>
+                        <div class="mermaid py-2">
+                        graph TD
+                            Start([Select Source & Target Projects]) --> SelectKind[Select Kind & Apply Filters]
+                            SelectKind --> ScanSrc[Scan Source Entities]
+                            ScanSrc --> BatchLookup[Batch Lookup Target Keys - 100/pkg]
+                            BatchLookup --> CompareProps{Compare Property Values}
+                            CompareProps -->|Identical| Skip[Skip]
+                            CompareProps -->|Diff / Missing| ModCheck{Apply Find & Replace?}
+                            ModCheck -->|Yes| ApplyMod[Apply String Modifications]
+                            ModCheck -->|No| Commit[Create mutations.upsert]
+                            ApplyMod --> Commit
+                            Commit --> BatchWrite[Commit in Controlled Batches]
+                            BatchWrite --> Done([Sync Complete])
+                            Skip --> Done
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-funnel me-2 text-success"></i> Custom Filter Mappings</h5>
+                        <p class="text-muted">Scan the source datastore by adding custom matching parameters. Filters translate directly to datastore structured JSON queries:</p>
+                        <ul>
+                            <li><strong>EQUAL / LESS_THAN / GREATER_THAN:</strong> Query properties against string, integer, or boolean values.</li>
+                            <li><strong>HAS_ANCESTOR:</strong> Limits scans to entities belonging to a specific root entity path key.</li>
+                        </ul>
+                    </div>
+
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-arrow-left-right me-2 text-success"></i> Real-time Property Diff</h5>
+                        <p class="text-muted">
+                            After running an analysis, entities are matched by their key paths. By clicking on a row, you expand the detailed JSON view displaying a property-level diff:
+                        </p>
+                        <div class="p-3 rounded-3" style="background:var(--code-bg); border:1px dashed var(--border-color);">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="fw-bold text-success">Source Entity Value</span>
+                                <span class="fw-bold text-danger">Target Entity Value</span>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 text-success border-end border-secondary border-opacity-25">
+                                    <code>"status": "active"</code><br>
+                                    <code>"env": "production"</code>
+                                </div>
+                                <div class="col-6 text-danger text-end">
+                                    <code>"status": "active"</code><br>
+                                    <code>"env": "staging" (DIFF)</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-arrow-repeat me-2 text-success"></i> Find & Replace during Copy</h5>
+                        <p class="text-muted mb-0">
+                            You can replace parts of string property values dynamically during migration. For example, replace source domain configurations `https://api.source.com` with target configurations `https://api.target.com`.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- SWEEP SECRET SCANNER -->
+                <section id="section-sweep" class="doc-section">
+                    <h2 class="doc-section-title"><i class="bi bi-shield-shaded"></i> Sweep Secret Scanner</h2>
+                    <p class="lead">
+                        Sweep is a lightweight, 100% client-side security scanner. It runs inside your browser to parse code blocks, configurations, or environment setups for credentials, keys, and connection strings before they are pasted into external interfaces.
+                    </p>
+
+                    <div class="info-card">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-warning"></i> Sweep Redaction Pipeline</h5>
+                        <div class="mermaid py-2">
+                        graph TD
+                            Start([Input Code Text]) --> BuildOffsets[Build Line Offsets]
+                            BuildOffsets --> RegExCheck[Active RegEx Rules Check]
+                            BuildOffsets --> EntropyCheck[Shannon Entropy Calculation]
+                            RegExCheck --> FilterDups{Filter Overlapping/Duplicate Ranges}
+                            EntropyCheck --> FilterDups
+                            FilterDups --> Render[Render Findings & Severity Badges]
+                            Render --> SelectRedact{Toggle Redaction Checklist}
+                            SelectRedact -->|Include| RedactVal[Replace match with REDACTED placeholder]
+                            SelectRedact -->|Exclude| KeepVal[Leave value untouched]
+                            RedactVal --> Copy[Copy Redacted Text to Clipboard]
+                            KeepVal --> Copy
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mt-2">
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-cpu me-2 text-warning"></i> Optimization &amp; Performance</h5>
+                                <p class="text-muted">
+                                    Sweep is designed to audit files with tens of thousands of lines in real-time without locking the browser UI thread:
+                                </p>
+                                <ul class="text-muted small">
+                                    <li><strong>O(log N) Line Resolution:</strong> Precomputes line offsets once. Finding a match's line number is resolved using a binary search rather than string scanning.</li>
+                                    <li><strong>Debounced Non-Blocking Loop:</strong> Adjusts delay dynamically (up to 600ms for large pastes) so scanning waits for typing to pause.</li>
+                                    <li><strong>Coverage Checker:</strong> Range sorting and prefix-max-end array checks prune overlapping matches instantly.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-calculator me-2 text-warning"></i> Shannon Entropy Analysis</h5>
+                                <p class="text-muted">
+                                    Measures character randomness to detect un-patterned credentials (e.g., database passwords or tokens). The Shannon Entropy of a string is calculated as:
+                                </p>
+                                <div class="py-2 px-3 rounded-3 mb-3 text-center" style="background:var(--code-bg); font-size:1.1rem; color:var(--code-text);">
+                                    \[H(X) = -\sum_{i=1}^{n} P(x_i) \log_2 P(x_i)\]
+                                </div>
+                                <p class="text-muted small mb-0">
+                                    Where \(P(x_i)\) represents the probability frequency of character \(x_i\) in the string. If the resulting value exceeds the **4.3 bits/character** threshold, it is flagged as a potential secret. Obvious placeholders, UUID formats, and hash signatures are skipped.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-regex me-2 text-warning"></i> Active Signature Rules</h5>
+                                <p class="text-muted mb-2">High-confidence regular expressions identify known token formats immediately:</p>
+                                <div style="max-height: 200px; overflow-y: auto; background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                    <ul class="text-muted small mb-0 ps-3">
+                                        <li><strong>AWS:</strong> Access Keys (`AKIA` prefixes) and Secret Access Keys.</li>
+                                        <li><strong>Google &amp; Firebase:</strong> Web API keys (`AIza`), Client Secrets (`GOCSPX`), and private key JSON blocks.</li>
+                                        <li><strong>LLM Providers:</strong> OpenAI (`sk-`) and Anthropic (`sk-ant-`) API tokens.</li>
+                                        <li><strong>GitHub / NPM / Slack / Stripe:</strong> Vendor personal and oauth integration tokens.</li>
+                                        <li><strong>Twilio / Heroku / SendGrid / DO:</strong> Platform API keys and connection SIDs.</li>
+                                        <li><strong>Credentials:</strong> JWT blocks, database URI credentials, and URL Basic Authentication patterns.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="info-card h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-search me-2 text-warning"></i> Heuristic Audit Logs</h5>
+                                <p class="text-muted mb-2">Informational logs flag suspicious lines that do not confirm a secret but warrant developer audit:</p>
+                                <ul class="text-muted small">
+                                    <li><strong>Named Fields:</strong> Variables like `password = "val"` where the value is too short to trigger entropy rules.</li>
+                                    <li><strong>Private Subnets:</strong> References to local hostnames or private range IP addresses (`10.x.x.x`, `192.168.x.x`, etc.).</li>
+                                    <li><strong>Concatenated Variables:</strong> Credentials constructed dynamically using string joins (`key = val1 + val2`).</li>
+                                    <li><strong>Warning Tags:</strong> Development placeholders containing `TODO`, `FIXME`, or `HACK` near variables.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <div class="info-card">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-scissors me-2 text-warning"></i> Redaction &amp; Clipboard Logic</h5>
+                                <p class="text-muted mb-0">
+                                    Sweep performs precise in-place string replacements instead of simple line-deletions. It isolates quoted subsegments, connection credentials, and authorization headers, inserting a specific placeholder (e.g. `AWS_ACCESS_KEY_ID_REDACTED`). This ensures the structure of the file remains completely valid, allowing it to be compiled or copy-pasted directly into configuration files.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- API REFERENCE -->
+                <section id="section-api" class="doc-section">
+                    <h2 class="doc-section-title"><i class="bi bi-hdd-network"></i> API Reference</h2>
+                    <p>
+                        A summary of GCP REST APIs invoked by the console during operation modes.
+                    </p>
+                    
+                    <div class="info-card p-0 overflow-hidden">
+                        <table class="table table-striped api-table mb-0 text-start align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>API Service</th>
+                                    <th>HTTP Method</th>
+                                    <th>API Endpoint</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>OAuth2 Userinfo</td>
+                                    <td><span class="method-badge method-get">GET</span></td>
+                                    <td><code>/oauth2/v3/userinfo</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Resource Manager</td>
+                                    <td><span class="method-badge method-get">GET</span></td>
+                                    <td><code>/v1/projects</code></td>
+                                </tr>
+                                <tr>
+                                    <td>BigQuery Datasets</td>
+                                    <td><span class="method-badge method-get">GET</span> / <span class="method-badge method-post">POST</span></td>
+                                    <td><code>/bigquery/v2/projects/{projectId}/datasets</code></td>
+                                </tr>
+                                <tr>
+                                    <td>BigQuery Tables</td>
+                                    <td><span class="method-badge method-post">POST</span> / <span class="method-badge method-patch">PATCH</span></td>
+                                    <td><code>/bigquery/v2/projects/{projectId}/datasets/{datasetId}/tables/{tableId}</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Scheduled Queries</td>
+                                    <td><span class="method-badge method-get">GET</span> / <span class="method-badge method-post">POST</span></td>
+                                    <td><code>/v1/projects/{projectId}/locations/{locationId}/transferConfigs</code></td>
+                                </tr>
+                                <tr>
+                                    <td>Datastore Operations</td>
+                                    <td><span class="method-badge method-post">POST</span></td>
+                                    <td><code>/v1/projects/{projectId}:(runQuery|lookup|commit)</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+            </main>
+
+        </div>
+    </div>
+
+    <script>
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const htmlElement = document.documentElement;
+        
+        function applyTheme(theme) {
+            htmlElement.setAttribute('data-theme', theme);
+            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', theme);
+        }
+        
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            applyTheme(savedTheme);
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            applyTheme('dark');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+            location.reload();
+        });
+
+        // Copy Code Text Helper
+        function copyText(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = btn.textContent;
+                btn.textContent = "Copied!";
+                btn.classList.add("bg-success", "text-white");
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove("bg-success", "text-white");
+                }, 2000);
+            });
+        }
+
+        // Active Navigation Highlight
+        function activateLink(element) {
+            document.querySelectorAll('.nav-doc-link').forEach(link => link.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        // Auto Highlight on Scroll
+        window.addEventListener('scroll', () => {
+            const sections = document.querySelectorAll('.doc-section');
+            const navLinks = document.querySelectorAll('.nav-doc-link');
+            let currentId = '';
+
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 120;
+                if (window.scrollY >= sectionTop) {
+                    currentId = section.getAttribute('id');
+                }
+            });
+
+            if (currentId) {
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + currentId) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        const currentMermaidTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: currentMermaidTheme,
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: true, htmlLabels: true }
+        });
+    </script>
+</body>
+</html>
