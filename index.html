@@ -597,11 +597,22 @@
             tools.forEach(tool => {
                 const isActive = tool.status === 'active';
                 const hasDoc = tool.docPath && tool.docPath !== '#';
+                const isDefault = ['datastore-copier', 'tool-2', 'tool-3'].includes(tool.id);
                 const card = document.createElement('div');
                 card.className = 'col-md-6 col-lg-4';
 
                 card.innerHTML = `
-                    <div class="tool-card ${isActive ? 'active' : 'disabled'}">
+                    <div class="tool-card ${isActive ? 'active' : 'disabled'}" style="position: relative;">
+                        <!-- Delete Button for Custom Tools -->
+                        ${!isDefault 
+                            ? `<button onclick="deleteTool('${tool.id}')" title="Delete Custom Tool" 
+                                       style="position: absolute; top: 12px; right: 16px; background: none; border: none; color: #ef4444; font-size: 14px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; z-index: 10;" 
+                                       onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
+                                   <i class="bi bi-trash-fill"></i>
+                               </button>` 
+                            : ''
+                        }
+
                         <!-- Full description tooltip (appears on hover) -->
                         <div class="tool-desc-full">
                             <strong>${tool.name}</strong><br>
@@ -633,6 +644,14 @@
 
                 grid.appendChild(card);
             });
+        }
+
+        function deleteTool(id) {
+            if (confirm("Are you sure you want to delete this custom tool?")) {
+                tools = tools.filter(t => t.id !== id);
+                saveTools();
+                renderTools();
+            }
         }
 
         // ==========================================
