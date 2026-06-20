@@ -666,19 +666,71 @@
             adminAuthModal.show();
         }
 
-        function verifyAdminAuth(event) {
+        async function verifyAdminAuth(event) {
             event.preventDefault();
+            const submitBtn = document.querySelector('#adminAuthModal button[type="submit"]');
+            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Verify & Proceed';
+            
             const user = document.getElementById('adminUsername').value.trim();
             const pass = document.getElementById('adminPassword').value;
+            const errorDiv = document.getElementById('adminAuthError');
+            
+            errorDiv.style.display = 'none';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
+            }
 
-            if (user === 'Shreyash' && pass === 'Vai@12345') {
+            // Map username to email
+            let email = user;
+            if (!email.includes('@')) {
+                if (user.toLowerCase() === 'shreyash') {
+                    email = 'shreyashs14102002@gmail.com';
+                } else {
+                    email = `${user.toLowerCase()}@dista.ai`;
+                }
+            }
+
+            try {
+                // 1. Firebase Auth Sign-in
+                const authRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyA2VAyhU903tZB_CQFs-_KSz9gwLDJyLt8`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass, returnSecureToken: true })
+                });
+
+                if (!authRes.ok) {
+                    throw new Error('Incorrect username or password.');
+                }
+
+                const authData = await authRes.json();
+                const idToken = authData.idToken;
+                const uid = authData.localId;
+
+                // 2. Check if UID is registered in admins collection
+                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/${uid}`, {
+                    headers: { 'Authorization': `Bearer ${idToken}` }
+                });
+
+                if (!firestoreRes.ok) {
+                    throw new Error('Access denied. You are not registered as an admin.');
+                }
+
                 adminAuthModal.hide();
                 setTimeout(() => {
                     document.getElementById('addToolForm').reset();
                     addToolModal.show();
                 }, 400);
-            } else {
-                document.getElementById('adminAuthError').style.display = 'block';
+
+            } catch (e) {
+                console.error(e);
+                errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>${e.message || 'Incorrect credentials or access denied.'}`;
+                errorDiv.style.display = 'block';
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origBtnHtml;
+                }
             }
         }
 

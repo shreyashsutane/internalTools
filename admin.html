@@ -342,6 +342,23 @@
             font-family: 'Roboto Mono', monospace;
             font-size: 12px;
         }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open {
+            display: flex !important;
+        }
     </style>
 </head>
 <body>
@@ -385,6 +402,7 @@
                 <p style="font-size: 13px; color:var(--muted)">Viewing and auditing all Firestore operations records</p>
             </div>
             <div style="display:flex; gap:10px;">
+                <button class="btn-sec" onclick="showAdminManagement()"><i class="bi bi-people"></i> Manage Admins</button>
                 <button class="btn-sec" onclick="exportConsolidatedJSON()"><i class="bi bi-filetype-json"></i> Export JSON</button>
                 <button class="btn-sec" style="color:var(--danger); background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.2)" onclick="handleLogout()"><i class="bi bi-box-arrow-right"></i> Logout</button>
             </div>
@@ -497,24 +515,91 @@
             }, 3000);
         }
 
+        const State = {
+            token: '',
+            uid: '',
+            email: '',
+            username: ''
+        };
+
         // Login Handler
-        function handleLogin(event) {
+        async function handleLogin(event) {
             event.preventDefault();
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Log In';
+
             const user = document.getElementById("username").value.trim();
             const pass = document.getElementById("password").value;
 
-            if (user === "Shreyash" && pass === "Vai@12345") {
-                toast("Authentication successful!", "ok");
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
+            }
+
+            // Map username to email
+            let email = user;
+            if (!email.includes('@')) {
+                if (user.toLowerCase() === 'shreyash') {
+                    email = 'shreyashs14102002@gmail.com';
+                } else {
+                    email = `${user.toLowerCase()}@dista.ai`;
+                }
+            }
+
+            try {
+                // 1. Firebase Auth Sign-in
+                const authRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyA2VAyhU903tZB_CQFs-_KSz9gwLDJyLt8`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass, returnSecureToken: true })
+                });
+
+                if (!authRes.ok) {
+                    throw new Error('Invalid username or password.');
+                }
+
+                const authData = await authRes.json();
+                const idToken = authData.idToken;
+                const uid = authData.localId;
+
+                // 2. Check if UID is registered in admins collection
+                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/${uid}`, {
+                    headers: { 'Authorization': `Bearer ${idToken}` }
+                });
+
+                if (!firestoreRes.ok) {
+                    throw new Error('Access denied. You are not registered as an admin.');
+                }
+
+                const adminDataDoc = await firestoreRes.json();
+                const parsedAdmin = Crypto.parseFirestoreDoc(adminDataDoc);
+
+                State.token = idToken;
+                State.uid = uid;
+                State.email = email;
+                State.username = parsedAdmin ? parsedAdmin.username : user;
+
+                toast(`Welcome back, ${State.username}!`, "ok");
                 document.getElementById("login-panel").style.display = "none";
                 document.getElementById("admin-panel").style.display = "flex";
                 refreshLogs();
-            } else {
-                toast("Invalid username or password.", "err");
+            } catch (e) {
+                console.error(e);
+                toast(e.message || "Failed to authenticate.", "err");
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origBtnHtml;
+                }
             }
         }
 
         // Logout Handler
         function handleLogout() {
+            State.token = '';
+            State.uid = '';
+            State.email = '';
+            State.username = '';
             document.getElementById("login-form").reset();
             document.getElementById("admin-panel").style.display = "none";
             document.getElementById("login-panel").style.display = "block";
@@ -531,11 +616,12 @@
             let successCount = 0;
 
             try {
-                // Query Firestore for all documents in collection audit_logs publicly
+                // Query Firestore for all documents in collection audit_logs
                 const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${State.token}`
                     },
                     body: JSON.stringify({
                         structuredQuery: {
@@ -648,6 +734,166 @@
             toast("Consolidated logs exported successfully!", "ok");
         }
 
+        // ==========================================
+        // ADMIN MANAGEMENT ACTIONS
+        // ==========================================
+        function showAdminManagement() {
+            document.getElementById('admin-mgmt-modal').classList.add('open');
+            loadAdminsList();
+        }
+
+        function hideAdminManagement() {
+            document.getElementById('admin-mgmt-modal').classList.remove('open');
+            document.getElementById('create-admin-form').reset();
+        }
+
+        async function loadAdminsList() {
+            const listBody = document.getElementById('admins-list-body');
+            listBody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 12px; color:var(--muted)">Loading admins...</td></tr>`;
+
+            try {
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${State.token}`
+                    },
+                    body: JSON.stringify({
+                        structuredQuery: {
+                            from: [{ collectionId: "admins" }]
+                        }
+                    })
+                });
+
+                if (!res.ok) throw new Error('Failed to load admin accounts.');
+                const data = await res.json();
+                
+                const admins = [];
+                for (const item of data) {
+                    if (item.document) {
+                        const parsed = Crypto.parseFirestoreDoc(item.document);
+                        if (parsed) admins.push(parsed);
+                    }
+                }
+
+                if (admins.length === 0) {
+                    listBody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 12px; color:var(--muted)">No admins found.</td></tr>`;
+                    return;
+                }
+
+                listBody.innerHTML = admins.map(adm => {
+                    const isSelf = adm.id === State.uid;
+                    const deleteBtn = isSelf 
+                        ? `<span class="badge" style="background:rgba(156,163,175,0.1); color:var(--muted)">Active</span>`
+                        : `<button onclick="deleteAdmin('${adm.id}', '${adm.username}')" style="background:none; border:none; color:var(--danger); cursor:pointer;" title="Revoke Admin Access"><i class="bi bi-trash-fill"></i></button>`;
+                    
+                    return `
+                        <tr>
+                            <td style="padding: 10px 16px; font-weight:600">${escapeHtml(adm.username)}</td>
+                            <td style="padding: 10px 16px; color:var(--muted)" class="mono">${escapeHtml(adm.email)}</td>
+                            <td style="padding: 10px 16px; text-align:center">${deleteBtn}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+            } catch (e) {
+                console.error(e);
+                listBody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 12px; color:var(--danger)">Error: ${escapeHtml(e.message)}</td></tr>`;
+            }
+        }
+
+        async function handleCreateAdmin(event) {
+            event.preventDefault();
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Add Admin Account';
+
+            const username = document.getElementById('new-admin-user').value.trim();
+            const password = document.getElementById('new-admin-pass').value;
+            let email = document.getElementById('new-admin-email').value.trim();
+
+            if (!email) {
+                email = `${username.toLowerCase()}@dista.ai`;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registering...';
+            }
+
+            try {
+                // 1. Register in Firebase Auth (signUp)
+                const signupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyA2VAyhU903tZB_CQFs-_KSz9gwLDJyLt8`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, returnSecureToken: false })
+                });
+
+                if (!signupRes.ok) {
+                    const errData = await signupRes.json();
+                    const errMsg = errData.error?.message || 'Failed to create user in Auth.';
+                    if (errMsg === 'EMAIL_EXISTS') {
+                        throw new Error('This email address or username is already registered.');
+                    }
+                    throw new Error(errMsg);
+                }
+
+                const signupData = await signupRes.json();
+                const newUid = signupData.localId;
+
+                // 2. Register UID in Firestore admins collection
+                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/${newUid}?updateMask.fieldPaths=username&updateMask.fieldPaths=email`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${State.token}`
+                    },
+                    body: JSON.stringify({
+                        fields: {
+                            username: { stringValue: username },
+                            email: { stringValue: email }
+                        }
+                    })
+                });
+
+                if (!firestoreRes.ok) {
+                    throw new Error('Failed to register user permissions in database.');
+                }
+
+                toast(`Admin "${username}" registered successfully!`, "ok");
+                document.getElementById('create-admin-form').reset();
+                loadAdminsList();
+
+            } catch (e) {
+                console.error(e);
+                toast(e.message, "err");
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origBtnHtml;
+                }
+            }
+        }
+
+        async function deleteAdmin(uid, username) {
+            if (!confirm(`Are you sure you want to revoke admin access for "${username}"?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/${uid}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${State.token}` }
+                });
+
+                if (!res.ok) throw new Error('Failed to delete permission document.');
+                toast(`Revoked admin access for "${username}".`, "info");
+                loadAdminsList();
+            } catch (e) {
+                console.error(e);
+                toast(e.message, "err");
+            }
+        }
+
         function escapeHtml(str) {
             if (!str) return '';
             return String(str)
@@ -658,5 +904,51 @@
                 .replace(/'/g, "&#039;");
         }
     </script>
+
+    <!-- Admin Management Modal -->
+    <div id="admin-mgmt-modal" class="modal-overlay">
+        <div class="card" style="width:100%; max-width: 550px; padding:2rem; animation:fadeInScale 0.3s;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 style="font-size: 18px; font-weight: 700;"><i class="bi bi-people-fill" style="color:var(--accent); margin-right:8px;"></i>Manage Admin Accounts</h3>
+                <button onclick="hideAdminManagement()" style="background:none; border:none; color:var(--fg); font-size:20px; cursor:pointer;"><i class="bi bi-x-lg"></i></button>
+            </div>
+            
+            <!-- List of existing admins -->
+            <div style="max-height: 250px; overflow-y: auto; margin-bottom: 1.5rem; border: 1px solid var(--brd); border-radius: 8px;">
+                <table class="table" style="font-size: 12px; margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 8px 16px;">Username</th>
+                            <th style="padding: 8px 16px;">Email</th>
+                            <th style="padding: 8px 16px; width: 60px; text-align:center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admins-list-body">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Create new admin form -->
+            <form id="create-admin-form" onsubmit="handleCreateAdmin(event)" style="border-top:1px solid var(--brd); padding-top:1.5rem;">
+                <h4 style="font-size:13px; color:var(--muted); font-weight:600; text-transform:uppercase; margin-bottom:1rem; letter-spacing:0.5px;">Register New Admin</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div class="form-group" style="margin-bottom:0">
+                        <label class="form-label" style="font-size:10px">Username</label>
+                        <input type="text" id="new-admin-user" class="inp" placeholder="e.g. John" style="padding: 8px 12px 8px 12px;" required autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0">
+                        <label class="form-label" style="font-size:10px">Password</label>
+                        <input type="password" id="new-admin-pass" class="inp" placeholder="Min 6 characters" style="padding: 8px 12px 8px 12px;" required minlength="6">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:1.5rem">
+                    <label class="form-label" style="font-size:10px">Email (Optional - defaults to username@dista.ai)</label>
+                    <input type="email" id="new-admin-email" class="inp" placeholder="e.g. john@company.com" style="padding: 8px 12px 8px 12px;" autocomplete="off">
+                </div>
+                <button type="submit" class="btn" style="padding: 10px;"><i class="bi bi-person-plus-fill"></i> Add Admin Account</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

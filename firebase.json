@@ -2,6 +2,11 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "auth": {
+    "providers": {
+      "emailPassword": true
+    }
+  },
   "hosting": {
     "public": ".",
     "ignore": [
@@ -10,7 +15,10 @@
       "**/node_modules/**",
       "server.js",
       "seed-gcp.js",
-      "test-automation.js"
+      "test-automation.js",
+      "firestore.rules",
+      "MIGRATION.md",
+      "seed-admins.js"
     ]
   }
 }
