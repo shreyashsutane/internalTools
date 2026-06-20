@@ -411,24 +411,37 @@ const HTML_CONTENT = `
     }
 }</code></pre>
 
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 2</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 2b: SECURE AUTH REST FLOW -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 2 (Cont.)</span>
+        </div>
+
         <h2 class="subsec-title">2.2 Firebase REST Authentication Flow</h2>
         <p>
             When the login form is submitted, the code invokes the Google Identity API endpoint. If authentication is successful, the JWT ID Token is captured and validated against the Cloud Firestore <code>/admins</code> collection:
         </p>
         <pre><code><span class="token-comment">// 1. Sign in via REST</span>
 <span class="token-keyword">const</span> authRes = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">&#96;https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=&#36;{API_KEY}&#96;</span>, {
-    method: <span class="token-string">'POST'</span>,
-    headers: { <span class="token-string">'Content-Type'</span>: <span class="token-string">'application/json'</span> },
-    body: JSON.<span class="token-function">stringify</span>({ email, password: pass, returnSecureToken: <span class="token-keyword">true</span> })
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: pass, returnSecureToken: true })
 });
-<span class="token-keyword">if</span> (!authRes.ok) <span class="token-keyword">throw new</span> <span class="token-function">Error</span>(<span class="token-string">'Incorrect username or password.'</span>);
-<span class="token-keyword">const</span> authData = <span class="token-keyword">await</span> authRes.<span class="token-function">json</span>();
+if (!authRes.ok) throw new Error('Incorrect username or password.');
+const authData = await authRes.json();
 
-<span class="token-comment">// 2. Verify admin document exists in Firestore (Authorized via JWT)</span>
-<span class="token-keyword">const</span> firestoreRes = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/&#36;{authData.localId}&#96;</span>, {
-    headers: { <span class="token-string">'Authorization'</span>: <span class="token-string">&#96;Bearer &#36;{authData.idToken}&#96;</span> }
+// 2. Verify admin document exists in Firestore (Authorized via JWT)
+const firestoreRes = await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/&#36;{authData.localId}&#96;</span>, {
+    headers: { 'Authorization': <span class="token-string">&#96;Bearer &#36;{authData.idToken}&#96;</span> }
 });
-<span class="token-keyword">if</span> (!firestoreRes.ok) <span class="token-keyword">throw new</span> <span class="token-function">Error</span>(<span class="token-string">'Access denied. Not registered as an admin.'</span>);
+if (!firestoreRes.ok) throw new Error('Access denied. Not registered as an admin.');
 </code></pre>
 
         <div class="alert-box">
@@ -473,26 +486,39 @@ service cloud.firestore {
   }
 }</code></pre>
 
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 4</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 3b: LOGS FETCH LOGIC -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 3 (Cont.)</span>
+        </div>
+
         <h2 class="subsec-title">3.2 Reading & Displaying Logs</h2>
         <p>
             When fetching consolidated logs on the Admin Console, the client sends a POST request with the user's JWT <code>idToken</code> to Firestore REST API:
         </p>
         <pre><code><span class="token-keyword">const</span> res = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">'https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery'</span>, {
-    method: <span class="token-string">'POST'</span>,
+    method: 'POST',
     headers: {
-        <span class="token-string">'Content-Type'</span>: <span class="token-string">'application/json'</span>,
-        <span class="token-string">'Authorization'</span>: <span class="token-string">&#96;Bearer &#36;{State.token}&#96;</span>
+        'Content-Type': 'application/json',
+        'Authorization': <span class="token-string">&#96;Bearer &#36;{State.token}&#96;</span>
     },
-    body: JSON.<span class="token-function">stringify</span>({
+    body: JSON.stringify({
         structuredQuery: {
-            from: [{ collectionId: <span class="token-string">"audit_logs"</span> }]
+            from: [{ collectionId: "audit_logs" }]
         }
     })
 });</code></pre>
 
         <div class="footer-print">
             <span>© 2026 Dista — Internal Use Only</span>
-            <span>Page 4</span>
+            <span>Page 5</span>
         </div>
     </div>
 
@@ -522,33 +548,46 @@ service cloud.firestore {
         </ol>
 
         <h2 class="subsec-title">4.2 Admin Management API Payloads</h2>
-        <pre><code><span class="token-comment">// Step 1: Register credentials</span>
-<span class="token-keyword">const</span> signupRes = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=...'</span>, {
-    method: <span class="token-string">'POST'</span>,
-    body: JSON.<span class="token-function">stringify</span>({ email, password, returnSecureToken: <span class="token-keyword">false</span> })
+        <pre><code>// Step 1: Register credentials
+const signupRes = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=...', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, returnSecureToken: false })
 });
-<span class="token-keyword">const</span> signupData = <span class="token-keyword">await</span> signupRes.<span class="token-function">json</span>();
-<span class="token-keyword">const</span> newUid = signupData.localId;
+const signupData = await signupRes.json();
+const newUid = signupData.localId;
 
-<span class="token-comment">// Step 2: Write Firestore document permission</span>
-<span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/&#36;{newUid}?updateMask.fieldPaths=username&#96;</span>, {
-    method: <span class="token-string">'PATCH'</span>,
-    headers: { <span class="token-string">'Authorization'</span>: <span class="token-string">&#96;Bearer &#36;{State.token}&#96;</span> },
-    body: JSON.<span class="token-function">stringify</span>({ fields: { username: { stringValue: username }, email: { stringValue: email } } })
+// Step 2: Write Firestore document permission
+await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/&#36;{newUid}?updateMask.fieldPaths=username&#96;</span>, {
+    method: 'PATCH',
+    headers: { 'Authorization': <span class="token-string">&#96;Bearer &#36;{State.token}&#96;</span> },
+    body: JSON.stringify({ fields: { username: { stringValue: username }, email: { stringValue: email } } })
 });</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 6</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 4b: REVOKING ADMINS -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 4 (Cont.)</span>
+        </div>
 
         <h2 class="subsec-title">4.3 Revoking Admin Permissions</h2>
         <p>
             When an admin is removed, we send a HTTP DELETE request to target <code>admins/{uid}</code>. Since Firestore Security Rules require the user's UID to exist in this collection, removing the document revokes all read access immediately:
         </p>
         <pre><code><span class="token-keyword">const</span> res = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/&#36;{uid}&#96;</span>, {
-    method: <span class="token-string">'DELETE'</span>,
-    headers: { <span class="token-string">'Authorization'</span>: <span class="token-string">&#96;Bearer &#36;{State.token}&#96;</span> }
+    method: 'DELETE',
+    headers: { 'Authorization': <span class="token-string">&#96;Bearer &#36;{State.token}&#96;</span> }
 });</code></pre>
 
         <div class="footer-print">
             <span>© 2026 Dista — Internal Use Only</span>
-            <span>Page 5</span>
+            <span>Page 7</span>
         </div>
     </div>
 </body>
@@ -560,6 +599,16 @@ async function main() {
     const pdfOutputPath = path.join(__dirname, 'docs', 'GCP_Infra_Manager_Documentation.pdf');
     const artifactFolder = '/Users/shreyashsutane/.gemini/antigravity/brain/67419ec2-e355-469a-a150-1132bfb3aac3';
     const artifactPdfPath = path.join(artifactFolder, 'gcp_infra_manager_documentation.pdf');
+
+    // Delete existing PDFs to ensure we create them fresh
+    if (fs.existsSync(pdfOutputPath)) {
+        console.log('🗑️ Deleting existing PDF file from workspace...');
+        fs.unlinkSync(pdfOutputPath);
+    }
+    if (fs.existsSync(artifactPdfPath)) {
+        console.log('🗑️ Deleting existing PDF file from artifacts...');
+        fs.unlinkSync(artifactPdfPath);
+    }
 
     console.log('📝 Writing temporary HTML document source...');
     fs.writeFileSync(tempHtmlPath, HTML_CONTENT);
