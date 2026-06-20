@@ -364,18 +364,11 @@
                     <input type="text" id="username" class="inp" placeholder="Enter username" autocomplete="off" required>
                 </div>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 2rem;">
                 <label class="form-label">Password</label>
                 <div class="input-wrapper">
                     <i class="bi bi-key-fill"></i>
                     <input type="password" id="password" class="inp" placeholder="Enter password" required>
-                </div>
-            </div>
-            <div class="form-group" id="token-input-group" style="display: none; margin-bottom: 2rem;">
-                <label class="form-label">GCP Access Token</label>
-                <div class="input-wrapper">
-                    <i class="bi bi-shield-fill-check"></i>
-                    <input type="text" id="admin-token" class="inp" placeholder="Paste access token if session expired">
                 </div>
             </div>
             <button type="submit" class="btn">
@@ -484,15 +477,7 @@
             }
         };
 
-        let activeToken = localStorage.getItem('dista_access_token') || '';
         let cachedLogs = [];
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('dista_access_token');
-            if (!token) {
-                document.getElementById('token-input-group').style.display = 'block';
-            }
-        });
 
         function toast(message, type = "info") {
             const container = document.getElementById("toast-root");
@@ -517,22 +502,8 @@
             event.preventDefault();
             const user = document.getElementById("username").value.trim();
             const pass = document.getElementById("password").value;
-            const tokenInput = document.getElementById("admin-token").value.trim();
 
             if (user === "Shreyash" && pass === "Vai@12345") {
-                if (tokenInput) {
-                    activeToken = tokenInput;
-                    localStorage.setItem('dista_access_token', tokenInput);
-                } else {
-                    activeToken = localStorage.getItem('dista_access_token') || '';
-                }
-
-                if (!activeToken) {
-                    toast("Please provide a valid GCP Access Token to proceed.", "err");
-                    document.getElementById('token-input-group').style.display = 'block';
-                    return;
-                }
-
                 toast("Authentication successful!", "ok");
                 document.getElementById("login-panel").style.display = "none";
                 document.getElementById("admin-panel").style.display = "flex";
@@ -560,15 +531,10 @@
             let successCount = 0;
 
             try {
-                if (!activeToken) {
-                    throw new Error("No active GCP access token found. Please enter a valid token below.");
-                }
-
-                // Query Firestore for all documents in collection audit_logs
+                // Query Firestore for all documents in collection audit_logs publicly
                 const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${activeToken}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -578,9 +544,6 @@
                     })
                 });
 
-                if (res.status === 401) {
-                    throw new Error("Access token expired or unauthorized. Please renew the token below.");
-                }
                 if (!res.ok) {
                     throw new Error(`Firestore Error: ${res.statusText || res.status}`);
                 }
@@ -601,17 +564,11 @@
             } catch(e) {
                 toast(e.message, "err");
                 tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--danger)"><strong>Failed to load logs:</strong> ${escapeHtml(e.message)}</td></tr>`;
-                
-                showTokenInputInWorkspace();
                 return;
             }
 
             allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             cachedLogs = allLogs;
-
-            // Remove inline updater if logs load successfully
-            const updater = document.getElementById('workspace-token-updater');
-            if (updater) updater.remove();
 
             // Update stats widgets
             document.getElementById("stat-total-events").textContent = allLogs.length;
@@ -651,39 +608,6 @@
                     </tr>
                 `;
             }).join('');
-        }
-
-        function showTokenInputInWorkspace() {
-            let updater = document.getElementById('workspace-token-updater');
-            if (!updater) {
-                const controlsCard = document.querySelector('.controls-card');
-                updater = document.createElement('div');
-                updater.id = 'workspace-token-updater';
-                updater.className = 'card flex items-center gap-3 w-full';
-                updater.style.padding = '12px';
-                updater.style.marginTop = '12px';
-                updater.style.display = 'flex';
-                updater.style.flexDirection = 'row';
-                updater.style.alignItems = 'center';
-                updater.innerHTML = `
-                    <span style="font-size:12px;color:var(--muted);white-space:nowrap;"><i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);margin-right:6px"></i>GCP Session Expired. Paste New Access Token:</span>
-                    <input type="text" id="workspace-token-inp" class="inp" style="padding: 6px 12px; font-size:12px; height: 32px;" placeholder="ya29.a0Ac...">
-                    <button class="btn" style="width:auto; padding: 6px 16px; height: 32px; font-size:12px;" onclick="updateWorkspaceToken()">Update & Retry</button>
-                `;
-                controlsCard.parentNode.insertBefore(updater, controlsCard.nextSibling);
-            }
-        }
-
-        function updateWorkspaceToken() {
-            const val = document.getElementById('workspace-token-inp').value.trim();
-            if (val) {
-                activeToken = val;
-                localStorage.setItem('dista_access_token', val);
-                toast("Access Token updated!", "ok");
-                refreshLogs();
-            } else {
-                toast("Please enter a token value.", "err");
-            }
         }
 
         function filterLogs() {
