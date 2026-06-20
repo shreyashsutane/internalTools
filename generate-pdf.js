@@ -931,6 +931,72 @@ async function smoothMove(page, selector) {
             <span>Page 17</span>
         </div>
     </div>
+
+    <!-- 📄 PAGE 13: CRYPTO VAULT UTILITY -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 13</span>
+        </div>
+
+        <h1 class="sec-title">13. Crypto Vault Utility (Client-Side AES-GCM)</h1>
+        <p>
+            The **Crypto Vault** utility provides a standalone tool on the portal for developers to perform symmetric encryption and decryption.
+        </p>
+
+        <h2 class="subsec-title">13.1 Crypto Encryption & Decryption Execution</h2>
+        <p>
+            It imports raw 256-bit Hex keys or derives them from passphrases, then encrypts or decrypts text using standard AES-GCM algorithms:
+        </p>
+        <pre><code>// Client-side AES-GCM encrypt invocation
+const ciphertextBuf = await window.crypto.subtle.encrypt(
+    {
+        name: "AES-GCM",
+        iv: hex2ab(ivHex)
+    },
+    cryptoKey,
+    str2ab(plaintext)
+);
+document.getElementById('outputB64').value = ab2b64(ciphertextBuf);
+document.getElementById('outputHex').value = ab2hex(ciphertextBuf);</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 18</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 13b: KEY PROFILES MANAGEMENT -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 13 (Cont.)</span>
+        </div>
+
+        <h2 class="subsec-title">13.2 Key & IV Profile Management</h2>
+        <p>
+            To avoid manual entry of keys and IVs for frequent operations, configuration credentials can be saved locally by Name:
+        </p>
+        <pre><code>// Serializes and saves config profiles to localStorage
+function saveProfile() {
+    const name = document.getElementById('newProfileName').value.trim();
+    if (!name) return;
+    profiles[name] = {
+        keyMode: document.getElementById('keyMode').value,
+        passphrase: document.getElementById('passphrase').value.trim(),
+        rawHexKey: document.getElementById('rawHexKey').value.trim(),
+        ivHex: document.getElementById('ivHex').value.trim(),
+        saltHex: document.getElementById('saltHex').value.trim()
+    };
+    localStorage.setItem('crypto_vault_profiles', JSON.stringify(profiles));
+    updateProfileDropdown();
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 19</span>
+        </div>
+    </div>
 </body>
 </html>
 `;
