@@ -590,6 +590,172 @@ await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/
             <span>Page 7</span>
         </div>
     </div>
+
+    <!-- 📄 PAGE 5: GCP RESOURCE OPERATIONS -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 5</span>
+        </div>
+
+        <h1 class="sec-title">5. GCP Resource Operations (BigQuery & Datastore)</h1>
+        <p>
+            The core engine of the GCP Infrastructure Manager facilitates reading, comparing, and syncing GCP resources across distinct projects using the GCP Cloud REST APIs.
+        </p>
+
+        <h2 class="subsec-title">5.1 Bidirectional BigQuery Schema Sync</h2>
+        <p>
+            The tool lets developers compare schema field structures between two GCP projects. If differences exist, it supports syncing selected table schemas from Source to Target, or Target to Source:
+        </p>
+        <pre><code>// Syncing tables in either direction
+async function executeBqCopy(direction) {
+    const fromProj = direction === 's2t' ? State.sourceProj : State.targetProj;
+    const toProj = direction === 's2t' ? State.targetProj : State.sourceProj;
+    
+    for (const tableId of selectedTables) {
+        const schema = await Api.fetchTableSchema(fromProj, tableId);
+        await Api.syncTableSchema(toProj, tableId, schema);
+    }
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 8</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 5b: BQ RECREATION FALLBACK -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 5 (Cont.)</span>
+        </div>
+
+        <h2 class="subsec-title">5.2 BigQuery Table Schema Mismatch Fallback</h2>
+        <p>
+            BigQuery does not permit column removals or incompatible alterations on existing tables. To handle this, the client automatically executes a recreation fallback (deleting and recreating the target table):
+        </p>
+        <pre><code>// Recreates target BQ table if schema update fails
+async function syncTableSchema(project, tableId, schema) {
+    try {
+        await Api.updateTableMetadata(project, tableId, schema);
+    } catch (err) {
+        if (err.status === 400 || err.message.includes("mismatch")) {
+            console.warn("Schema conflict detected. Dropping and recreating target table...");
+            await Api.deleteTable(project, tableId);
+            await Api.createTable(project, tableId, schema);
+        } else {
+            throw err;
+        }
+    }
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 9</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 5c: DATASTORE COPY & FIND AND REPLACE -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 5 (Cont.)</span>
+        </div>
+
+        <h2 class="subsec-title">5.3 Datastore Kind Copy & Find-and-Replace</h2>
+        <p>
+            Entities are analyzed batch-by-batch. During copy operations, users can define find-and-replace text replacement rules that are automatically applied to string properties on-the-fly:
+        </p>
+        <pre><code>// Applies find-and-replace rules to string entity fields
+function applyReplacements(entity, findStr, replaceStr) {
+    const updatedFields = {};
+    for (const [key, val] of Object.entries(entity.properties)) {
+        if (val.stringValue && findStr) {
+            updatedFields[key] = {
+                stringValue: val.stringValue.replaceAll(findStr, replaceStr)
+            };
+        } else {
+            updatedFields[key] = val;
+        }
+    }
+    return { ...entity, properties: updatedFields };
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 10</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 6: TOKEN INTERCEPTION & RENEWAL -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 6</span>
+        </div>
+
+        <h1 class="sec-title">6. Token Interception & Session Renewal</h1>
+        <p>
+            To prevent operations from crashing when the GCP access token expires mid-execution, a central HTTP interceptor catches expiration errors and prompts the user to renew the token.
+        </p>
+
+        <h2 class="subsec-title">6.1 Centralized 401 Interceptor and Request Queue</h2>
+        <p>
+            When a REST call returns a <code>401 Unauthorized</code> status, the call is paused, the renewal modal is displayed, and the request is retried once a new token is verified:
+        </p>
+        <pre><code>// HTTP Interceptor with auto-retry on 401
+async function fetchGcp(url, options) {
+    let res = await fetch(url, options);
+    if (res.status === 401) {
+        console.log("Token expired. Awaiting token renewal...");
+        const newToken = await UI.promptTokenRenewal();
+        options.headers['Authorization'] = &#96;Bearer &#36;{newToken}&#96;;
+        // Retry the original request with the fresh token
+        res = await fetch(url, options);
+    }
+    return res;
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 11</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 7: PROPERTIES GRID & EDITOR -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 7</span>
+        </div>
+
+        <h1 class="sec-title">7. Properties Grid & Inline Entity Editor</h1>
+        <p>
+            The inline editor provides a properties comparison grid where keys from source and target projects are aligned side-by-side.
+        </p>
+
+        <h2 class="subsec-title">7.1 Alphabetical Sorting & Type Casting</h2>
+        <p>
+            Property lists are sorted alphabetically for scanning. When modifying values, integer properties are dynamically type-casted to conform with GCP Datastore requirements:
+        </p>
+        <pre><code>// Renders properties side-by-side and casts values
+function saveProperty(key, value, type) {
+    let castValue = value;
+    if (type === 'Integer') {
+        // Cast to string-based integer representation for GCP REST API
+        castValue = String(parseInt(value, 10));
+    } else if (type === 'Boolean') {
+        castValue = value === 'true';
+    }
+    return { type, value: castValue };
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 12</span>
+        </div>
+    </div>
 </body>
 </html>
 `;
