@@ -106,23 +106,61 @@ const Crypto = {
 };
 
 const AuditLog = {
-    STORAGE_KEY: 'dista_encrypted_audit_logs',
+    parseFirestoreDoc: (doc) => {
+        if (!doc || !doc.fields) return null;
+        const fields = doc.fields;
+        const result = {};
+        for (const key in fields) {
+            const valObj = fields[key];
+            if (valObj.stringValue !== undefined) result[key] = valObj.stringValue;
+            else if (valObj.integerValue !== undefined) result[key] = parseInt(valObj.integerValue, 10);
+            else if (valObj.booleanValue !== undefined) result[key] = valObj.booleanValue === true || valObj.booleanValue === "true";
+            else if (valObj.doubleValue !== undefined) result[key] = parseFloat(valObj.doubleValue);
+            else if (valObj.nullValue !== undefined) result[key] = null;
+            else result[key] = valObj;
+        }
+        if (doc.name) {
+            const parts = doc.name.split('/');
+            result.id = parts[parts.length - 1];
+        }
+        if (result.prevState && typeof result.prevState === 'string') {
+            try {
+                result.prevState = JSON.parse(result.prevState);
+            } catch(e) {}
+        }
+        return result;
+    },
     readLogs: async () => {
         try {
+            if (!State.token) return [];
             const email = State.authEmail || 'anonymous';
-            const storageKey = `${AuditLog.STORAGE_KEY}_${email}`;
-            const raw = localStorage.getItem(storageKey);
-            if (!raw) return [];
-            const encryptedList = JSON.parse(raw);
-            if (!Array.isArray(encryptedList)) return [];
+            const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${State.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    structuredQuery: {
+                        from: [{ collectionId: "audit_logs" }],
+                        where: {
+                            fieldFilter: {
+                                field: { fieldPath: "user" },
+                                op: "EQUAL",
+                                value: { stringValue: email }
+                            }
+                        }
+                    }
+                })
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
             const decryptedList = [];
-            for (const item of encryptedList) {
-                const decryptedStr = await Crypto.decrypt(item, email);
-                if (decryptedStr) {
-                    try {
-                        decryptedList.push(JSON.parse(decryptedStr));
-                    } catch(e) {
-                        console.error("Failed to parse log JSON:", e);
+            for (const item of data) {
+                if (item.document) {
+                    const parsed = AuditLog.parseFirestoreDoc(item.document);
+                    if (parsed) {
+                        decryptedList.push(parsed);
                     }
                 }
             }
@@ -134,28 +172,31 @@ const AuditLog = {
     },
     addLog: async (operation, srcProject, tgtProject, details, status, prevState = null) => {
         try {
+            if (!State.token) return;
             const email = State.authEmail || 'anonymous';
-            const logEntry = {
-                id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                timestamp: new Date().toISOString(),
-                user: email,
-                operation: operation,
-                srcProject: srcProject || '—',
-                tgtProject: tgtProject || '—',
-                details: details || '',
-                status: status || 'SUCCESS',
-                prevState: prevState
+            const body = {
+                fields: {
+                    timestamp: { stringValue: new Date().toISOString() },
+                    user: { stringValue: email },
+                    operation: { stringValue: operation },
+                    srcProject: { stringValue: srcProject || '—' },
+                    tgtProject: { stringValue: tgtProject || '—' },
+                    status: { stringValue: status || 'SUCCESS' },
+                    details: { stringValue: details || '' }
+                }
             };
-            const encryptedStr = await Crypto.encrypt(JSON.stringify(logEntry), email);
-            if (!encryptedStr) return;
-            const storageKey = `${AuditLog.STORAGE_KEY}_${email}`;
-            const raw = localStorage.getItem(storageKey);
-            const encryptedList = raw ? JSON.parse(raw) : [];
-            encryptedList.unshift(encryptedStr);
-            if (encryptedList.length > 100) {
-                encryptedList.pop();
+            if (prevState) {
+                body.fields.prevState = { stringValue: JSON.stringify(prevState) };
             }
-            localStorage.setItem(storageKey, JSON.stringify(encryptedList));
+            const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/audit_logs`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${State.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error(await res.text());
             await AuditLog.renderLogs();
         } catch(e) {
             console.error("Failed to add audit log:", e);
@@ -322,6 +363,7 @@ const Api = {
             try {
                 const newToken = await UI.showTokenRenewalModal();
                 State.token = newToken;
+                localStorage.setItem('dista_access_token', newToken);
                 const tokenInp = Utils.$('inp-token');
                 if (tokenInp) tokenInp.value = newToken;
                 return Api.fetch(url, opts);
@@ -643,6 +685,8 @@ const App = {
             const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${token}`);
             if(!res.ok) throw new Error("Invalid token"); const data = await res.json();
             State.token = token; State.authEmail = data.email || 'User';
+            localStorage.setItem('dista_access_token', token);
+            localStorage.setItem('dista_auth_email', State.authEmail);
             try { State.projects = await Api.getProjects(); } catch(e) { Utils.toast("Could not fetch projects", "info"); }
             
             const welcomeName = App.parseWelcomeName(State.authEmail);

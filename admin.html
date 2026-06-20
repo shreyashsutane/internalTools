@@ -48,7 +48,7 @@
             right: 24px;
             z-index: 9999;
             display: flex;
-            flex-col: column;
+            flex-direction: column;
             gap: 12px;
         }
         .toast {
@@ -364,11 +364,18 @@
                     <input type="text" id="username" class="inp" placeholder="Enter username" autocomplete="off" required>
                 </div>
             </div>
-            <div class="form-group" style="margin-bottom: 2rem;">
+            <div class="form-group">
                 <label class="form-label">Password</label>
                 <div class="input-wrapper">
                     <i class="bi bi-key-fill"></i>
                     <input type="password" id="password" class="inp" placeholder="Enter password" required>
+                </div>
+            </div>
+            <div class="form-group" id="token-input-group" style="display: none; margin-bottom: 2rem;">
+                <label class="form-label">GCP Access Token</label>
+                <div class="input-wrapper">
+                    <i class="bi bi-shield-fill-check"></i>
+                    <input type="text" id="admin-token" class="inp" placeholder="Paste access token if session expired">
                 </div>
             </div>
             <button type="submit" class="btn">
@@ -382,7 +389,7 @@
         <div class="header">
             <div class="header-title-group">
                 <h1 style="font-size: 20px; font-weight: 700; letter-spacing: -0.5px;"><i class="bi bi-database-fill-lock" style="color:var(--accent); margin-right: 8px;"></i>Consolidated Operations Logs</h1>
-                <p style="font-size: 13px; color:var(--muted)">Viewing and auditing all browser operations records</p>
+                <p style="font-size: 13px; color:var(--muted)">Viewing and auditing all Firestore operations records</p>
             </div>
             <div style="display:flex; gap:10px;">
                 <button class="btn-sec" onclick="exportConsolidatedJSON()"><i class="bi bi-filetype-json"></i> Export JSON</button>
@@ -416,7 +423,7 @@
         </div>
 
         <!-- Controls / Search -->
-        <div class="card controls-card">
+        <div class="card controls-card" style="margin-bottom:0">
             <div class="search-wrapper">
                 <i class="bi bi-search"></i>
                 <input type="text" id="log-search" class="inp search-inp" placeholder="Search by email, operation, target project, or details..." oninput="filterLogs()">
@@ -424,7 +431,7 @@
             <button class="btn-sec" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
         </div>
 
-        <!-- Logs Table -->
+        <!-- Table Card -->
         <div class="card table-card">
             <div class="table-wrapper">
                 <table class="table">
@@ -448,55 +455,44 @@
         </div>
     </div>
 
-    <!-- Crypto Decryption Engine -->
+    <!-- Crypto / Firestore Decryption Engine -->
     <script>
         const Crypto = {
-            getKey: async (passphrase) => {
-                const enc = new TextEncoder();
-                const keyMaterial = await window.crypto.subtle.importKey(
-                    "raw",
-                    enc.encode(passphrase),
-                    "PBKDF2",
-                    false,
-                    ["deriveBits", "deriveKey"]
-                );
-                return window.crypto.subtle.deriveKey(
-                    {
-                        name: "PBKDF2",
-                        salt: enc.encode("dista-salt-12345"),
-                        iterations: 100000,
-                        hash: "SHA-256"
-                    },
-                    keyMaterial,
-                    { name: "AES-GCM", length: 256 },
-                    true,
-                    ["encrypt", "decrypt"]
-                );
-            },
-            decrypt: async (encryptedBase64, passphrase) => {
-                try {
-                    const key = await Crypto.getKey(passphrase);
-                    const binaryString = atob(encryptedBase64);
-                    const combined = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        combined[i] = binaryString.charCodeAt(i);
-                    }
-                    const iv = combined.slice(0, 12);
-                    const ciphertext = combined.slice(12);
-                    const decrypted = await window.crypto.subtle.decrypt(
-                        { name: "AES-GCM", iv: iv },
-                        key,
-                        ciphertext
-                    );
-                    return new TextDecoder().decode(decrypted);
-                } catch(e) {
-                    console.error("Decryption failed:", e);
-                    return null;
+            parseFirestoreDoc: (doc) => {
+                if (!doc || !doc.fields) return null;
+                const fields = doc.fields;
+                const result = {};
+                for (const key in fields) {
+                    const valObj = fields[key];
+                    if (valObj.stringValue !== undefined) result[key] = valObj.stringValue;
+                    else if (valObj.integerValue !== undefined) result[key] = parseInt(valObj.integerValue, 10);
+                    else if (valObj.booleanValue !== undefined) result[key] = valObj.booleanValue === true || valObj.booleanValue === "true";
+                    else if (valObj.doubleValue !== undefined) result[key] = parseFloat(valObj.doubleValue);
+                    else if (valObj.nullValue !== undefined) result[key] = null;
+                    else result[key] = valObj;
                 }
+                if (doc.name) {
+                    const parts = doc.name.split('/');
+                    result.id = parts[parts.length - 1];
+                }
+                if (result.prevState && typeof result.prevState === 'string') {
+                    try {
+                        result.prevState = JSON.parse(result.prevState);
+                    } catch(e) {}
+                }
+                return result;
             }
         };
 
+        let activeToken = localStorage.getItem('dista_access_token') || '';
         let cachedLogs = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('dista_access_token');
+            if (!token) {
+                document.getElementById('token-input-group').style.display = 'block';
+            }
+        });
 
         function toast(message, type = "info") {
             const container = document.getElementById("toast-root");
@@ -521,8 +517,22 @@
             event.preventDefault();
             const user = document.getElementById("username").value.trim();
             const pass = document.getElementById("password").value;
+            const tokenInput = document.getElementById("admin-token").value.trim();
 
             if (user === "Shreyash" && pass === "Vai@12345") {
+                if (tokenInput) {
+                    activeToken = tokenInput;
+                    localStorage.setItem('dista_access_token', tokenInput);
+                } else {
+                    activeToken = localStorage.getItem('dista_access_token') || '';
+                }
+
+                if (!activeToken) {
+                    toast("Please provide a valid GCP Access Token to proceed.", "err");
+                    document.getElementById('token-input-group').style.display = 'block';
+                    return;
+                }
+
                 toast("Authentication successful!", "ok");
                 document.getElementById("login-panel").style.display = "none";
                 document.getElementById("admin-panel").style.display = "flex";
@@ -540,44 +550,68 @@
             toast("Logged out successfully.", "info");
         }
 
-        // Load & Decrypt all logs dynamically
+        // Load logs from Firestore
         async function refreshLogs() {
             const tbody = document.getElementById("logs-table-body");
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Decrypting and parsing audit logs...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Loading audit logs from Firestore...</td></tr>`;
 
             const allLogs = [];
-            const prefix = 'dista_encrypted_audit_logs_';
             const usersSet = new Set();
             let successCount = 0;
 
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith(prefix)) {
-                    const email = key.substring(prefix.length);
-                    try {
-                        const raw = localStorage.getItem(key);
-                        if (raw) {
-                            const encryptedList = JSON.parse(raw);
-                            if (Array.isArray(encryptedList)) {
-                                for (const item of encryptedList) {
-                                    const decryptedStr = await Crypto.decrypt(item, email);
-                                    if (decryptedStr) {
-                                        const entry = JSON.parse(decryptedStr);
-                                        allLogs.push(entry);
-                                        usersSet.add(entry.user);
-                                        if (entry.status === 'SUCCESS') successCount++;
-                                    }
-                                }
-                            }
+            try {
+                if (!activeToken) {
+                    throw new Error("No active GCP access token found. Please enter a valid token below.");
+                }
+
+                // Query Firestore for all documents in collection audit_logs
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${activeToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        structuredQuery: {
+                            from: [{ collectionId: "audit_logs" }]
                         }
-                    } catch(e) {
-                        console.error("Error reading key " + key, e);
+                    })
+                });
+
+                if (res.status === 401) {
+                    throw new Error("Access token expired or unauthorized. Please renew the token below.");
+                }
+                if (!res.ok) {
+                    throw new Error(`Firestore Error: ${res.statusText || res.status}`);
+                }
+
+                const data = await res.json();
+                
+                // Parse documents
+                for (const item of data) {
+                    if (item.document) {
+                        const parsed = Crypto.parseFirestoreDoc(item.document);
+                        if (parsed) {
+                            allLogs.push(parsed);
+                            usersSet.add(parsed.user);
+                            if (parsed.status === 'SUCCESS') successCount++;
+                        }
                     }
                 }
+            } catch(e) {
+                toast(e.message, "err");
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--danger)"><strong>Failed to load logs:</strong> ${escapeHtml(e.message)}</td></tr>`;
+                
+                showTokenInputInWorkspace();
+                return;
             }
 
             allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             cachedLogs = allLogs;
+
+            // Remove inline updater if logs load successfully
+            const updater = document.getElementById('workspace-token-updater');
+            if (updater) updater.remove();
 
             // Update stats widgets
             document.getElementById("stat-total-events").textContent = allLogs.length;
@@ -591,7 +625,7 @@
         function renderLogsTable(logs) {
             const tbody = document.getElementById("logs-table-body");
             if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)">No audit logs recorded in local storage yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)">No audit logs recorded in Firestore yet.</td></tr>`;
                 return;
             }
 
@@ -617,6 +651,39 @@
                     </tr>
                 `;
             }).join('');
+        }
+
+        function showTokenInputInWorkspace() {
+            let updater = document.getElementById('workspace-token-updater');
+            if (!updater) {
+                const controlsCard = document.querySelector('.controls-card');
+                updater = document.createElement('div');
+                updater.id = 'workspace-token-updater';
+                updater.className = 'card flex items-center gap-3 w-full';
+                updater.style.padding = '12px';
+                updater.style.marginTop = '12px';
+                updater.style.display = 'flex';
+                updater.style.flexDirection = 'row';
+                updater.style.alignItems = 'center';
+                updater.innerHTML = `
+                    <span style="font-size:12px;color:var(--muted);white-space:nowrap;"><i class="bi bi-exclamation-triangle-fill" style="color:var(--danger);margin-right:6px"></i>GCP Session Expired. Paste New Access Token:</span>
+                    <input type="text" id="workspace-token-inp" class="inp" style="padding: 6px 12px; font-size:12px; height: 32px;" placeholder="ya29.a0Ac...">
+                    <button class="btn" style="width:auto; padding: 6px 16px; height: 32px; font-size:12px;" onclick="updateWorkspaceToken()">Update & Retry</button>
+                `;
+                controlsCard.parentNode.insertBefore(updater, controlsCard.nextSibling);
+            }
+        }
+
+        function updateWorkspaceToken() {
+            const val = document.getElementById('workspace-token-inp').value.trim();
+            if (val) {
+                activeToken = val;
+                localStorage.setItem('dista_access_token', val);
+                toast("Access Token updated!", "ok");
+                refreshLogs();
+            } else {
+                toast("Please enter a token value.", "err");
+            }
         }
 
         function filterLogs() {
