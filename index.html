@@ -532,6 +532,22 @@
             });
         }
 
+        // Footer clicks easter egg to open admin page
+        window.addEventListener('DOMContentLoaded', () => {
+            let footerClicks = 0;
+            const footerText = document.querySelector('.footer p');
+            if (footerText) {
+                footerText.style.cursor = 'pointer';
+                footerText.addEventListener('click', () => {
+                    footerClicks++;
+                    if (footerClicks === 3) {
+                        window.location.href = '/admin.html';
+                        footerClicks = 0;
+                    }
+                });
+            }
+        });
+
         function showEasterEgg() {
             const overlay = document.createElement('div');
             overlay.className = 'easter-egg-overlay';

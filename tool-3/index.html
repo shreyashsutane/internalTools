@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Vault - Encryption & Decryption Utility</title>
+    <title>AES Crypto Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         :root {
             --bg-body: #070a0f;
@@ -90,29 +91,6 @@
             color: #ffffff;
         }
 
-        .nav-tabs {
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1.5rem;
-        }
-
-        .nav-link {
-            color: var(--text-muted);
-            border: none !important;
-            font-weight: 600;
-            padding: 0.75rem 1.5rem;
-            transition: all 0.2s;
-        }
-
-        .nav-link:hover {
-            color: var(--dista-orange);
-        }
-
-        .nav-link.active {
-            color: var(--dista-orange) !important;
-            background: none !important;
-            border-bottom: 3px solid var(--dista-orange) !important;
-        }
-
         .form-label {
             font-weight: 600;
             font-size: 0.9rem;
@@ -157,23 +135,6 @@
         .btn-action:hover {
             background: var(--dista-orange-dark);
             transform: scale(1.01);
-        }
-
-        .btn-sec-action {
-            background: none;
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 0.35rem 0.75rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-
-        .btn-sec-action:hover {
-            border-color: var(--dista-orange);
-            color: var(--dista-orange);
         }
 
         .result-box {
@@ -221,16 +182,13 @@
             color: #ffffff;
         }
 
-        .error-alert {
-            background: rgba(239, 68, 68, 0.07);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            border-left: 4px solid #ef4444;
-            color: #fca5a5;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1.5rem;
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-muted);
             font-size: 0.9rem;
-            display: none;
+            border-top: 1px solid var(--border-color);
+            margin-top: 3rem;
         }
     </style>
 <base target="_self">
@@ -254,221 +212,94 @@
             <div class="d-flex align-items-center gap-3 mb-4">
                 <span style="font-size: 2.5rem;">🔑</span>
                 <div>
-                    <h2 class="card-title mb-1">AES-GCM Encryption & Decryption</h2>
-                    <p class="text-muted mb-0">Secure client-side data vault using the Web Crypto API.</p>
+                    <h2 class="card-title mb-1">AES Crypto Manager</h2>
+                    <p class="text-muted mb-0">Client-side AES-128-CBC encryption & decryption utility (CryptoJS).</p>
                 </div>
             </div>
 
             <!-- Profiles Section -->
-            <div class="p-3 mb-4 rounded" style="background: rgba(247, 148, 29, 0.03); border: 1px solid var(--border-color);">
-                <h5 class="text-white mb-3" style="font-size: 0.95rem;"><i class="bi bi-folder-fill me-2" style="color: var(--dista-orange);"></i>Saved Profiles (Key & IV)</h5>
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label mb-1">Select Profile</label>
-                        <select class="form-select" id="profileSelect" onchange="loadProfile()">
-                            <option value="">-- Select a saved profile --</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label mb-1">New Profile Name</label>
-                        <input type="text" class="form-control" id="newProfileName" placeholder="e.g. Production-Secret">
-                    </div>
-                    <div class="col-md-4">
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-action py-2 flex-grow-1" onclick="saveProfile()" style="height: 40px; padding: 0;">
-                                <i class="bi bi-save me-1"></i>Save Profile
-                            </button>
-                            <button class="btn-sec-action py-2 px-3" onclick="deleteProfile()" title="Delete selected profile" style="height: 40px;">
-                                <i class="bi bi-trash-fill text-danger"></i>
-                            </button>
-                        </div>
-                    </div>
+            <div class="row g-3 mb-4 align-items-end p-3 rounded" style="background: rgba(247, 148, 29, 0.03); border: 1px solid var(--border-color);">
+                <div class="col-md-9">
+                    <label class="form-label mb-1">Select Profile</label>
+                    <select class="form-select" id="profileSelect" onchange="loadSelectedProfile()">
+                        <option value="">-- Manual Entry --</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn w-100" style="background: #ef4444; color: white; font-weight: 600; height: 43px;" onclick="deleteProfile()">
+                        <i class="bi bi-trash-fill me-1"></i>Delete
+                    </button>
                 </div>
             </div>
 
-            <!-- Tab Selectors -->
-            <ul class="nav nav-tabs" id="cryptoTabs" role="tablist">
-                <li class="nav-item">
-                    <button class="nav-link active" id="encrypt-tab" data-bs-toggle="tab" data-bs-target="#encrypt-panel" type="button" role="tab">
-                        <i class="bi bi-shield-lock-fill me-2"></i>Encrypt Plaintext
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="decrypt-tab" data-bs-toggle="tab" data-bs-target="#decrypt-panel" type="button" role="tab">
-                        <i class="bi bi-shield-slash-fill me-2"></i>Decrypt Ciphertext
-                    </button>
-                </li>
-            </ul>
-
-            <!-- Config Grid -->
-            <div class="row g-4 mb-4">
-                <div class="col-md-6">
-                    <div class="row g-2">
-                        <div class="col-7">
-                            <div class="mb-3">
-                                <label class="form-label">Key Mode</label>
-                                <select class="form-select" id="keyMode" onchange="toggleKeyMode()">
-                                    <option value="passphrase">PBKDF2 Derivation</option>
-                                    <option value="raw">Raw Hex Key</option>
-                                    <option value="number-list">Decimal List</option>
-                                    <option value="cstyle-list">C-Style Hex List</option>
-                                    <option value="base64-key">Base64 Encoded Key</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-5">
-                            <div class="mb-3">
-                                <label class="form-label">Key Size</label>
-                                <select class="form-select" id="keySize" onchange="onKeySizeChange()">
-                                    <option value="256" selected>256-bit</option>
-                                    <option value="192">192-bit</option>
-                                    <option value="128">128-bit</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6">
-                    <!-- Passphrase Input -->
-                    <div class="mb-3" id="passphrase-container">
-                        <label class="form-label">
-                            Passphrase / Secret Key
-                            <button class="btn-sec-action" onclick="generateRandomPassphrase()">Generate</button>
-                        </label>
-                        <input type="text" class="form-control" id="passphrase" placeholder="Enter secret passphrase...">
-                    </div>
-
-                    <!-- Raw Hex Key Input -->
-                    <div class="mb-3" id="raw-key-container" style="display: none;">
-                        <label class="form-label">
-                            Raw Hex Key (64 hex characters)
-                            <button class="btn-sec-action" onclick="generateRandomHexKey()">Generate</button>
-                        </label>
-                        <input type="text" class="form-control" id="rawHexKey" placeholder="e.g. 2b7e151628aed2a6abf7158809cf4f3c...">
-                    </div>
-
-                    <!-- Decimal Number Key Input -->
-                    <div class="mb-3" id="number-key-container" style="display: none;">
-                        <label class="form-label">
-                            Decimal Number Key (32 bytes separated by commas)
-                            <button class="btn-sec-action" onclick="generateRandomNumberListKey()">Generate</button>
-                        </label>
-                        <input type="text" class="form-control" id="numberListKey" placeholder="e.g. 43, 108, 9, 212, 99... (32 numbers)">
-                    </div>
-
-                    <!-- C-Style Hex Key Input -->
-                    <div class="mb-3" id="cstyle-key-container" style="display: none;">
-                        <label class="form-label">
-                            C-Style Hex Key (separated by commas)
-                            <button class="btn-sec-action" onclick="generateRandomCStyleKey()">Generate</button>
-                        </label>
-                        <input type="text" class="form-control" id="cstyleKey" placeholder="e.g. 0x2b, 0x7e, 0x15... (32 numbers)">
-                    </div>
-
-                    <!-- Base64 Key Input -->
-                    <div class="mb-3" id="base64-key-container" style="display: none;">
-                        <label class="form-label">
-                            Base64 Key
-                            <button class="btn-sec-action" onclick="generateRandomBase64Key()">Generate</button>
-                        </label>
-                        <input type="text" class="form-control" id="base64Key" placeholder="e.g. K34VFiiu0qar9xWICc9PPA==">
-                    </div>
-                </div>
+            <!-- Payload Input -->
+            <div class="mb-4">
+                <label class="form-label">Payload (Plaintext or Base64)</label>
+                <textarea class="form-control" id="dataInput" rows="4" placeholder="Enter text to encrypt or decrypt..."></textarea>
             </div>
 
+            <!-- Key & IV Grid -->
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label">
-                            Initialization Vector (IV) (Hex, Dec, C-Style Hex, or Base64)
-                            <div class="d-flex gap-1">
-                                <button class="btn-sec-action" onclick="generateRandomIV()" style="font-size: 0.73rem; padding: 2px 5px;">Gen Hex</button>
-                                <button class="btn-sec-action" onclick="generateRandomNumberListIV()" style="font-size: 0.73rem; padding: 2px 5px;">Gen Dec</button>
-                                <button class="btn-sec-action" onclick="generateRandomCStyleIV()" style="font-size: 0.73rem; padding: 2px 5px;">Gen C-Style</button>
-                            </div>
-                        </label>
-                        <input type="text" class="form-control" id="ivHex" placeholder="e.g. f3083e20085a12df085b191c or 243, 8, 62...">
+                        <label class="form-label">Secret Key</label>
+                        <input type="password" class="form-control" id="keyInput" placeholder="Key string...">
                     </div>
                 </div>
-
-                <div class="col-md-6" id="salt-container">
+                <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label">
-                            Salt (for PBKDF2) (Hex, Dec, C-Style Hex, or Base64)
-                            <div class="d-flex gap-1">
-                                <button class="btn-sec-action" onclick="generateRandomSalt()" style="font-size: 0.73rem; padding: 2px 5px;">Gen Hex</button>
-                                <button class="btn-sec-action" onclick="generateRandomNumberListSalt()" style="font-size: 0.73rem; padding: 2px 5px;">Gen Dec</button>
-                                <button class="btn-sec-action" onclick="generateRandomCStyleSalt()" style="font-size: 0.73rem; padding: 2px 5px;">Gen C-Style</button>
-                            </div>
-                        </label>
-                        <input type="text" class="form-control" id="saltHex" placeholder="e.g. 9f8e7d6c5b4a3f2e1 or 159, 142, 125...">
+                        <label class="form-label">IV</label>
+                        <input type="password" class="form-control" id="ivInput" placeholder="IV string...">
                     </div>
                 </div>
             </div>
 
-
-            <!-- Tab Panels -->
-            <div class="tab-content" id="cryptoTabContent">
-                <!-- ENCRYPT PANEL -->
-                <div class="tab-pane fade show active" id="encrypt-panel" role="tabpanel">
-                    <div class="mb-4">
-                        <label class="form-label">Plaintext to Encrypt</label>
-                        <textarea class="form-control" id="encryptPlaintext" rows="4" placeholder="Type or paste secret message here..."></textarea>
+            <!-- Save Profile -->
+            <div class="p-3 mb-4 rounded" style="border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <label class="form-label">Save current Key/IV as:</label>
+                <div class="row g-2">
+                    <div class="col-md-9">
+                        <input type="text" class="form-control" id="newProfileName" placeholder="Profile name (e.g. axis-mab-dev)">
                     </div>
-
-                    <button class="btn-action" onclick="executeEncrypt()">
-                        <i class="bi bi-lock-fill me-2"></i>Generate Secure Ciphertext
-                    </button>
-
-                    <!-- Outputs -->
-                    <div id="encrypt-outputs" style="display: none;">
-                        <div class="result-box">
-                            <label class="form-label">Ciphertext (Base64 Output)</label>
-                            <span class="copy-badge" onclick="copyContent('outputB64')"><i class="bi bi-clipboard me-1"></i>Copy</span>
-                            <textarea class="form-control bg-transparent border-0 text-white p-0" id="outputB64" rows="2" readonly></textarea>
-                        </div>
-                        <div class="result-box">
-                            <label class="form-label">Ciphertext (Hex Output)</label>
-                            <span class="copy-badge" onclick="copyContent('outputHex')"><i class="bi bi-clipboard me-1"></i>Copy</span>
-                            <textarea class="form-control bg-transparent border-0 text-white p-0" id="outputHex" rows="2" readonly></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- DECRYPT PANEL -->
-                <div class="tab-pane fade" id="decrypt-panel" role="tabpanel">
-                    <div class="mb-4">
-                        <label class="form-label">Ciphertext to Decrypt (Base64 or Hex)</label>
-                        <textarea class="form-control" id="decryptCiphertext" rows="4" placeholder="Paste encrypted string (Base64 or Hex) here..."></textarea>
-                    </div>
-
-                    <button class="btn-action" onclick="executeDecrypt()">
-                        <i class="bi bi-unlock-fill me-2"></i>Decrypt Ciphertext
-                    </button>
-
-                    <!-- Outputs -->
-                    <div id="decrypt-outputs" style="display: none;">
-                        <div class="result-box">
-                            <label class="form-label">Decrypted Plaintext</label>
-                            <span class="copy-badge" onclick="copyContent('outputPlaintext')"><i class="bi bi-clipboard me-1"></i>Copy</span>
-                            <textarea class="form-control bg-transparent border-0 text-white p-0" id="outputPlaintext" rows="4" readonly></textarea>
-                        </div>
+                    <div class="col-md-3">
+                        <button class="btn w-100" style="background: #10b981; color: white; font-weight: 600; height: 43px;" onclick="saveProfile()">
+                            <i class="bi bi-save me-1"></i>Save Pair
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Error Banner -->
-            <div class="error-alert" id="errorBanner">
-                <i class="bi bi-exclamation-octagon-fill me-2"></i>
-                <span id="errorMessage">Encryption failed.</span>
+            <!-- Actions Grid -->
+            <div class="row g-2 mb-4">
+                <div class="col-md-5">
+                    <button class="btn btn-action py-2 w-100" onclick="process('encrypt')">
+                        <i class="bi bi-shield-lock-fill me-1"></i>Encrypt
+                    </button>
+                </div>
+                <div class="col-md-5">
+                    <button class="btn py-2 w-100" style="background: #c792ea; color: #0f111a; font-weight: 600;" onclick="process('decrypt')">
+                        <i class="bi bi-shield-slash-fill me-1"></i>Decrypt
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn py-2 w-100" style="background: transparent; color: #9ca3af; border: 1px solid var(--border-color);" onclick="clearAll()">
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result Box -->
+            <div class="result-box mt-3" style="cursor: pointer; position: relative;" onclick="copyResult()">
+                <label class="form-label">Result Output (Click to copy)</label>
+                <span class="copy-badge" style="top: 10px; right: 10px;"><i class="bi bi-clipboard me-1"></i>Copy</span>
+                <div id="output" style="font-family: 'Roboto Mono', monospace; font-size: 1.05rem; color: #10b981; min-height: 80px; word-break: break-all; white-space: pre-wrap; margin-top: 10px;">Ready...</div>
             </div>
 
             <!-- Note section -->
-            <div class="sec-note">
+            <div class="sec-note mt-4">
                 <h5 class="text-white mb-2" style="font-size: 0.95rem;"><i class="bi bi-info-circle-fill me-2" style="color: var(--dista-orange);"></i>Client-Side Cryptographic Policy</h5>
                 <p class="mb-0">
-                    This utility uses the browser's native **Web Crypto API**. All encryption and decryption operations are performed completely in memory on your local machine. Key derivations use **PBKDF2** with **SHA-256** and **100,000 iterations** for high strength. The data is secured using **AES-GCM (256-bit)** authenticated encryption. No key, password, or plain text is ever transmitted over the network.
+                    This utility uses **CryptoJS** to execute **AES-128-CBC** encryption and decryption with **PKCS7 padding**. Key and IV strings are parsed dynamically through UTF-8 word conversion, conforming exactly with standard C/Java valid bytes padding logic (copied and padded/truncated to exactly 16 bytes). No sensitive key, IV, or payload data is ever transmitted over the network.
                 </p>
             </div>
         </div>
@@ -476,561 +307,173 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // ==========================================
-        // HELPERS
-        // ==========================================
-        function str2ab(str) { return new TextEncoder().encode(str); }
-        function ab2str(buf) { return new TextDecoder().decode(buf); }
-        function ab2hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), x => ('0' + x.toString(16)).slice(-2)).join(''); }
-        
-        function hex2ab(hex) {
-            const clean = hex.trim().replace(/[^0-9a-fA-F]/g, '');
-            const view = new Uint8Array(clean.length / 2);
-            for (let i = 0; i < view.length; i++) {
-                view[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
-            }
-            return view.buffer;
-        }
+        // Initial hardware-coded profile
+        const DEFAULT_PROFILES = {
+            "axis-mab-dev": { key: "4F8EA6600C8FE945ED6AC94BAE03C6CF", iv: "58E19AB0D08F1673BA6E327B60F52D0F" }
+        };
 
-        function ab2b64(buf) {
-            let binary = '';
-            const bytes = new Uint8Array(buf);
-            for (let i = 0; i < bytes.byteLength; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return window.btoa(binary);
-        }
-
-        function b642ab(b64) {
-            const binary = window.atob(b64.trim());
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-                bytes[i] = binary.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        function generateRandomHex(length) {
-            const bytes = new Uint8Array(length);
-            window.crypto.getRandomValues(bytes);
-            return ab2hex(bytes.buffer);
-        }
-
-        // Parse Hex, Decimal numbers list, C-Style Hex list, or Base64 into ArrayBuffer
-        function parseBytesInput(str) {
-            const trimmed = str.trim();
-            if (!trimmed) return new ArrayBuffer(0);
-
-            // C-Style Hex List check (includes 0x or 0X)
-            if (trimmed.includes('0x') || trimmed.includes('0X')) {
-                const matches = trimmed.match(/0[xX][0-9a-fA-F]+/g);
-                if (matches) {
-                    const bytes = matches.map(m => parseInt(m.substring(2), 16));
-                    return new Uint8Array(bytes).buffer;
-                }
-            }
-
-            // Decimal List check (contains commas or brackets or braces, and numbers)
-            if (trimmed.includes(',') || /[\s\[\]\{\}]/.test(trimmed)) {
-                const clean = trimmed.replace(/[\[\]\{\}]/g, '');
-                const numbers = clean.match(/\d+/g);
-                if (numbers) {
-                    const bytes = numbers.map(num => Math.max(0, Math.min(255, parseInt(num, 10))));
-                    return new Uint8Array(bytes).buffer;
-                }
-            }
-
-            // Clean Hex string check (contains only hex characters)
-            const noSpace = trimmed.replace(/[\s]/g, '');
-            if (/^[0-9a-fA-F]+$/.test(noSpace) && noSpace.length % 2 === 0) {
-                return hex2ab(noSpace);
-            }
-
-            // Fallback to Base64 decode
-            try {
-                return b642ab(trimmed);
-            } catch (e) {
-                return new ArrayBuffer(0);
-            }
-        }
-
-        // ==========================================
-        // UI MANAGEMENT
-        // ==========================================
-        function toggleKeyMode() {
-            const mode = document.getElementById('keyMode').value;
-            const size = document.getElementById('keySize').value;
-            const passContainer = document.getElementById('passphrase-container');
-            const rawContainer = document.getElementById('raw-key-container');
-            const numContainer = document.getElementById('number-key-container');
-            const cstyleContainer = document.getElementById('cstyle-key-container');
-            const base64Container = document.getElementById('base64-key-container');
-            const saltContainer = document.getElementById('salt-container');
-
-            // Hide all containers initially
-            passContainer.style.display = 'none';
-            rawContainer.style.display = 'none';
-            numContainer.style.display = 'none';
-            cstyleContainer.style.display = 'none';
-            base64Container.style.display = 'none';
-            saltContainer.style.display = 'none';
-
-            if (mode === 'passphrase') {
-                passContainer.style.display = 'block';
-                saltContainer.style.display = 'block';
-            } else if (mode === 'raw') {
-                rawContainer.style.display = 'block';
-                
-                // Update labels and placeholders dynamically based on size
-                const label = rawContainer.querySelector('.form-label');
-                const input = document.getElementById('rawHexKey');
-                if (size === '128') {
-                    label.innerHTML = 'Raw 128-bit Hex Key (32 hex characters) <button class="btn-sec-action" onclick="generateRandomHexKey()">Generate</button>';
-                    input.placeholder = 'e.g. 2b7e151628aed2a6abf7158809cf4f3c';
-                } else if (size === '192') {
-                    label.innerHTML = 'Raw 192-bit Hex Key (48 hex characters) <button class="btn-sec-action" onclick="generateRandomHexKey()">Generate</button>';
-                    input.placeholder = 'e.g. 2b7e151628aed2a6abf7158809cf4f3ca6abf7158809cf4f';
-                } else {
-                    label.innerHTML = 'Raw 256-bit Hex Key (64 hex characters) <button class="btn-sec-action" onclick="generateRandomHexKey()">Generate</button>';
-                    input.placeholder = 'e.g. 2b7e151628aed2a6abf7158809cf4f3cabf7158809cf4f3c...';
-                }
-            } else if (mode === 'number-list') {
-                numContainer.style.display = 'block';
-                
-                // Update labels and placeholders dynamically based on size
-                const label = numContainer.querySelector('.form-label');
-                const input = document.getElementById('numberListKey');
-                if (size === '128') {
-                    label.innerHTML = 'Decimal Number Key (16 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomNumberListKey()">Generate</button>';
-                    input.placeholder = 'e.g. 43, 108, 9, 212... (16 numbers)';
-                } else if (size === '192') {
-                    label.innerHTML = 'Decimal Number Key (24 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomNumberListKey()">Generate</button>';
-                    input.placeholder = 'e.g. 43, 108, 9, 212... (24 numbers)';
-                } else {
-                    label.innerHTML = 'Decimal Number Key (32 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomNumberListKey()">Generate</button>';
-                    input.placeholder = 'e.g. 43, 108, 9, 212... (32 numbers)';
-                }
-            } else if (mode === 'cstyle-list') {
-                cstyleContainer.style.display = 'block';
-                
-                // Update labels and placeholders dynamically based on size
-                const label = cstyleContainer.querySelector('.form-label');
-                const input = document.getElementById('cstyleKey');
-                if (size === '128') {
-                    label.innerHTML = 'C-Style Hex Key (16 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomCStyleKey()">Generate</button>';
-                    input.placeholder = 'e.g. 0x2b, 0x7e, 0x15... (16 numbers)';
-                } else if (size === '192') {
-                    label.innerHTML = 'C-Style Hex Key (24 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomCStyleKey()">Generate</button>';
-                    input.placeholder = 'e.g. 0x2b, 0x7e, 0x15... (24 numbers)';
-                } else {
-                    label.innerHTML = 'C-Style Hex Key (32 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomCStyleKey()">Generate</button>';
-                    input.placeholder = 'e.g. 0x2b, 0x7e, 0x15... (32 numbers)';
-                }
-            } else if (mode === 'base64-key') {
-                base64Container.style.display = 'block';
-                
-                const label = base64Container.querySelector('.form-label');
-                const input = document.getElementById('base64Key');
-                label.innerHTML = `Base64 Encoded Key (${size}-bit) <button class="btn-sec-action" onclick="generateRandomBase64Key()">Generate</button>`;
-                input.placeholder = size === '128' ? 'e.g. K34VFiiu0qar9xWICc9PPA==' : (size === '192' ? 'e.g. K34VFiiu0qar9xWICc9PPAgHFlka1Pla' : 'e.g. K34VFiiu0qar9xWICc9PPAgHFlka1PlaK34VFiiu0qa=');
-            }
-            clearOutputs();
-        }
-
-        function onKeySizeChange() {
-            toggleKeyMode();
-            generateRandomHexKey();
-            generateRandomNumberListKey();
-            generateRandomCStyleKey();
-            generateRandomBase64Key();
-        }
-
-        function generateRandomPassphrase() {
-            const words = ["dista", "secure", "aes", "gcm", "crypto", "token", "audit", "vault", "infra", "gcp", "rules", "secret"];
-            const pass = Array.from({ length: 4 }, () => words[Math.floor(Math.random() * words.length)]).join('-');
-            document.getElementById('passphrase').value = pass + '-' + Math.floor(1000 + Math.random() * 9000);
-        }
-
-        function generateRandomHexKey() {
-            const size = parseInt(document.getElementById('keySize').value, 10);
-            document.getElementById('rawHexKey').value = generateRandomHex(size / 8);
-        }
-
-        function generateRandomNumberListKey() {
-            const size = parseInt(document.getElementById('keySize').value, 10);
-            const bytes = new Uint8Array(size / 8);
-            window.crypto.getRandomValues(bytes);
-            document.getElementById('numberListKey').value = Array.from(bytes).join(', ');
-        }
-
-        function generateRandomCStyleKey() {
-            const size = parseInt(document.getElementById('keySize').value, 10);
-            const bytes = new Uint8Array(size / 8);
-            window.crypto.getRandomValues(bytes);
-            document.getElementById('cstyleKey').value = Array.from(bytes).map(x => '0x' + ('0' + x.toString(16)).slice(-2)).join(', ');
-        }
-
-        function generateRandomBase64Key() {
-            const size = parseInt(document.getElementById('keySize').value, 10);
-            const bytes = new Uint8Array(size / 8);
-            window.crypto.getRandomValues(bytes);
-            document.getElementById('base64Key').value = ab2b64(bytes.buffer);
-        }
-
-        function generateRandomIV() {
-            document.getElementById('ivHex').value = generateRandomHex(12); // 96 bits = 12 bytes
-        }
-
-        function generateRandomNumberListIV() {
-            const bytes = new Uint8Array(12);
-            window.crypto.getRandomValues(bytes);
-            document.getElementById('ivHex').value = Array.from(bytes).join(', ');
-        }
-
-        function generateRandomCStyleIV() {
-            const bytes = new Uint8Array(12);
-            window.crypto.getRandomValues(bytes);
-            document.getElementById('ivHex').value = Array.from(bytes).map(x => '0x' + ('0' + x.toString(16)).slice(-2)).join(', ');
-        }
-
-        function generateRandomSalt() {
-            document.getElementById('saltHex').value = generateRandomHex(16); // 128 bits = 16 bytes
-        }
-
-        function generateRandomNumberListSalt() {
-            const bytes = new Uint8Array(16);
-            window.crypto.getRandomValues(bytes);
-            document.getElementById('saltHex').value = Array.from(bytes).join(', ');
-        }
-
-        function generateRandomCStyleSalt() {
-            const bytes = new Uint8Array(16);
-            window.crypto.getRandomValues(bytes);
-            document.getElementById('saltHex').value = Array.from(bytes).map(x => '0x' + ('0' + x.toString(16)).slice(-2)).join(', ');
-        }
-
-        function clearOutputs() {
-            document.getElementById('encrypt-outputs').style.display = 'none';
-            document.getElementById('decrypt-outputs').style.display = 'none';
-            document.getElementById('errorBanner').style.display = 'none';
-        }
-
-
-        function showError(message) {
-            document.getElementById('errorMessage').innerText = message;
-            document.getElementById('errorBanner').style.display = 'block';
-            document.getElementById('encrypt-outputs').style.display = 'none';
-            document.getElementById('decrypt-outputs').style.display = 'none';
-        }
-
-        function copyContent(id) {
-            const textarea = document.getElementById(id);
-            textarea.select();
-            document.execCommand('copy');
-            
-            const badges = document.querySelectorAll('.copy-badge');
-            badges.forEach(badge => {
-                if (badge.getAttribute('onclick').includes(id)) {
-                    const orig = badge.innerHTML;
-                    badge.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copied!';
-                    setTimeout(() => { badge.innerHTML = orig; }, 1500);
-                }
-            });
-        }
-
-        // ==========================================
-        // PROFILES MANAGEMENT
-        // ==========================================
         let profiles = {};
+
+        function init() {
+            try {
+                const stored = localStorage.getItem('aes_profiles');
+                if (!stored) {
+                    localStorage.setItem('aes_profiles', JSON.stringify(DEFAULT_PROFILES));
+                }
+            } catch (e) {}
+            loadProfilesFromStorage();
+        }
 
         function loadProfilesFromStorage() {
             try {
-                const data = localStorage.getItem('crypto_vault_profiles');
+                const data = localStorage.getItem('aes_profiles');
                 if (data) {
                     profiles = JSON.parse(data);
                 } else {
-                    profiles = {};
+                    profiles = { ...DEFAULT_PROFILES };
                 }
             } catch (e) {
-                profiles = {};
+                profiles = { ...DEFAULT_PROFILES };
             }
-            updateProfileDropdown();
+            renderProfiles();
         }
 
-        function updateProfileDropdown() {
+        function renderProfiles() {
             const select = document.getElementById('profileSelect');
-            select.innerHTML = '<option value="">-- Select a saved profile --</option>';
-            for (const name of Object.keys(profiles)) {
-                const option = document.createElement('option');
-                option.value = name;
-                option.innerText = name;
-                select.appendChild(option);
+            select.innerHTML = '<option value="">-- Manual Entry --</option>';
+            for (let name in profiles) {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                select.appendChild(opt);
             }
         }
 
         function saveProfile() {
             const name = document.getElementById('newProfileName').value.trim();
-            if (!name) {
-                alert("Please enter a name for the profile.");
+            const key = document.getElementById('keyInput').value.trim();
+            const iv = document.getElementById('ivInput').value.trim();
+
+            if (!name || !key || !iv) {
+                alert("Enter Name, Key, and IV to save.");
                 return;
             }
 
-            const keyMode = document.getElementById('keyMode').value;
-            const keySize = document.getElementById('keySize').value;
-            const passphrase = document.getElementById('passphrase').value.trim();
-            const rawHexKey = document.getElementById('rawHexKey').value.trim();
-            const numberListKey = document.getElementById('numberListKey').value.trim();
-            const cstyleKey = document.getElementById('cstyleKey').value.trim();
-            const base64Key = document.getElementById('base64Key').value.trim();
-            const ivHex = document.getElementById('ivHex').value.trim();
-            const saltHex = document.getElementById('saltHex').value.trim();
-
-            profiles[name] = {
-                keyMode,
-                keySize,
-                passphrase,
-                rawHexKey,
-                numberListKey,
-                cstyleKey,
-                base64Key,
-                ivHex,
-                saltHex
-            };
-
-            localStorage.setItem('crypto_vault_profiles', JSON.stringify(profiles));
+            profiles[name] = { key, iv };
+            try {
+                localStorage.setItem('aes_profiles', JSON.stringify(profiles));
+            } catch (e) {}
+            
             document.getElementById('newProfileName').value = '';
-            updateProfileDropdown();
+            renderProfiles();
             document.getElementById('profileSelect').value = name;
-        }
-
-        function loadProfile() {
-            const select = document.getElementById('profileSelect');
-            const name = select.value;
-            if (!name || !profiles[name]) return;
-
-            const profile = profiles[name];
-            document.getElementById('keyMode').value = profile.keyMode;
-            document.getElementById('keySize').value = profile.keySize || '256';
-            toggleKeyMode();
-
-            document.getElementById('passphrase').value = profile.passphrase || '';
-            document.getElementById('rawHexKey').value = profile.rawHexKey || '';
-            document.getElementById('numberListKey').value = profile.numberListKey || '';
-            document.getElementById('cstyleKey').value = profile.cstyleKey || '';
-            document.getElementById('base64Key').value = profile.base64Key || '';
-            document.getElementById('ivHex').value = profile.ivHex || '';
-            document.getElementById('saltHex').value = profile.saltHex || '';
+            alert("Profile Saved!");
         }
 
         function deleteProfile() {
-            const select = document.getElementById('profileSelect');
-            const name = select.value;
-            if (!name) {
-                alert("Please select a profile to delete.");
-                return;
-            }
-
-            if (confirm(`Are you sure you want to delete profile "${name}"?`)) {
+            const name = document.getElementById('profileSelect').value;
+            if (!name) return;
+            if (confirm(`Delete profile "${name}"?`)) {
                 delete profiles[name];
-                localStorage.setItem('crypto_vault_profiles', JSON.stringify(profiles));
-                updateProfileDropdown();
-                select.value = '';
-                generateRandomPassphrase();
-                generateRandomHexKey();
-                generateRandomNumberListKey();
-                generateRandomCStyleKey();
-                generateRandomBase64Key();
-                generateRandomIV();
-                generateRandomSalt();
+                try {
+                    localStorage.setItem('aes_profiles', JSON.stringify(profiles));
+                } catch (e) {}
+                renderProfiles();
+                clearAll();
             }
         }
 
-        // ==========================================
-        // CRYPTO CORE
-        // ==========================================
-        async function deriveKeyFromPassphrase(passphrase, saltBuffer, keySize) {
-            const rawKey = await window.crypto.subtle.importKey(
-                "raw",
-                str2ab(passphrase),
-                { name: "PBKDF2" },
-                false,
-                ["deriveKey"]
-            );
-            return await window.crypto.subtle.deriveKey(
-                {
-                    name: "PBKDF2",
-                    salt: saltBuffer,
-                    iterations: 100000,
-                    hash: "SHA-256"
-                },
-                rawKey,
-                { name: "AES-GCM", length: parseInt(keySize, 10) },
-                false,
-                ["encrypt", "decrypt"]
-            );
+        function loadSelectedProfile() {
+            const name = document.getElementById('profileSelect').value;
+            if (name && profiles[name]) {
+                document.getElementById('keyInput').value = profiles[name].key;
+                document.getElementById('ivInput').value = profiles[name].iv;
+            }
         }
 
-        async function importRawKey(keyBuf, expectedSize) {
-            const expectedBytes = expectedSize / 8;
-            if (keyBuf.byteLength !== expectedBytes) {
-                throw new Error(`Raw key must resolve to exactly ${expectedSize} bits (${expectedBytes} bytes). Received ${keyBuf.byteLength * 8} bits (${keyBuf.byteLength} bytes).`);
-            }
-            return await window.crypto.subtle.importKey(
-                "raw",
-                keyBuf,
-                { name: "AES-GCM" },
-                false,
-                ["encrypt", "decrypt"]
-            );
+        // Logic from Java Code: parses utf-8 string, pads/truncates to 16 bytes (128-bit)
+        function getValidBytes(str) {
+            let utf8 = CryptoJS.enc.Utf8.parse(str);
+            let words = [];
+            for (let i = 0; i < 4; i++) { words[i] = utf8.words[i] || 0; }
+            return { words: words, sigBytes: 16 };
         }
 
-        // ==========================================
-        // OPERATIONS EXECUTION
-        // ==========================================
-        async function executeEncrypt() {
-            clearOutputs();
-            const mode = document.getElementById('keyMode').value;
-            const sizeNum = parseInt(document.getElementById('keySize').value, 10);
-            const ivStr = document.getElementById('ivHex').value.trim();
-            const plaintext = document.getElementById('encryptPlaintext').value;
+        function process(mode) {
+            const data = document.getElementById('dataInput').value.trim();
+            const keyRaw = document.getElementById('keyInput').value.trim();
+            const ivRaw = document.getElementById('ivInput').value.trim();
+            const output = document.getElementById('output');
 
-            if (!plaintext) {
-                showError("Please enter some plaintext to encrypt.");
-                return;
-            }
-            
-            const ivBuf = parseBytesInput(ivStr);
-            if (ivBuf.byteLength === 0) {
-                showError("IV cannot be empty. Please enter a valid Hex, Dec, C-Style, or Base64 IV.");
+            if (!data) {
+                output.innerText = "Error: Payload is empty";
+                output.style.color = "#ef4444";
                 return;
             }
 
             try {
-                let cryptoKey;
-                if (mode === 'passphrase') {
-                    const pass = document.getElementById('passphrase').value.trim();
-                    const saltStr = document.getElementById('saltHex').value.trim();
-                    if (!pass) throw new Error("Please enter a passphrase.");
-                    const saltBuf = parseBytesInput(saltStr);
-                    if (saltBuf.byteLength !== 16) throw new Error("Salt must resolve to exactly 16 bytes (128 bits).");
-                    cryptoKey = await deriveKeyFromPassphrase(pass, saltBuf, sizeNum);
-                } else if (mode === 'raw') {
-                    const rawHexKey = document.getElementById('rawHexKey').value.trim();
-                    if (!rawHexKey) throw new Error("Please enter a raw hex key.");
-                    cryptoKey = await importRawKey(parseBytesInput(rawHexKey), sizeNum);
-                } else if (mode === 'number-list') {
-                    const numStr = document.getElementById('numberListKey').value.trim();
-                    if (!numStr) throw new Error("Please enter decimal key numbers.");
-                    cryptoKey = await importRawKey(parseBytesInput(numStr), sizeNum);
-                } else if (mode === 'cstyle-list') {
-                    const cstyleStr = document.getElementById('cstyleKey').value.trim();
-                    if (!cstyleStr) throw new Error("Please enter C-Style hex key numbers.");
-                    cryptoKey = await importRawKey(parseBytesInput(cstyleStr), sizeNum);
-                } else { // base64-key
-                    const base64Str = document.getElementById('base64Key').value.trim();
-                    if (!base64Str) throw new Error("Please enter a Base64 encoded key.");
-                    cryptoKey = await importRawKey(parseBytesInput(base64Str), sizeNum);
+                const key = getValidBytes(keyRaw);
+                const iv = getValidBytes(ivRaw);
+                const config = { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 };
+
+                if (mode === 'encrypt') {
+                    output.innerText = CryptoJS.AES.encrypt(data, key, config).toString();
+                    output.style.color = "#10b981"; // success green
+                } else {
+                    const dec = CryptoJS.AES.decrypt(data, key, config).toString(CryptoJS.enc.Utf8);
+                    if (!dec) throw new Error("Invalid Key/IV or non-UTF8 payload");
+                    output.innerText = dec;
+                    output.style.color = "#f7941d"; // dista-orange / accent
                 }
-
-                const ciphertextBuf = await window.crypto.subtle.encrypt(
-                    {
-                        name: "AES-GCM",
-                        iv: ivBuf
-                    },
-                    cryptoKey,
-                    str2ab(plaintext)
-                );
-
-                document.getElementById('outputB64').value = ab2b64(ciphertextBuf);
-                document.getElementById('outputHex').value = ab2hex(ciphertextBuf);
-                document.getElementById('encrypt-outputs').style.display = 'block';
-
             } catch (e) {
-                showError("Encryption failed: " + e.message);
+                output.innerText = "Error: " + e.message;
+                output.style.color = "#ef4444"; // error red
             }
         }
 
-        async function executeDecrypt() {
-            clearOutputs();
-            const mode = document.getElementById('keyMode').value;
-            const sizeNum = parseInt(document.getElementById('keySize').value, 10);
-            const ivStr = document.getElementById('ivHex').value.trim();
-            const ciphertext = document.getElementById('decryptCiphertext').value.trim();
+        function clearAll() {
+            document.getElementById('dataInput').value = '';
+            document.getElementById('output').innerText = 'Ready...';
+            document.getElementById('output').style.color = '#10b981';
+        }
 
-            if (!ciphertext) {
-                showError("Please enter some ciphertext to decrypt.");
-                return;
-            }
-            
-            const ivBuf = parseBytesInput(ivStr);
-            if (ivBuf.byteLength === 0) {
-                showError("IV cannot be empty. Please enter a valid Hex, Dec, C-Style, or Base64 IV.");
-                return;
-            }
-
-            try {
-                let ciphertextBuf;
-                // Parse base64 or hex or other formats
-                ciphertextBuf = parseBytesInput(ciphertext);
-                if (ciphertextBuf.byteLength === 0) {
-                    throw new Error("Could not parse ciphertext. Please verify it is valid Base64 or Hex.");
+        function copyResult() {
+            const t = document.getElementById('output').innerText;
+            if (t !== "Ready..." && !t.startsWith("Error:")) {
+                navigator.clipboard.writeText(t);
+                
+                const badge = document.querySelector('.copy-badge');
+                if (badge) {
+                    const orig = badge.innerHTML;
+                    badge.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copied!';
+                    setTimeout(() => { badge.innerHTML = orig; }, 1500);
                 }
-
-                let cryptoKey;
-                if (mode === 'passphrase') {
-                    const pass = document.getElementById('passphrase').value.trim();
-                    const saltStr = document.getElementById('saltHex').value.trim();
-                    if (!pass) throw new Error("Please enter the passphrase.");
-                    const saltBuf = parseBytesInput(saltStr);
-                    if (saltBuf.byteLength !== 16) throw new Error("Salt must resolve to exactly 16 bytes (128 bits).");
-                    cryptoKey = await deriveKeyFromPassphrase(pass, saltBuf, sizeNum);
-                } else if (mode === 'raw') {
-                    const rawHexKey = document.getElementById('rawHexKey').value.trim();
-                    if (!rawHexKey) throw new Error("Please enter the raw hex key.");
-                    cryptoKey = await importRawKey(parseBytesInput(rawHexKey), sizeNum);
-                } else if (mode === 'number-list') {
-                    const numStr = document.getElementById('numberListKey').value.trim();
-                    if (!numStr) throw new Error("Please enter decimal key numbers.");
-                    cryptoKey = await importRawKey(parseBytesInput(numStr), sizeNum);
-                } else if (mode === 'cstyle-list') {
-                    const cstyleStr = document.getElementById('cstyleKey').value.trim();
-                    if (!cstyleStr) throw new Error("Please enter C-Style hex key numbers.");
-                    cryptoKey = await importRawKey(parseBytesInput(cstyleStr), sizeNum);
-                } else { // base64-key
-                    const base64Str = document.getElementById('base64Key').value.trim();
-                    if (!base64Str) throw new Error("Please enter the Base64 encoded key.");
-                    cryptoKey = await importRawKey(parseBytesInput(base64Str), sizeNum);
-                }
-
-                const decryptedBuf = await window.crypto.subtle.decrypt(
-                    {
-                        name: "AES-GCM",
-                        iv: ivBuf
-                    },
-                    cryptoKey,
-                    ciphertextBuf
-                );
-
-                document.getElementById('outputPlaintext').value = ab2str(decryptedBuf);
-                document.getElementById('decrypt-outputs').style.display = 'block';
-
-            } catch (e) {
-                showError("Decryption failed: Check key, IV, salt, and ciphertext integrity. " + e.message);
             }
         }
 
-        // Initialize secure random defaults on load
+        // Footer clicks easter egg to open admin page
         window.addEventListener('DOMContentLoaded', () => {
-            generateRandomPassphrase();
-            generateRandomHexKey();
-            generateRandomNumberListKey();
-            generateRandomCStyleKey();
-            generateRandomBase64Key();
-            generateRandomIV();
-            generateRandomSalt();
-            loadProfilesFromStorage();
+            let footerClicks = 0;
+            const footerText = document.querySelector('.footer p');
+            if (footerText) {
+                footerText.style.cursor = 'pointer';
+                footerText.addEventListener('click', () => {
+                    footerClicks++;
+                    if (footerClicks === 3) {
+                        window.location.href = '/admin.html';
+                        footerClicks = 0;
+                    }
+                });
+            }
         });
 
+        window.addEventListener('DOMContentLoaded', init);
     </script>
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>© 2026 Dista — Internal Use Only</p>
+        </div>
+    </footer>
 </body>
 </html>

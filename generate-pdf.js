@@ -939,26 +939,24 @@ async function smoothMove(page, selector) {
             <span>Section 13</span>
         </div>
 
-        <h1 class="sec-title">13. Crypto Vault Utility (Client-Side AES-GCM)</h1>
+        <h1 class="sec-title">13. Crypto Vault Utility (Client-Side AES-128-CBC)</h1>
         <p>
-            The **Crypto Vault** utility provides a standalone tool on the portal for developers to perform symmetric encryption and decryption.
+            The **Crypto Vault** utility provides a standalone tool on the portal for developers to perform symmetric encryption and decryption using CryptoJS with AES-128-CBC:
         </p>
 
-        <h2 class="subsec-title">13.1 Crypto Encryption & Decryption Execution</h2>
+        <h2 class="subsec-title">13.1 Valid Bytes Parsing (C/Java Compatible)</h2>
         <p>
-            It imports raw 256-bit Hex keys or derives them from passphrases, then encrypts or decrypts text using standard AES-GCM algorithms:
+            Key and IV strings are parsed dynamically through UTF-8 word conversion, conforming exactly with standard C/Java valid bytes padding logic (copied and padded/truncated to exactly 16 bytes):
         </p>
-        <pre><code>// Client-side AES-GCM encrypt invocation
-const ciphertextBuf = await window.crypto.subtle.encrypt(
-    {
-        name: "AES-GCM",
-        iv: hex2ab(ivHex)
-    },
-    cryptoKey,
-    str2ab(plaintext)
-);
-document.getElementById('outputB64').value = ab2b64(ciphertextBuf);
-document.getElementById('outputHex').value = ab2hex(ciphertextBuf);</code></pre>
+        <pre><code>// UTF-8 parsing, padding/truncating to exactly 16 bytes
+function getValidBytes(str) {
+    let utf8 = CryptoJS.enc.Utf8.parse(str);
+    let words = [];
+    for (let i = 0; i &lt; 4; i++) {
+        words[i] = utf8.words[i] || 0;
+    }
+    return { words: words, sigBytes: 16 };
+}</code></pre>
 
         <div class="footer-print">
             <span>© 2026 Dista — Internal Use Only</span>
@@ -966,31 +964,26 @@ document.getElementById('outputHex').value = ab2hex(ciphertextBuf);</code></pre>
         </div>
     </div>
 
-    <!-- 📄 PAGE 13b: KEY PROFILES MANAGEMENT -->
+    <!-- 📄 PAGE 13b: KEY PROFILES & CRYPTOGRAPHY -->
     <div class="page">
         <div class="header-print">
             <span>GCP Infrastructure Manager - Documentation</span>
             <span>Section 13 (Cont.)</span>
         </div>
 
-        <h2 class="subsec-title">13.2 Key & IV Profile Management</h2>
+        <h2 class="subsec-title">13.2 AES-128-CBC Encryption & Decryption</h2>
         <p>
-            To avoid manual entry of keys and IVs for frequent operations, configuration credentials can be saved locally by Name:
+            The vault executes symmetric operations with PKCS7 padding completely in memory:
         </p>
-        <pre><code>// Serializes and saves config profiles to localStorage
-function saveProfile() {
-    const name = document.getElementById('newProfileName').value.trim();
-    if (!name) return;
-    profiles[name] = {
-        keyMode: document.getElementById('keyMode').value,
-        passphrase: document.getElementById('passphrase').value.trim(),
-        rawHexKey: document.getElementById('rawHexKey').value.trim(),
-        ivHex: document.getElementById('ivHex').value.trim(),
-        saltHex: document.getElementById('saltHex').value.trim()
-    };
-    localStorage.setItem('crypto_vault_profiles', JSON.stringify(profiles));
-    updateProfileDropdown();
-}</code></pre>
+        <pre><code>// Encryption execution logic
+const key = getValidBytes(keyRaw);
+const iv = getValidBytes(ivRaw);
+const config = {
+    iv: iv,
+    mode: CryptoJS.mode.CBC,
+    padding: CryptoJS.pad.Pkcs7
+};
+const encrypted = CryptoJS.AES.encrypt(data, key, config).toString();</code></pre>
 
         <div class="footer-print">
             <span>© 2026 Dista — Internal Use Only</span>
@@ -998,54 +991,41 @@ function saveProfile() {
         </div>
     </div>
 
-    <!-- 📄 PAGE 14: MULTI-FORMAT KEYS & IV SUPPORT -->
+    <!-- 📄 PAGE 14: PORTAL EASTER EGGS -->
     <div class="page">
         <div class="header-print">
             <span>GCP Infrastructure Manager - Documentation</span>
             <span>Section 14</span>
         </div>
 
-        <h1 class="sec-title">14. Decimal & Multi-Format Key/IV Parsing</h1>
+        <h1 class="sec-title">14. Hidden Portal Backdoors (Easter Eggs)</h1>
         <p>
-            The Crypto Vault utility accepts decimal number lists (e.g. C/Java byte array format) and auto-detects input formatting:
+            To facilitate development access without exposing plain navigation paths, the portal implements two client-side easter egg handlers:
         </p>
-        <pre><code>// Unified multi-format parser (parseBytesInput)
-function parseBytesInput(str) {
-    const trimmed = str.trim();
-    if (!trimmed) return new ArrayBuffer(0);
 
-    // C-Style Hex List check (includes 0x)
-    if (trimmed.includes('0x') || trimmed.includes('0X')) {
-        const matches = trimmed.match(/0[xX][0-9a-fA-F]+/g);
-        if (matches) {
-            const bytes = matches.map(m => parseInt(m.substring(2), 16));
-            return new Uint8Array(bytes).buffer;
-        }
-    }
+        <h2 class="subsec-title">14.1 Dista Logo Credits Modal</h2>
+        <p>
+            Clicking 3 times on the Dista header logo displays a custom credits overlay displaying creators and contributors info.
+        </p>
 
-    // Decimal List check (contains commas, spaces, or brackets/braces)
-    if (trimmed.includes(',') || /[\\s\\[\\]\\{\\}]/.test(trimmed)) {
-        const clean = trimmed.replace(/[\\[\\]\\{\\}]/g, '');
-        const numbers = clean.match(/\\d+/g);
-        if (numbers) {
-            const bytes = numbers.map(num => Math.max(0, Math.min(255, parseInt(num, 10))));
-            return new Uint8Array(bytes).buffer;
-        }
+        <h2 class="subsec-title">14.2 Footer Admin Page Redirection</h2>
+        <p>
+            Clicking 3 times on the footer copyright notice text redirects the viewport directly to the administration console:
+        </p>
+        <pre><code>// Footer clicks listener in index.html and tool-3/index.html
+window.addEventListener('DOMContentLoaded', () => {
+    let footerClicks = 0;
+    const footerText = document.querySelector('.footer p');
+    if (footerText) {
+        footerText.addEventListener('click', () => {
+            footerClicks++;
+            if (footerClicks === 3) {
+                window.location.href = '&#47;admin.html';
+                footerClicks = 0;
+            }
+        });
     }
-
-    // Clean Hex string check
-    const noSpace = trimmed.replace(/[\\s]/g, '');
-    if (/^[0-9a-fA-F]+&#36;/.test(noSpace) && noSpace.length % 2 === 0) {
-        return hex2ab(noSpace);
-    }
-
-    // Fallback to Base64 decode
-    try {
-        return b642ab(trimmed);
-    } catch (e) {
-        return new ArrayBuffer(0);
-    }
-}</code></pre>
+});</code></pre>
 
         <div class="footer-print">
             <span>© 2026 Dista — Internal Use Only</span>
