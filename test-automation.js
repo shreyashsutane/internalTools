@@ -16,8 +16,7 @@ try {
 
 const puppeteer = require('puppeteer');
 
-const PORT = 8080;
-const URL = `http://localhost:${PORT}/datastore-copier/`;
+const URL = `https://dista-tools.web.app/datastore-copier/`;
 
 const SRC_PROJECT = 'project-c0e231c7-2177-4eb0-979';
 const TGT_PROJECT = 'second-project-16364';
@@ -32,26 +31,10 @@ function getAccessToken() {
     }
 }
 
-// Helper to check if server is running
-function checkServer() {
-    return new Promise((resolve) => {
-        const req = http.get(`http://localhost:${PORT}/`, (res) => {
-            resolve(res.statusCode === 200);
-        });
-        req.on('error', () => resolve(false));
-    });
-}
-
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 async function main() {
-    console.log(`\n🚀 Starting Comprehensive GCP Infra Manager Test Suite (REAL GCP ONLY)...\n`);
-
-    const isRunning = await checkServer();
-    if (!isRunning) {
-        console.error('❌ Local server is not running on port 8080. Please start it with: node server.js');
-        process.exit(1);
-    }
+    console.log(`\n🚀 Starting Comprehensive GCP Infra Manager Test Suite (REAL GCP ON FIREBASE)...\n`);
 
     const token = getAccessToken();
 

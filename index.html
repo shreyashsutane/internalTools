@@ -368,15 +368,6 @@
             <!-- Tools will be rendered here by JavaScript -->
         </div>
 
-        <!-- Add Tool Button -->
-        <div class="mt-4">
-            <div class="add-tool-section">
-                <p class="text-muted mb-3">Want to add a new tool to this page?</p>
-                <button class="add-tool-btn" onclick="showAddToolModal()">
-                    <i class="bi bi-plus-lg me-2"></i>Add New Tool
-                </button>
-            </div>
-        </div>
     </section>
 
     <!-- Important Notes -->
@@ -399,93 +390,7 @@
         </div>
     </footer>
 
-    <!-- Admin Auth Modal -->
-    <div class="modal fade" id="adminAuthModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-shield-lock me-2"></i>Admin Authentication</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="adminAuthForm" onsubmit="verifyAdminAuth(event)">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Admin Username</label>
-                            <input type="text" class="form-control" id="adminUsername" required placeholder="Username">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Password</label>
-                            <input type="password" class="form-control" id="adminPassword" required placeholder="Password">
-                        </div>
-                        <div id="adminAuthError" class="text-danger small mt-2" style="display:none; font-weight: 500;">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i>Incorrect username or password.
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" form="adminAuthForm" class="btn btn-primary btn-sm" style="background: var(--dista-orange); border: none;">
-                        Verify & Proceed
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Add Tool Modal -->
-    <div class="modal fade" id="addToolModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-plus-square me-2"></i>Add New Tool</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addToolForm">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Tool Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="toolName" required placeholder="e.g., GCP Infrastructure Manager">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Icon (Emoji) <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="toolIcon" required placeholder="e.g., 🔄 or 🛠️" maxlength="2">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Short Description <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="toolDescShort" required placeholder="One line description shown on card">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Full Description <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="toolDescFull" rows="3" required placeholder="Detailed description shown on hover tooltip"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Tool Path/Link <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="toolPath" required placeholder="e.g., datastore-copier/ or https://...">
-                            <div class="form-text text-muted">Folder path relative to this page, or full URL</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Documentation Path <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="toolDocPath" required placeholder="e.g., docs/DOCUMENTATION.md or https://...">
-                            <div class="form-text text-muted">Path to documentation file (Markdown, HTML, or URL)</div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Status</label>
-                            <select class="form-select" id="toolStatus">
-                                <option value="active">Active (Ready to use)</option>
-                                <option value="coming-soon">Coming Soon (Locked)</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addNewTool()" style="background: var(--dista-orange); border: none;">
-                        <i class="bi bi-check-lg me-1"></i>Add Tool
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -517,9 +422,7 @@
         // - descFull: detailed tooltip on hover
         // - path: link to tool (folder/ or https://...)
         // - docPath: link to documentation (file path or URL)
-        // - status: "active" or "coming-soon"
-
-        let tools = JSON.parse(localStorage.getItem('dista_tools_v2')) || [
+        const tools = [
             {
                 id: 'datastore-copier',
                 name: 'GCP Infrastructure Manager',
@@ -552,41 +455,6 @@
             }
         ];
 
-        // Force update the old configurations in localStorage if they exist
-        let updated = false;
-        tools = tools.map(tool => {
-            if (tool.id === 'datastore-copier') {
-                if (tool.name === 'Datastore Copier' || tool.docPath === 'docs/DOCUMENTATION.md') {
-                    tool.name = 'GCP Infrastructure Manager';
-                    tool.docPath = 'docs/index.html';
-                    tool.descShort = 'Copy schemas, scheduled queries, and Datastore entities';
-                    tool.descFull = 'Compare and sync BigQuery table schemas, transfer scheduled queries, and copy Cloud Datastore entities between GCP projects. Features difference checking, query transfer, and batch copy logic.';
-                    updated = true;
-                }
-            } else if (tool.id === 'tool-2') {
-                if (tool.status === 'coming-soon' || tool.name === 'Placeholder Tool 2' || !tool.descFull.includes('claude.ai')) {
-                    tool.name = 'Sweep';
-                    tool.icon = '🧹';
-                    tool.descShort = 'Scan code locally for secrets before pasting';
-                    tool.descFull = 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href=\"https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b\" target=\"_blank\" style=\"color: var(--dista-orange); text-decoration: underline; word-break: break-all;\">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.';
-                    tool.path = 'tool-2/';
-                    tool.docPath = 'docs/index.html#section-sweep';
-                    tool.status = 'active';
-                    updated = true;
-                }
-            }
-            return tool;
-        });
-
-        // Save initial tools if not already saved or if updated
-        if (!localStorage.getItem('dista_tools_v2') || updated) {
-            saveTools();
-        }
-
-        function saveTools() {
-            localStorage.setItem('dista_tools_v2', JSON.stringify(tools));
-        }
-
         // ==========================================
         // RENDER TOOLS
         // ==========================================
@@ -594,25 +462,27 @@
             const grid = document.getElementById('toolsGrid');
             grid.innerHTML = '';
 
+            if (!tools || tools.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <div class="card p-5" style="background: var(--bg-card); border: 2px dashed var(--border-color); border-radius: 12px;">
+                            <div class="text-muted fs-1 mb-3">📭</div>
+                            <h4 class="fw-bold mb-2">No Tools Available</h4>
+                            <p class="text-muted mb-0">There are currently no internal tools configured. Please contact the administrator or check back later.</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             tools.forEach(tool => {
                 const isActive = tool.status === 'active';
                 const hasDoc = tool.docPath && tool.docPath !== '#';
-                const isDefault = ['datastore-copier', 'tool-2', 'tool-3'].includes(tool.id);
                 const card = document.createElement('div');
                 card.className = 'col-md-6 col-lg-4';
 
                 card.innerHTML = `
                     <div class="tool-card ${isActive ? 'active' : 'disabled'}" style="position: relative;">
-                        <!-- Delete Button for Custom Tools -->
-                        ${!isDefault 
-                            ? `<button onclick="deleteTool('${tool.id}')" title="Delete Custom Tool" 
-                                       style="position: absolute; top: 12px; right: 16px; background: none; border: none; color: #ef4444; font-size: 14px; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; z-index: 10;" 
-                                       onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">
-                                   <i class="bi bi-trash-fill"></i>
-                               </button>` 
-                            : ''
-                        }
-
                         <!-- Full description tooltip (appears on hover) -->
                         <div class="tool-desc-full">
                             <strong>${tool.name}</strong><br>
@@ -644,118 +514,6 @@
 
                 grid.appendChild(card);
             });
-        }
-
-        function deleteTool(id) {
-            if (confirm("Are you sure you want to delete this custom tool?")) {
-                tools = tools.filter(t => t.id !== id);
-                saveTools();
-                renderTools();
-            }
-        }
-
-        // ==========================================
-        // ADD TOOL MODAL
-        // ==========================================
-        const adminAuthModal = new bootstrap.Modal(document.getElementById('adminAuthModal'));
-        const addToolModal = new bootstrap.Modal(document.getElementById('addToolModal'));
-
-        function showAddToolModal() {
-            document.getElementById('adminAuthForm').reset();
-            document.getElementById('adminAuthError').style.display = 'none';
-            adminAuthModal.show();
-        }
-
-        async function verifyAdminAuth(event) {
-            event.preventDefault();
-            const submitBtn = document.querySelector('#adminAuthModal button[type="submit"]');
-            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Verify & Proceed';
-            
-            const user = document.getElementById('adminUsername').value.trim();
-            const pass = document.getElementById('adminPassword').value;
-            const errorDiv = document.getElementById('adminAuthError');
-            
-            errorDiv.style.display = 'none';
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
-            }
-
-            // Map username to email
-            let email = user;
-            if (!email.includes('@')) {
-                if (user.toLowerCase() === 'shreyash') {
-                    email = 'shreyashs14102002@gmail.com';
-                } else {
-                    email = `${user.toLowerCase()}@dista.ai`;
-                }
-            }
-
-            try {
-                // 1. Firebase Auth Sign-in
-                const authRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyA2VAyhU903tZB_CQFs-_KSz9gwLDJyLt8`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password: pass, returnSecureToken: true })
-                });
-
-                if (!authRes.ok) {
-                    throw new Error('Incorrect username or password.');
-                }
-
-                const authData = await authRes.json();
-                const idToken = authData.idToken;
-                const uid = authData.localId;
-
-                // 2. Check if UID is registered in admins collection
-                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/${uid}`, {
-                    headers: { 'Authorization': `Bearer ${idToken}` }
-                });
-
-                if (!firestoreRes.ok) {
-                    throw new Error('Access denied. You are not registered as an admin.');
-                }
-
-                adminAuthModal.hide();
-                setTimeout(() => {
-                    document.getElementById('addToolForm').reset();
-                    addToolModal.show();
-                }, 400);
-
-            } catch (e) {
-                console.error(e);
-                errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i>${e.message || 'Incorrect credentials or access denied.'}`;
-                errorDiv.style.display = 'block';
-            } finally {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = origBtnHtml;
-                }
-            }
-        }
-
-        function addNewTool() {
-            const form = document.getElementById('addToolForm');
-            if (!form.checkValidity()) {
-                form.reportValidity();
-                return;
-            }
-
-            const newTool = {
-                id: 'tool-' + Date.now(),
-                name: document.getElementById('toolName').value.trim(),
-                icon: document.getElementById('toolIcon').value.trim(),
-                descShort: document.getElementById('toolDescShort').value.trim(),
-                descFull: document.getElementById('toolDescFull').value.trim(),
-                path: document.getElementById('toolPath').value.trim(),
-                docPath: document.getElementById('toolDocPath').value.trim(),
-                status: document.getElementById('toolStatus').value
-            };
-
-            tools.push(newTool);
-            saveTools();
-            renderTools();
-            addToolModal.hide();
         }
 
         // ==========================================
