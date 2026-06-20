@@ -303,14 +303,29 @@
             <!-- Config Grid -->
             <div class="row g-4 mb-4">
                 <div class="col-md-6">
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Key Configuration Mode
-                        </label>
-                        <select class="form-select" id="keyMode" onchange="toggleKeyMode()">
-                            <option value="passphrase">Passphrase Key Derivation (PBKDF2)</option>
-                            <option value="raw">Raw 256-bit Hex Key</option>
-                        </select>
+                    <div class="row g-2">
+                        <div class="col-7">
+                            <div class="mb-3">
+                                <label class="form-label">Key Mode</label>
+                                <select class="form-select" id="keyMode" onchange="toggleKeyMode()">
+                                    <option value="passphrase">PBKDF2 Derivation</option>
+                                    <option value="raw">Raw Hex Key</option>
+                                    <option value="number-list">Decimal List</option>
+                                    <option value="cstyle-list">C-Style Hex List</option>
+                                    <option value="base64-key">Base64 Encoded Key</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-5">
+                            <div class="mb-3">
+                                <label class="form-label">Key Size</label>
+                                <select class="form-select" id="keySize" onchange="onKeySizeChange()">
+                                    <option value="256" selected>256-bit</option>
+                                    <option value="192">192-bit</option>
+                                    <option value="128">128-bit</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -327,10 +342,37 @@
                     <!-- Raw Hex Key Input -->
                     <div class="mb-3" id="raw-key-container" style="display: none;">
                         <label class="form-label">
-                            Raw 256-bit Hex Key (64 hex characters)
+                            Raw Hex Key (64 hex characters)
                             <button class="btn-sec-action" onclick="generateRandomHexKey()">Generate</button>
                         </label>
                         <input type="text" class="form-control" id="rawHexKey" placeholder="e.g. 2b7e151628aed2a6abf7158809cf4f3c...">
+                    </div>
+
+                    <!-- Decimal Number Key Input -->
+                    <div class="mb-3" id="number-key-container" style="display: none;">
+                        <label class="form-label">
+                            Decimal Number Key (32 bytes separated by commas)
+                            <button class="btn-sec-action" onclick="generateRandomNumberListKey()">Generate</button>
+                        </label>
+                        <input type="text" class="form-control" id="numberListKey" placeholder="e.g. 43, 108, 9, 212, 99... (32 numbers)">
+                    </div>
+
+                    <!-- C-Style Hex Key Input -->
+                    <div class="mb-3" id="cstyle-key-container" style="display: none;">
+                        <label class="form-label">
+                            C-Style Hex Key (separated by commas)
+                            <button class="btn-sec-action" onclick="generateRandomCStyleKey()">Generate</button>
+                        </label>
+                        <input type="text" class="form-control" id="cstyleKey" placeholder="e.g. 0x2b, 0x7e, 0x15... (32 numbers)">
+                    </div>
+
+                    <!-- Base64 Key Input -->
+                    <div class="mb-3" id="base64-key-container" style="display: none;">
+                        <label class="form-label">
+                            Base64 Key
+                            <button class="btn-sec-action" onclick="generateRandomBase64Key()">Generate</button>
+                        </label>
+                        <input type="text" class="form-control" id="base64Key" placeholder="e.g. K34VFiiu0qar9xWICc9PPA==">
                     </div>
                 </div>
             </div>
@@ -339,23 +381,32 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label class="form-label">
-                            Initialization Vector (IV) (24 hex characters)
-                            <button class="btn-sec-action" onclick="generateRandomIV()">Generate</button>
+                            Initialization Vector (IV) (Hex, Dec, C-Style Hex, or Base64)
+                            <div class="d-flex gap-1">
+                                <button class="btn-sec-action" onclick="generateRandomIV()" style="font-size: 0.73rem; padding: 2px 5px;">Gen Hex</button>
+                                <button class="btn-sec-action" onclick="generateRandomNumberListIV()" style="font-size: 0.73rem; padding: 2px 5px;">Gen Dec</button>
+                                <button class="btn-sec-action" onclick="generateRandomCStyleIV()" style="font-size: 0.73rem; padding: 2px 5px;">Gen C-Style</button>
+                            </div>
                         </label>
-                        <input type="text" class="form-control" id="ivHex" placeholder="e.g. f3083e20085a12df085b191c">
+                        <input type="text" class="form-control" id="ivHex" placeholder="e.g. f3083e20085a12df085b191c or 243, 8, 62...">
                     </div>
                 </div>
 
                 <div class="col-md-6" id="salt-container">
                     <div class="mb-3">
                         <label class="form-label">
-                            Salt (for PBKDF2) (32 hex characters)
-                            <button class="btn-sec-action" onclick="generateRandomSalt()">Generate</button>
+                            Salt (for PBKDF2) (Hex, Dec, C-Style Hex, or Base64)
+                            <div class="d-flex gap-1">
+                                <button class="btn-sec-action" onclick="generateRandomSalt()" style="font-size: 0.73rem; padding: 2px 5px;">Gen Hex</button>
+                                <button class="btn-sec-action" onclick="generateRandomNumberListSalt()" style="font-size: 0.73rem; padding: 2px 5px;">Gen Dec</button>
+                                <button class="btn-sec-action" onclick="generateRandomCStyleSalt()" style="font-size: 0.73rem; padding: 2px 5px;">Gen C-Style</button>
+                            </div>
                         </label>
-                        <input type="text" class="form-control" id="saltHex" placeholder="e.g. 9f8e7d6c5b4a3f2e1d0c9b8a7a6a5a4a">
+                        <input type="text" class="form-control" id="saltHex" placeholder="e.g. 9f8e7d6c5b4a3f2e1 or 159, 142, 125...">
                     </div>
                 </div>
             </div>
+
 
             <!-- Tab Panels -->
             <div class="tab-content" id="cryptoTabContent">
@@ -465,25 +516,133 @@
             return ab2hex(bytes.buffer);
         }
 
+        // Parse Hex, Decimal numbers list, C-Style Hex list, or Base64 into ArrayBuffer
+        function parseBytesInput(str) {
+            const trimmed = str.trim();
+            if (!trimmed) return new ArrayBuffer(0);
+
+            // C-Style Hex List check (includes 0x or 0X)
+            if (trimmed.includes('0x') || trimmed.includes('0X')) {
+                const matches = trimmed.match(/0[xX][0-9a-fA-F]+/g);
+                if (matches) {
+                    const bytes = matches.map(m => parseInt(m.substring(2), 16));
+                    return new Uint8Array(bytes).buffer;
+                }
+            }
+
+            // Decimal List check (contains commas or brackets or braces, and numbers)
+            if (trimmed.includes(',') || /[\s\[\]\{\}]/.test(trimmed)) {
+                const clean = trimmed.replace(/[\[\]\{\}]/g, '');
+                const numbers = clean.match(/\d+/g);
+                if (numbers) {
+                    const bytes = numbers.map(num => Math.max(0, Math.min(255, parseInt(num, 10))));
+                    return new Uint8Array(bytes).buffer;
+                }
+            }
+
+            // Clean Hex string check (contains only hex characters)
+            const noSpace = trimmed.replace(/[\s]/g, '');
+            if (/^[0-9a-fA-F]+$/.test(noSpace) && noSpace.length % 2 === 0) {
+                return hex2ab(noSpace);
+            }
+
+            // Fallback to Base64 decode
+            try {
+                return b642ab(trimmed);
+            } catch (e) {
+                return new ArrayBuffer(0);
+            }
+        }
+
         // ==========================================
         // UI MANAGEMENT
         // ==========================================
         function toggleKeyMode() {
             const mode = document.getElementById('keyMode').value;
+            const size = document.getElementById('keySize').value;
             const passContainer = document.getElementById('passphrase-container');
             const rawContainer = document.getElementById('raw-key-container');
+            const numContainer = document.getElementById('number-key-container');
+            const cstyleContainer = document.getElementById('cstyle-key-container');
+            const base64Container = document.getElementById('base64-key-container');
             const saltContainer = document.getElementById('salt-container');
+
+            // Hide all containers initially
+            passContainer.style.display = 'none';
+            rawContainer.style.display = 'none';
+            numContainer.style.display = 'none';
+            cstyleContainer.style.display = 'none';
+            base64Container.style.display = 'none';
+            saltContainer.style.display = 'none';
 
             if (mode === 'passphrase') {
                 passContainer.style.display = 'block';
-                rawContainer.style.display = 'none';
                 saltContainer.style.display = 'block';
-            } else {
-                passContainer.style.display = 'none';
+            } else if (mode === 'raw') {
                 rawContainer.style.display = 'block';
-                saltContainer.style.display = 'none';
+                
+                // Update labels and placeholders dynamically based on size
+                const label = rawContainer.querySelector('.form-label');
+                const input = document.getElementById('rawHexKey');
+                if (size === '128') {
+                    label.innerHTML = 'Raw 128-bit Hex Key (32 hex characters) <button class="btn-sec-action" onclick="generateRandomHexKey()">Generate</button>';
+                    input.placeholder = 'e.g. 2b7e151628aed2a6abf7158809cf4f3c';
+                } else if (size === '192') {
+                    label.innerHTML = 'Raw 192-bit Hex Key (48 hex characters) <button class="btn-sec-action" onclick="generateRandomHexKey()">Generate</button>';
+                    input.placeholder = 'e.g. 2b7e151628aed2a6abf7158809cf4f3ca6abf7158809cf4f';
+                } else {
+                    label.innerHTML = 'Raw 256-bit Hex Key (64 hex characters) <button class="btn-sec-action" onclick="generateRandomHexKey()">Generate</button>';
+                    input.placeholder = 'e.g. 2b7e151628aed2a6abf7158809cf4f3cabf7158809cf4f3c...';
+                }
+            } else if (mode === 'number-list') {
+                numContainer.style.display = 'block';
+                
+                // Update labels and placeholders dynamically based on size
+                const label = numContainer.querySelector('.form-label');
+                const input = document.getElementById('numberListKey');
+                if (size === '128') {
+                    label.innerHTML = 'Decimal Number Key (16 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomNumberListKey()">Generate</button>';
+                    input.placeholder = 'e.g. 43, 108, 9, 212... (16 numbers)';
+                } else if (size === '192') {
+                    label.innerHTML = 'Decimal Number Key (24 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomNumberListKey()">Generate</button>';
+                    input.placeholder = 'e.g. 43, 108, 9, 212... (24 numbers)';
+                } else {
+                    label.innerHTML = 'Decimal Number Key (32 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomNumberListKey()">Generate</button>';
+                    input.placeholder = 'e.g. 43, 108, 9, 212... (32 numbers)';
+                }
+            } else if (mode === 'cstyle-list') {
+                cstyleContainer.style.display = 'block';
+                
+                // Update labels and placeholders dynamically based on size
+                const label = cstyleContainer.querySelector('.form-label');
+                const input = document.getElementById('cstyleKey');
+                if (size === '128') {
+                    label.innerHTML = 'C-Style Hex Key (16 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomCStyleKey()">Generate</button>';
+                    input.placeholder = 'e.g. 0x2b, 0x7e, 0x15... (16 numbers)';
+                } else if (size === '192') {
+                    label.innerHTML = 'C-Style Hex Key (24 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomCStyleKey()">Generate</button>';
+                    input.placeholder = 'e.g. 0x2b, 0x7e, 0x15... (24 numbers)';
+                } else {
+                    label.innerHTML = 'C-Style Hex Key (32 bytes separated by commas) <button class="btn-sec-action" onclick="generateRandomCStyleKey()">Generate</button>';
+                    input.placeholder = 'e.g. 0x2b, 0x7e, 0x15... (32 numbers)';
+                }
+            } else if (mode === 'base64-key') {
+                base64Container.style.display = 'block';
+                
+                const label = base64Container.querySelector('.form-label');
+                const input = document.getElementById('base64Key');
+                label.innerHTML = `Base64 Encoded Key (${size}-bit) <button class="btn-sec-action" onclick="generateRandomBase64Key()">Generate</button>`;
+                input.placeholder = size === '128' ? 'e.g. K34VFiiu0qar9xWICc9PPA==' : (size === '192' ? 'e.g. K34VFiiu0qar9xWICc9PPAgHFlka1Pla' : 'e.g. K34VFiiu0qar9xWICc9PPAgHFlka1PlaK34VFiiu0qa=');
             }
             clearOutputs();
+        }
+
+        function onKeySizeChange() {
+            toggleKeyMode();
+            generateRandomHexKey();
+            generateRandomNumberListKey();
+            generateRandomCStyleKey();
+            generateRandomBase64Key();
         }
 
         function generateRandomPassphrase() {
@@ -493,15 +652,61 @@
         }
 
         function generateRandomHexKey() {
-            document.getElementById('rawHexKey').value = generateRandomHex(32); // 256 bits = 32 bytes
+            const size = parseInt(document.getElementById('keySize').value, 10);
+            document.getElementById('rawHexKey').value = generateRandomHex(size / 8);
+        }
+
+        function generateRandomNumberListKey() {
+            const size = parseInt(document.getElementById('keySize').value, 10);
+            const bytes = new Uint8Array(size / 8);
+            window.crypto.getRandomValues(bytes);
+            document.getElementById('numberListKey').value = Array.from(bytes).join(', ');
+        }
+
+        function generateRandomCStyleKey() {
+            const size = parseInt(document.getElementById('keySize').value, 10);
+            const bytes = new Uint8Array(size / 8);
+            window.crypto.getRandomValues(bytes);
+            document.getElementById('cstyleKey').value = Array.from(bytes).map(x => '0x' + ('0' + x.toString(16)).slice(-2)).join(', ');
+        }
+
+        function generateRandomBase64Key() {
+            const size = parseInt(document.getElementById('keySize').value, 10);
+            const bytes = new Uint8Array(size / 8);
+            window.crypto.getRandomValues(bytes);
+            document.getElementById('base64Key').value = ab2b64(bytes.buffer);
         }
 
         function generateRandomIV() {
             document.getElementById('ivHex').value = generateRandomHex(12); // 96 bits = 12 bytes
         }
 
+        function generateRandomNumberListIV() {
+            const bytes = new Uint8Array(12);
+            window.crypto.getRandomValues(bytes);
+            document.getElementById('ivHex').value = Array.from(bytes).join(', ');
+        }
+
+        function generateRandomCStyleIV() {
+            const bytes = new Uint8Array(12);
+            window.crypto.getRandomValues(bytes);
+            document.getElementById('ivHex').value = Array.from(bytes).map(x => '0x' + ('0' + x.toString(16)).slice(-2)).join(', ');
+        }
+
         function generateRandomSalt() {
             document.getElementById('saltHex').value = generateRandomHex(16); // 128 bits = 16 bytes
+        }
+
+        function generateRandomNumberListSalt() {
+            const bytes = new Uint8Array(16);
+            window.crypto.getRandomValues(bytes);
+            document.getElementById('saltHex').value = Array.from(bytes).join(', ');
+        }
+
+        function generateRandomCStyleSalt() {
+            const bytes = new Uint8Array(16);
+            window.crypto.getRandomValues(bytes);
+            document.getElementById('saltHex').value = Array.from(bytes).map(x => '0x' + ('0' + x.toString(16)).slice(-2)).join(', ');
         }
 
         function clearOutputs() {
@@ -509,6 +714,7 @@
             document.getElementById('decrypt-outputs').style.display = 'none';
             document.getElementById('errorBanner').style.display = 'none';
         }
+
 
         function showError(message) {
             document.getElementById('errorMessage').innerText = message;
@@ -570,15 +776,23 @@
             }
 
             const keyMode = document.getElementById('keyMode').value;
+            const keySize = document.getElementById('keySize').value;
             const passphrase = document.getElementById('passphrase').value.trim();
             const rawHexKey = document.getElementById('rawHexKey').value.trim();
+            const numberListKey = document.getElementById('numberListKey').value.trim();
+            const cstyleKey = document.getElementById('cstyleKey').value.trim();
+            const base64Key = document.getElementById('base64Key').value.trim();
             const ivHex = document.getElementById('ivHex').value.trim();
             const saltHex = document.getElementById('saltHex').value.trim();
 
             profiles[name] = {
                 keyMode,
+                keySize,
                 passphrase,
                 rawHexKey,
+                numberListKey,
+                cstyleKey,
+                base64Key,
                 ivHex,
                 saltHex
             };
@@ -596,10 +810,14 @@
 
             const profile = profiles[name];
             document.getElementById('keyMode').value = profile.keyMode;
+            document.getElementById('keySize').value = profile.keySize || '256';
             toggleKeyMode();
 
             document.getElementById('passphrase').value = profile.passphrase || '';
             document.getElementById('rawHexKey').value = profile.rawHexKey || '';
+            document.getElementById('numberListKey').value = profile.numberListKey || '';
+            document.getElementById('cstyleKey').value = profile.cstyleKey || '';
+            document.getElementById('base64Key').value = profile.base64Key || '';
             document.getElementById('ivHex').value = profile.ivHex || '';
             document.getElementById('saltHex').value = profile.saltHex || '';
         }
@@ -619,6 +837,9 @@
                 select.value = '';
                 generateRandomPassphrase();
                 generateRandomHexKey();
+                generateRandomNumberListKey();
+                generateRandomCStyleKey();
+                generateRandomBase64Key();
                 generateRandomIV();
                 generateRandomSalt();
             }
@@ -627,7 +848,7 @@
         // ==========================================
         // CRYPTO CORE
         // ==========================================
-        async function deriveKeyFromPassphrase(passphrase, saltBuffer) {
+        async function deriveKeyFromPassphrase(passphrase, saltBuffer, keySize) {
             const rawKey = await window.crypto.subtle.importKey(
                 "raw",
                 str2ab(passphrase),
@@ -643,16 +864,16 @@
                     hash: "SHA-256"
                 },
                 rawKey,
-                { name: "AES-GCM", length: 256 },
+                { name: "AES-GCM", length: parseInt(keySize, 10) },
                 false,
                 ["encrypt", "decrypt"]
             );
         }
 
-        async function importRawKey(hexKey) {
-            const keyBuf = hex2ab(hexKey);
-            if (keyBuf.byteLength !== 32) {
-                throw new Error("Raw key must be exactly 256 bits (64 hex characters).");
+        async function importRawKey(keyBuf, expectedSize) {
+            const expectedBytes = expectedSize / 8;
+            if (keyBuf.byteLength !== expectedBytes) {
+                throw new Error(`Raw key must resolve to exactly ${expectedSize} bits (${expectedBytes} bytes). Received ${keyBuf.byteLength * 8} bits (${keyBuf.byteLength} bytes).`);
             }
             return await window.crypto.subtle.importKey(
                 "raw",
@@ -669,15 +890,18 @@
         async function executeEncrypt() {
             clearOutputs();
             const mode = document.getElementById('keyMode').value;
-            const ivHex = document.getElementById('ivHex').value.trim();
+            const sizeNum = parseInt(document.getElementById('keySize').value, 10);
+            const ivStr = document.getElementById('ivHex').value.trim();
             const plaintext = document.getElementById('encryptPlaintext').value;
 
             if (!plaintext) {
                 showError("Please enter some plaintext to encrypt.");
                 return;
             }
-            if (ivHex.length !== 24) {
-                showError("IV must be exactly 24 hex characters (96 bits).");
+            
+            const ivBuf = parseBytesInput(ivStr);
+            if (ivBuf.byteLength === 0) {
+                showError("IV cannot be empty. Please enter a valid Hex, Dec, C-Style, or Base64 IV.");
                 return;
             }
 
@@ -685,20 +909,33 @@
                 let cryptoKey;
                 if (mode === 'passphrase') {
                     const pass = document.getElementById('passphrase').value.trim();
-                    const saltHex = document.getElementById('saltHex').value.trim();
+                    const saltStr = document.getElementById('saltHex').value.trim();
                     if (!pass) throw new Error("Please enter a passphrase.");
-                    if (saltHex.length !== 32) throw new Error("Salt must be exactly 32 hex characters (128 bits).");
-                    cryptoKey = await deriveKeyFromPassphrase(pass, hex2ab(saltHex));
-                } else {
+                    const saltBuf = parseBytesInput(saltStr);
+                    if (saltBuf.byteLength !== 16) throw new Error("Salt must resolve to exactly 16 bytes (128 bits).");
+                    cryptoKey = await deriveKeyFromPassphrase(pass, saltBuf, sizeNum);
+                } else if (mode === 'raw') {
                     const rawHexKey = document.getElementById('rawHexKey').value.trim();
                     if (!rawHexKey) throw new Error("Please enter a raw hex key.");
-                    cryptoKey = await importRawKey(rawHexKey);
+                    cryptoKey = await importRawKey(parseBytesInput(rawHexKey), sizeNum);
+                } else if (mode === 'number-list') {
+                    const numStr = document.getElementById('numberListKey').value.trim();
+                    if (!numStr) throw new Error("Please enter decimal key numbers.");
+                    cryptoKey = await importRawKey(parseBytesInput(numStr), sizeNum);
+                } else if (mode === 'cstyle-list') {
+                    const cstyleStr = document.getElementById('cstyleKey').value.trim();
+                    if (!cstyleStr) throw new Error("Please enter C-Style hex key numbers.");
+                    cryptoKey = await importRawKey(parseBytesInput(cstyleStr), sizeNum);
+                } else { // base64-key
+                    const base64Str = document.getElementById('base64Key').value.trim();
+                    if (!base64Str) throw new Error("Please enter a Base64 encoded key.");
+                    cryptoKey = await importRawKey(parseBytesInput(base64Str), sizeNum);
                 }
 
                 const ciphertextBuf = await window.crypto.subtle.encrypt(
                     {
                         name: "AES-GCM",
-                        iv: hex2ab(ivHex)
+                        iv: ivBuf
                     },
                     cryptoKey,
                     str2ab(plaintext)
@@ -716,44 +953,59 @@
         async function executeDecrypt() {
             clearOutputs();
             const mode = document.getElementById('keyMode').value;
-            const ivHex = document.getElementById('ivHex').value.trim();
+            const sizeNum = parseInt(document.getElementById('keySize').value, 10);
+            const ivStr = document.getElementById('ivHex').value.trim();
             const ciphertext = document.getElementById('decryptCiphertext').value.trim();
 
             if (!ciphertext) {
                 showError("Please enter some ciphertext to decrypt.");
                 return;
             }
-            if (ivHex.length !== 24) {
-                showError("IV must be exactly 24 hex characters (96 bits).");
+            
+            const ivBuf = parseBytesInput(ivStr);
+            if (ivBuf.byteLength === 0) {
+                showError("IV cannot be empty. Please enter a valid Hex, Dec, C-Style, or Base64 IV.");
                 return;
             }
 
             try {
                 let ciphertextBuf;
-                // Parse base64 or hex
-                if (/^[0-9a-fA-F]+$/.test(ciphertext)) {
-                    ciphertextBuf = hex2ab(ciphertext);
-                } else {
-                    ciphertextBuf = b642ab(ciphertext);
+                // Parse base64 or hex or other formats
+                ciphertextBuf = parseBytesInput(ciphertext);
+                if (ciphertextBuf.byteLength === 0) {
+                    throw new Error("Could not parse ciphertext. Please verify it is valid Base64 or Hex.");
                 }
 
                 let cryptoKey;
                 if (mode === 'passphrase') {
                     const pass = document.getElementById('passphrase').value.trim();
-                    const saltHex = document.getElementById('saltHex').value.trim();
+                    const saltStr = document.getElementById('saltHex').value.trim();
                     if (!pass) throw new Error("Please enter the passphrase.");
-                    if (saltHex.length !== 32) throw new Error("Salt must be exactly 32 hex characters (128 bits).");
-                    cryptoKey = await deriveKeyFromPassphrase(pass, hex2ab(saltHex));
-                } else {
+                    const saltBuf = parseBytesInput(saltStr);
+                    if (saltBuf.byteLength !== 16) throw new Error("Salt must resolve to exactly 16 bytes (128 bits).");
+                    cryptoKey = await deriveKeyFromPassphrase(pass, saltBuf, sizeNum);
+                } else if (mode === 'raw') {
                     const rawHexKey = document.getElementById('rawHexKey').value.trim();
                     if (!rawHexKey) throw new Error("Please enter the raw hex key.");
-                    cryptoKey = await importRawKey(rawHexKey);
+                    cryptoKey = await importRawKey(parseBytesInput(rawHexKey), sizeNum);
+                } else if (mode === 'number-list') {
+                    const numStr = document.getElementById('numberListKey').value.trim();
+                    if (!numStr) throw new Error("Please enter decimal key numbers.");
+                    cryptoKey = await importRawKey(parseBytesInput(numStr), sizeNum);
+                } else if (mode === 'cstyle-list') {
+                    const cstyleStr = document.getElementById('cstyleKey').value.trim();
+                    if (!cstyleStr) throw new Error("Please enter C-Style hex key numbers.");
+                    cryptoKey = await importRawKey(parseBytesInput(cstyleStr), sizeNum);
+                } else { // base64-key
+                    const base64Str = document.getElementById('base64Key').value.trim();
+                    if (!base64Str) throw new Error("Please enter the Base64 encoded key.");
+                    cryptoKey = await importRawKey(parseBytesInput(base64Str), sizeNum);
                 }
 
                 const decryptedBuf = await window.crypto.subtle.decrypt(
                     {
                         name: "AES-GCM",
-                        iv: hex2ab(ivHex)
+                        iv: ivBuf
                     },
                     cryptoKey,
                     ciphertextBuf
@@ -771,10 +1023,14 @@
         window.addEventListener('DOMContentLoaded', () => {
             generateRandomPassphrase();
             generateRandomHexKey();
+            generateRandomNumberListKey();
+            generateRandomCStyleKey();
+            generateRandomBase64Key();
             generateRandomIV();
             generateRandomSalt();
             loadProfilesFromStorage();
         });
+
     </script>
 </body>
 </html>

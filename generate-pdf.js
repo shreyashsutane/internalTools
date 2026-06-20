@@ -997,8 +997,64 @@ function saveProfile() {
             <span>Page 19</span>
         </div>
     </div>
+
+    <!-- 📄 PAGE 14: MULTI-FORMAT KEYS & IV SUPPORT -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 14</span>
+        </div>
+
+        <h1 class="sec-title">14. Decimal & Multi-Format Key/IV Parsing</h1>
+        <p>
+            The Crypto Vault utility accepts decimal number lists (e.g. C/Java byte array format) and auto-detects input formatting:
+        </p>
+        <pre><code>// Unified multi-format parser (parseBytesInput)
+function parseBytesInput(str) {
+    const trimmed = str.trim();
+    if (!trimmed) return new ArrayBuffer(0);
+
+    // C-Style Hex List check (includes 0x)
+    if (trimmed.includes('0x') || trimmed.includes('0X')) {
+        const matches = trimmed.match(/0[xX][0-9a-fA-F]+/g);
+        if (matches) {
+            const bytes = matches.map(m => parseInt(m.substring(2), 16));
+            return new Uint8Array(bytes).buffer;
+        }
+    }
+
+    // Decimal List check (contains commas, spaces, or brackets/braces)
+    if (trimmed.includes(',') || /[\\s\\[\\]\\{\\}]/.test(trimmed)) {
+        const clean = trimmed.replace(/[\\[\\]\\{\\}]/g, '');
+        const numbers = clean.match(/\\d+/g);
+        if (numbers) {
+            const bytes = numbers.map(num => Math.max(0, Math.min(255, parseInt(num, 10))));
+            return new Uint8Array(bytes).buffer;
+        }
+    }
+
+    // Clean Hex string check
+    const noSpace = trimmed.replace(/[\\s]/g, '');
+    if (/^[0-9a-fA-F]+&#36;/.test(noSpace) && noSpace.length % 2 === 0) {
+        return hex2ab(noSpace);
+    }
+
+    // Fallback to Base64 decode
+    try {
+        return b642ab(trimmed);
+    } catch (e) {
+        return new ArrayBuffer(0);
+    }
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 20</span>
+        </div>
+    </div>
 </body>
 </html>
+
 `;
 
 async function main() {
