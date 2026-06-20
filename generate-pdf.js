@@ -756,6 +756,111 @@ function saveProperty(key, value, type) {
             <span>Page 12</span>
         </div>
     </div>
+
+    <!-- 📄 PAGE 8: SCHEDULED QUERIES TRANSFER -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 8</span>
+        </div>
+
+        <h1 class="sec-title">8. Scheduled Queries Transfer Operations</h1>
+        <p>
+            Scheduled queries in BigQuery are managed by the BigQuery Data Transfer Service API. The portal allows copying config details to target projects.
+        </p>
+
+        <h2 class="subsec-title">8.1 Copying Config Parameters</h2>
+        <p>
+            Configs are fetched, target projects are bound, and configurations are duplicated. Dest datasets are updated using payload properties:
+        </p>
+        <pre><code>// Clones Scheduled Query Configs to Target Project
+async function copyScheduledQuery(srcProj, tgtProj, config) {
+    const url = &#96;https://bigquerydatatransfer.googleapis.com/v1/projects/&#36;{tgtProj}/transferConfigs&#96;;
+    const body = {
+        displayName: config.displayName,
+        dataSourceId: "scheduled_query",
+        params: { query: config.params.query },
+        schedule: config.schedule
+    };
+    return await Api.fetch(url, {
+        method: 'POST',
+        body: JSON.stringify(body)
+    });
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 13</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 9: WEB CRYPTO LOGS ENCRYPTION -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 9</span>
+        </div>
+
+        <h1 class="sec-title">9. Client-Side Log Encryption (Web Crypto API)</h1>
+        <p>
+            Audit logs are encrypted locally using the browser's native **Web Crypto API** (AES-GCM 256-bit key derived via PBKDF2) before being saved in <code>localStorage</code>.
+        </p>
+
+        <h2 class="subsec-title">9.1 Cryptographic Encryption Method</h2>
+        <p>
+            The encryption process generates a random 96-bit Initialization Vector (IV) and a 16-byte salt, returning the base64-encoded encrypted text:
+        </p>
+        <pre><code>// Encrypts plaintext using AES-GCM and derived PBKDF2 key
+async function encryptLog(plaintext, password) {
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(password, salt);
+    const ciphertext = await window.crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        key,
+        new TextEncoder().encode(plaintext)
+    );
+    return { ciphertext, salt, iv };
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 14</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 10: AUDIT LOG SCHEMA -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 10</span>
+        </div>
+
+        <h1 class="sec-title">10. Audit Log Database Schema & Models</h1>
+        <p>
+            Audit records stored in the cloud (within Cloud Firestore <code>/audit_logs</code> collection) follow a strict document model containing the action details and actor identity.
+        </p>
+
+        <h2 class="subsec-title">10.1 Sample Firestore Audit Log Document Payload</h2>
+        <p>
+            The JSON payload below displays the exact document fields sent to the Firestore API when auditing an event:
+        </p>
+        <pre><code>{
+  "fields": {
+    "action": { "stringValue": "DATASTORE_COPY" },
+    "actor": { "stringValue": "shreyashs14102002@gmail.com" },
+    "source_project": { "stringValue": "project-c0e231c7-2177" },
+    "target_project": { "stringValue": "second-project-16364" },
+    "details": { "stringValue": "Copied 120 entities of kind 'DummyKind'" },
+    "timestamp": { "timestampValue": "2026-06-20T22:20:00Z" }
+  }
+}</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 15</span>
+        </div>
+    </div>
 </body>
 </html>
 `;
