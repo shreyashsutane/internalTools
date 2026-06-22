@@ -70,12 +70,13 @@
             justify-content: center;
             cursor: pointer;
             font-size: 1.2rem;
-            transition: all 0.2s;
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s, color 0.2s, border-color 0.2s;
         }
         .theme-toggle:hover {
             background: var(--dista-orange);
             color: white;
             border-color: var(--dista-orange);
+            transform: scale(1.1) rotate(360deg);
         }
 
         /* Hero */
@@ -501,6 +502,27 @@
             70% { box-shadow: 0 0 0 5px rgba(247,148,29,0); }
             100% { box-shadow: 0 0 0 0 rgba(247,148,29,0); }
         }
+
+        /* Floating Emoji Micro-interactions */
+        @keyframes floatEmoji {
+            0% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-5px) scale(1.05); }
+            100% { transform: translateY(0px) scale(1); }
+        }
+        .float-emoji {
+            display: inline-block;
+            animation: floatEmoji 4s ease-in-out infinite;
+        }
+
+        /* Welcome Screen Animations */
+        @keyframes pulseGlowWelcome {
+            0% { transform: scale(1); box-shadow: 0 0 20px rgba(247, 148, 29, 0.25); }
+            100% { transform: scale(1.05); box-shadow: 0 0 40px rgba(247, 148, 29, 0.55); }
+        }
+        @keyframes scaleWidthWelcome {
+            0% { width: 0; }
+            100% { width: 60px; }
+        }
     </style>
 <base target="_self">
 </head>
@@ -525,11 +547,8 @@
     <section class="hero-section">
         <div class="container animate-fade-in-up" style="max-width: 1200px; animation-delay: 0.1s;">
             <div class="text-center">
-                <h2 class="hero-title">🛠️ Welcome to Dista Internal Tools</h2>
-                <p class="hero-subtitle mx-auto">
-                    A collection of utilities for internal development, data management, and operational tasks. 
-                    Click on any tool card to open it.
-                </p>
+                <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> Welcome to Dista Internal Tools</h2>
+                <p class="hero-subtitle mx-auto" id="typingSubtitle" style="min-height: 54px;"></p>
             </div>
         </div>
     </section>
@@ -673,7 +692,7 @@
                             ${tool.descFull}
                         </div>
 
-                        <div class="tool-icon">${tool.icon}</div>
+                        <div class="tool-icon"><span class="float-emoji" style="animation-delay: -${Math.random() * 4}s;">${tool.icon}</span></div>
                         <h4 class="tool-name">${tool.name}</h4>
 
                         <!-- Short description always visible -->
@@ -859,11 +878,96 @@
             }
         }
 
+        function typeWriterEffect() {
+            const text = "A collection of utilities for internal development, data management, and operational tasks. Click on any tool card to open it.";
+            const speed = 20; // speed in ms
+            let i = 0;
+            const target = document.getElementById('typingSubtitle');
+            if (!target) return;
+            target.innerHTML = '';
+            
+            function type() {
+                if (i < text.length) {
+                    target.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
+        function showWelcomeAnimation() {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.right = '0';
+                overlay.style.bottom = '0';
+                overlay.style.background = 'rgba(7, 10, 15, 0.98)';
+                overlay.style.backdropFilter = 'blur(16px)';
+                overlay.style.display = 'flex';
+                overlay.style.flexDirection = 'column';
+                overlay.style.alignItems = 'center';
+                overlay.style.justifyContent = 'center';
+                overlay.style.zIndex = '10000';
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+                
+                overlay.innerHTML = `
+                    <div style="text-align:center; transform: scale(0.95); transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)" id="welcome-content">
+                        <div class="mb-4 d-flex justify-content-center" style="margin-bottom: 2rem;">
+                            <div style="width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle, var(--dista-orange) 0%, transparent 70%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(247, 148, 29, 0.3); animation: pulseGlowWelcome 2s infinite alternate">
+                                <i class="bi bi-cpu-fill" style="color:var(--dista-orange); font-size: 2rem; line-height: 80px; text-align: center; width: 100%"></i>
+                            </div>
+                        </div>
+                        <div style="color:var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.25em; font-weight: 700; margin-bottom: 12px; animation: fadeInUp 0.8s ease-out">
+                            Dista Operations Portal
+                        </div>
+                        <h1 style="color:#ffffff; font-size: 3rem; font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 0 20px rgba(255,255,255,0.15); animation: fadeInUp 1s ease-out">
+                            Welcome, Distan
+                        </h1>
+                        <div style="width: 60px; height: 3px; background: var(--dista-orange); margin: 0 auto; border-radius: 2px; animation: scaleWidthWelcome 1.2s ease-out"></div>
+                    </div>
+                `;
+                
+                document.body.appendChild(overlay);
+                
+                // Trigger browser reflow
+                overlay.getBoundingClientRect();
+                
+                // Fade in
+                overlay.style.opacity = '1';
+                const content = overlay.querySelector('#welcome-content');
+                if (content) content.style.transform = 'scale(1)';
+                
+                // Hide page scrolling while overlay is visible
+                document.body.style.overflow = 'hidden';
+                
+                setTimeout(() => {
+                    // Fade out
+                    overlay.style.opacity = '0';
+                    if (content) content.style.transform = 'scale(1.03)';
+                    setTimeout(() => {
+                        overlay.remove();
+                        document.body.style.overflow = '';
+                        resolve();
+                    }, 600);
+                }, 2200);
+            });
+        }
+
         // ==========================================
         // INIT
         // ==========================================
-        renderTools();
-        initScratchCard();
+        async function runInit() {
+            renderTools();
+            initScratchCard();
+            await showWelcomeAnimation();
+            typeWriterEffect();
+        }
+
+        window.addEventListener('DOMContentLoaded', runInit);
     </script>
 </body>
 </html>
