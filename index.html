@@ -198,29 +198,35 @@
         /* Tool Cards */
         .tool-card {
             background: var(--bg-card);
-            border: 1px solid var(--border-color);
+            border: 1px solid transparent; 
+            background-clip: padding-box; 
             border-radius: 12px;
             padding: 1.5rem;
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
             height: 100%;
             position: relative;
             overflow: hidden;
         }
-        /* Spotlight Glow overlay */
+        /* Conic border gradient */
         .tool-card::before {
             content: '';
             position: absolute;
-            inset: -1px;
+            inset: 0;
             border-radius: 12px;
-            background: radial-gradient(
-                250px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
-                var(--tool-glow, rgba(247, 148, 29, 0.08)) 0%,
-                transparent 70%
-            );
-            z-index: 0;
-            pointer-events: none;
+            padding: 1.5px;
+            background: conic-gradient(from var(--angle, 0deg), 
+                        transparent 0%, 
+                        var(--tool-color, var(--dista-orange)) 10%, 
+                        transparent 30%, 
+                        transparent 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
             opacity: 0;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.4s ease;
+            animation: rotateBorder 4s linear infinite;
+            z-index: 1;
+            pointer-events: none;
         }
         .tool-card:hover::before {
             opacity: 1;
@@ -655,12 +661,115 @@
             0% { width: 0; }
             100% { width: 60px; }
         }
+
+        /* Modern CSS Houdini Conic Border Properties */
+        @property --angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+
+        @keyframes rotateBorder {
+            to { --angle: 360deg; }
+        }
+
+        /* Command Palette Styles */
+        .cmd-palette-overlay {
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh;
+            background: rgba(0,0,0,0.6); 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000; 
+            display: flex; 
+            align-items: flex-start; 
+            justify-content: center;
+            padding-top: 15vh; 
+            animation: fadeIn 0.2s ease;
+        }
+        .cmd-palette-box {
+            background: var(--bg-card); 
+            border: 1px solid var(--border-color);
+            border-radius: 12px; 
+            width: 100%; 
+            max-width: 550px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            overflow: hidden;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        #cmdSearch {
+            width: 100%; 
+            padding: 1.2rem 1.5rem; 
+            border: none; 
+            outline: none;
+            background: transparent; 
+            color: var(--text-main); 
+            font-size: 1.1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        #cmdResults { 
+            list-style: none; 
+            padding: 0.5rem; 
+            margin: 0; 
+            max-height: 300px; 
+            overflow-y: auto; 
+        }
+        #cmdResults li {
+            padding: 0.8rem 1rem; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            display: flex;
+            align-items: center; 
+            gap: 0.8rem; 
+            color: var(--text-main); 
+            transition: background 0.15s;
+        }
+        #cmdResults li.active, #cmdResults li:hover { 
+            background: var(--dista-orange); 
+            color: white; 
+        }
+        #cmdResults li .icon { 
+            font-size: 1.2rem; 
+        }
+
+        /* Custom Cursor Styles */
+        .cursor-dot, .cursor-outline {
+            position: fixed;
+            top: 0; left: 0;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 99999;
+            transform: translate(-50%, -50%);
+            mix-blend-mode: difference;
+        }
+        .cursor-dot {
+            width: 8px; height: 8px;
+            background: var(--dista-orange);
+            transition: transform 0.1s ease;
+        }
+        .cursor-outline {
+            width: 35px; height: 35px;
+            border: 2px solid var(--dista-orange);
+            transition: transform 0.2s ease-out, width 0.3s, height 0.3s;
+        }
+        .cursor-outline.hover-grow {
+            width: 60px; height: 60px;
+            background: rgba(247, 148, 29, 0.1);
+        }
     </style>
 <base target="_self">
 </head>
 <body>
     <!-- Ambient Animated Background Grid/Mesh -->
     <div class="ambient-bg"></div>
+
+    <!-- Custom Cursor elements -->
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-outline" id="cursorOutline"></div>
 
     <!-- Header -->
     <header class="header-bar animate-fade-in">
@@ -677,7 +786,7 @@
 
     <!-- Hero Section -->
     <section class="hero-section">
-        <div class="hero-grid-3d"></div>
+        <canvas id="heroMatrix" class="hero-grid-3d" style="opacity: 0.2;"></canvas>
         <div class="container animate-fade-in-up" style="max-width: 1200px; animation-delay: 0.1s; position: relative; z-index: 1;">
             <div class="text-center">
                 <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text">Welcome to Dista Internal Tools</span></h2>
@@ -725,7 +834,13 @@
         </div>
     </footer>
 
-
+    <!-- Command Palette -->
+    <div id="cmdPalette" class="cmd-palette-overlay" style="display:none;">
+        <div class="cmd-palette-box">
+            <input type="text" id="cmdSearch" placeholder="Search for tools or actions..." autocomplete="off">
+            <ul id="cmdResults"></ul>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -1164,6 +1279,114 @@
             }, 500);
         }
 
+        // Command Palette Logic
+        const cmdPalette = document.getElementById('cmdPalette');
+        const cmdSearch = document.getElementById('cmdSearch');
+        const cmdResults = document.getElementById('cmdResults');
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                cmdPalette.style.display = 'flex';
+                cmdSearch.focus();
+                renderCmdResults('');
+            }
+            if (e.key === 'Escape') cmdPalette.style.display = 'none';
+        });
+
+        cmdPalette.addEventListener('click', (e) => {
+            if (e.target === cmdPalette) cmdPalette.style.display = 'none';
+        });
+
+        cmdSearch.addEventListener('input', (e) => renderCmdResults(e.target.value));
+
+        function renderCmdResults(query) {
+            const filtered = tools.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
+            cmdResults.innerHTML = filtered.map(t => 
+                `<li onclick="openToolWithEffect('${t.path}')"><span class="icon">${t.icon}</span> ${t.name}</li>`
+            ).join('') || '<li style="color: var(--text-muted); cursor: default;">No tools found...</li>';
+        }
+
+        // Custom Cursor Physics
+        function initCustomCursor() {
+            if (window.matchMedia('(pointer: fine)').matches) { // Only on devices with a mouse
+                const dot = document.getElementById('cursorDot');
+                const outline = document.getElementById('cursorOutline');
+                
+                // Hide default cursor globally
+                document.body.style.cursor = 'none'; 
+                document.querySelectorAll('a, button, input, canvas, .tool-card').forEach(el => el.style.cursor = 'none');
+
+                let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
+
+                window.addEventListener('mousemove', (e) => {
+                    mouseX = e.clientX; mouseY = e.clientY;
+                    dot.style.left = `${mouseX}px`;
+                    dot.style.top = `${mouseY}px`;
+                });
+
+                // The outline lags behind using a spring loop
+                function animateCursor() {
+                    outlineX += (mouseX - outlineX) * 0.15; // Adjust 0.15 for springiness
+                    outlineY += (mouseY - outlineY) * 0.15;
+                    outline.style.left = `${outlineX}px`;
+                    outline.style.top = `${outlineY}px`;
+                    requestAnimationFrame(animateCursor);
+                }
+                animateCursor();
+
+                // Grow cursor dynamically on hover via delegation
+                document.addEventListener('mouseover', (e) => {
+                    if (e.target.closest('a, button, .tool-card, .scratch-canvas, #themeToggle, .theme-toggle, .scratch-container')) {
+                        outline.classList.add('hover-grow');
+                    } else {
+                        outline.classList.remove('hover-grow');
+                    }
+                });
+            }
+        }
+
+        // Hero Matrix Background Rain
+        function initHeroMatrix() {
+            const canvas = document.getElementById('heroMatrix');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            function resize() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const chars = "GCPAES-GCM0x1ADATASTORESWEEPENCRYPT10110COPYSCHEMA".split('');
+            const fontSize = 14;
+            let columns = Math.floor(canvas.width / fontSize);
+            let drops = Array(columns).fill(1);
+
+            function draw() {
+                ctx.fillStyle = 'rgba(248, 249, 250, 0.08)'; // Fade out previous frames
+                if (document.documentElement.getAttribute('data-theme') === 'dark') {
+                    ctx.fillStyle = 'rgba(8, 9, 10, 0.08)';
+                }
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#f7941d'; // Dista Orange
+                ctx.font = `${fontSize}px monospace`;
+
+                for (let i = 0; i < drops.length; i++) {
+                    const text = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+            setInterval(draw, 50);
+        }
+
         // ==========================================
         // INIT
         // ==========================================
@@ -1171,6 +1394,8 @@
             renderTools();
             initSpotlightCards();
             initMagneticButtons();
+            initCustomCursor();
+            initHeroMatrix();
             initScratchCard();
             await showWelcomeAnimation();
             typeWriterEffect();
