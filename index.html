@@ -422,7 +422,7 @@
                 <li>Always backup your Datastore before using any copy tools</li>
                 <li>GCP permissions required:
                     <ul style="list-style-type: circle; margin-top: 0.25rem; padding-left: 1.25rem;">
-                        <li><strong>GCP Infrastructure Manager</strong>: requires <code>BigQuery Admin</code> (for schema sync / query transfer) and <code>Cloud Datastore Owner</code> / <code>User</code> (for entity copy).</li>
+                        <li><strong>GCP Infrastructure Manager</strong>: requires <code>BigQuery Admin</code> (for schema sync / query transfer), <code>Cloud Datastore Owner</code> / <code>User</code> (for entity copy), and <code>Cloud Datastore Delete</code> permissions (to allow reverting changes).</li>
                         <li><strong>Sweep</strong> &amp; <strong>Crypto Vault</strong>: 100% client-side, require no cloud permissions.</li>
                     </ul>
                 </li>
