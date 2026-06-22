@@ -760,12 +760,259 @@
             width: 60px; height: 60px;
             background: rgba(247, 148, 29, 0.1);
         }
+
+        /* View Transitions (Liquid theme reveal) */
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation: none;
+            mix-blend-mode: normal;
+        }
+        ::view-transition-old(root) {
+            z-index: 1;
+        }
+        ::view-transition-new(root) {
+            z-index: 99999;
+        }
+
+        /* Holographic Icon & Glitch Effect */
+        .tool-icon {
+            position: relative;
+            display: inline-block;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s;
+        }
+        .tool-card:hover .tool-icon {
+            animation: holo-glitch 0.25s cubic-bezier(.25, .46, .45, .94) both infinite alternate;
+        }
+        .tool-icon::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent 0%,
+                rgba(247, 148, 29, 0) 10%,
+                var(--tool-color, var(--dista-orange)) 50%,
+                rgba(247, 148, 29, 0) 90%,
+                transparent 100%
+            );
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .tool-card:hover .tool-icon::after {
+            opacity: 0.6;
+            animation: scanline-sweep 1.2s linear infinite;
+        }
+        @keyframes scanline-sweep {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        @keyframes holo-glitch {
+            0% {
+                text-shadow: 2px -2px 0px rgba(255,0,0,0.6), -2px 2px 0px rgba(0,0,255,0.6), 0px 0px 4px rgba(0,255,0,0.6);
+                transform: scale(1.1) skewX(2deg) translateY(-3px);
+            }
+            30% {
+                text-shadow: -2px 2px 0px rgba(255,0,0,0.6), 2px -2px 0px rgba(0,0,255,0.6), 1px -1px 3px rgba(0,255,0,0.6);
+                transform: scale(1.1) skewX(-2deg) translateY(-3px);
+            }
+            60% {
+                text-shadow: 3px 1px 0px rgba(255,0,0,0.5), -3px -1px 0px rgba(0,0,255,0.5), -1px 1px 4px rgba(0,255,0,0.5);
+                transform: scale(1.05) skewX(1deg) translateY(-3px);
+            }
+            100% {
+                text-shadow: -1px -1px 0px rgba(255,0,0,0.5), 1px 1px 0px rgba(0,0,255,0.5), 0px 0px 2px rgba(0,255,0,0.5);
+                transform: scale(1.1) translateY(-3px);
+            }
+        }
+
+        /* Heartbeat Status Indicators */
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+            position: relative;
+        }
+        .status-indicator.status-active {
+            background-color: #2ecc71;
+        }
+        .status-indicator.status-active::after {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px; width: 12px; height: 12px;
+            border-radius: 50%;
+            background-color: #2ecc71;
+            animation: radar-ping 1.8s infinite ease-out;
+        }
+        .status-indicator.status-maintenance {
+            background-color: #f1c40f;
+        }
+        .status-indicator.status-maintenance::after {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px; width: 12px; height: 12px;
+            border-radius: 50%;
+            background-color: #f1c40f;
+            animation: radar-ping 1.8s infinite ease-out;
+        }
+        .status-indicator.status-coming-soon {
+            background-color: #95a5a6;
+            animation: status-breathe 2.5s infinite ease-in-out;
+        }
+        @keyframes radar-ping {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(3.5); opacity: 0; }
+        }
+        @keyframes status-breathe {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        /* Terminal & Defrag Loading overlays */
+        .terminal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #08090b;
+            color: #2ecc71;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 3rem;
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+        .terminal-log-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 5px rgba(46, 204, 113, 0.4);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px; height: 16px;
+            background: #2ecc71;
+            animation: blink 0.8s step-end infinite;
+            vertical-align: middle;
+        }
+        .terminal-flash-collapse {
+            animation: flash-collapse 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes flash-collapse {
+            0% { transform: scale(1); filter: brightness(1) contrast(1); opacity: 1; }
+            50% { transform: scale(1.05); filter: brightness(3) contrast(1.5); opacity: 0.8; }
+            100% { transform: scale(0.1, 0.001); filter: brightness(10) contrast(2); opacity: 0; }
+        }
+
+        .defrag-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(10, 12, 16, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-family: monospace;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .defrag-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .defrag-container {
+            width: 100%;
+            max-width: 500px;
+            background: #181c24;
+            border: 2px solid #323d4f;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .defrag-grid {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 3px;
+            margin: 1.5rem 0;
+        }
+        .defrag-block {
+            aspect-ratio: 1;
+            border-radius: 2px;
+            background: #222a36; /* Unallocated default */
+            transition: background 0.08s ease;
+        }
+        /* Defrag block colors */
+        .defrag-block.unallocated { background: #222a36; }
+        .defrag-block.fragmented { background: #e74c3c; } /* Red */
+        .defrag-block.unmovable { background: #95a5a6; } /* Grey */
+        .defrag-block.reading { background: #f1c40f; } /* Yellow */
+        .defrag-block.writing { background: #3498db; } /* Blue */
+        .defrag-block.optimized { background: #2ecc71; } /* Green */
+
+        .defrag-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #8a99ad;
+        }
+        .defrag-progress-bar-wrapper {
+            background: #222a36;
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+        .defrag-progress-bar {
+            background: var(--dista-orange);
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* Scramble Characters & Constellation Background */
+        .scramble-char {
+            color: var(--dista-orange);
+            font-family: monospace;
+            opacity: 0.8;
+            text-shadow: 0 0 4px var(--dista-orange);
+        }
+        #constellationCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .hero-foreground-particles {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .parallax-particle {
+            position: absolute;
+            background: radial-gradient(circle, rgba(247, 148, 29, 0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
     </style>
 <base target="_self">
 </head>
 <body>
     <!-- Ambient Animated Background Grid/Mesh -->
-    <div class="ambient-bg"></div>
+    <div class="ambient-bg">
+        <canvas id="constellationCanvas"></canvas>
+    </div>
 
     <!-- Custom Cursor elements -->
     <div class="cursor-dot" id="cursorDot"></div>
@@ -777,9 +1024,12 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
                     <img src="assets/dista-logo.png" alt="Dista Logo" class="logo-img" onerror="this.style.display='none'">
-                    <h1 class="header-title">Dista Internal Tools</h1>
+                    <h1 class="header-title" id="scrambleHeader">Dista Internal Tools</h1>
                 </div>
-                <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">🌙</button>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">🌙</button>
+                    <button class="theme-toggle" id="muteToggle" title="Mute UI Sounds">🔊</button>
+                </div>
             </div>
         </div>
     </header>
@@ -787,9 +1037,10 @@
     <!-- Hero Section -->
     <section class="hero-section">
         <canvas id="heroMatrix" class="hero-grid-3d" style="opacity: 0.2;"></canvas>
+        <div class="hero-foreground-particles" id="heroForeground"></div>
         <div class="container animate-fade-in-up" style="max-width: 1200px; animation-delay: 0.1s; position: relative; z-index: 1;">
             <div class="text-center">
-                <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text">Welcome to Dista Internal Tools</span></h2>
+                <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text" id="scrambleHero">Welcome to Dista Internal Tools</span></h2>
                 <p class="hero-subtitle mx-auto" id="typingSubtitle" style="min-height: 54px;"></p>
             </div>
         </div>
@@ -842,10 +1093,190 @@
         </div>
     </div>
 
+    <!-- Defrag Loading Overlay -->
+    <div id="defragOverlay" class="defrag-overlay">
+        <div class="defrag-container">
+            <div class="defrag-meta">
+                <span id="defragStatus">DEFRAGMENTING DRIVE MODULES...</span>
+                <span id="defragPercentage">0%</span>
+            </div>
+            <div class="defrag-grid" id="defragGrid"></div>
+            <div class="defrag-meta">
+                <span>SECTORS OPTIMIZED</span>
+                <span id="defragSpeed">840.4 GB/s</span>
+            </div>
+            <div class="defrag-progress-bar-wrapper">
+                <div class="defrag-progress-bar" id="defragProgressBar"></div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // ==========================================
-        // DARK MODE
+        // AUDIO HAPTIC FEEDBACK (WEB AUDIO API)
+        // ==========================================
+        const AudioHaptic = {
+            ctx: null,
+            muted: localStorage.getItem('audio_muted') === 'true',
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+            toggleMute() {
+                this.muted = !this.muted;
+                localStorage.setItem('audio_muted', this.muted);
+                this.updateUI();
+                this.playTick();
+            },
+            updateUI() {
+                const btn = document.getElementById('muteToggle');
+                if (btn) {
+                    btn.innerHTML = this.muted ? '🔇' : '🔊';
+                    btn.title = this.muted ? 'Unmute UI Sounds' : 'Mute UI Sounds';
+                }
+            },
+            playTick() {
+                if (this.muted) return;
+                this.init();
+                const ctx = this.ctx;
+                if (ctx.state === 'suspended') ctx.resume();
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1000, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.04);
+                
+                gain.gain.setValueAtTime(0.015, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.04);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start();
+                osc.stop(ctx.currentTime + 0.05);
+            },
+            playClunk() {
+                if (this.muted) return;
+                this.init();
+                const ctx = this.ctx;
+                if (ctx.state === 'suspended') ctx.resume();
+                
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.15);
+                
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start();
+                osc.stop(ctx.currentTime + 0.2);
+            },
+            playSwoosh() {
+                if (this.muted) return;
+                this.init();
+                const ctx = this.ctx;
+                if (ctx.state === 'suspended') ctx.resume();
+                
+                const bufferSize = ctx.sampleRate * 0.35;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.Q.value = 4.0;
+                filter.frequency.setValueAtTime(400, ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.15);
+                filter.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.3);
+                
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 0.06);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+                
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                
+                noise.start();
+                noise.stop(ctx.currentTime + 0.35);
+            }
+        };
+
+        // ==========================================
+        // TEXT SCRAPING EFFECT
+        // ==========================================
+        class TextScrambler {
+            constructor(el) {
+                this.el = el;
+                this.chars = '!<>-_\\/[]{}—=+*^?#________';
+                this.update = this.update.bind(this);
+            }
+            setText(newText) {
+                const oldText = this.el.textContent;
+                const length = Math.max(oldText.length, newText.length);
+                const promise = new Promise((resolve) => this.resolve = resolve);
+                this.queue = [];
+                for (let i = 0; i < length; i++) {
+                    const from = oldText[i] || '';
+                    const to = newText[i] || '';
+                    const start = Math.floor(Math.random() * 30);
+                    const end = start + Math.floor(Math.random() * 30);
+                    this.queue.push({ from, to, start, end, char: '' });
+                }
+                cancelAnimationFrame(this.frameId);
+                this.frame = 0;
+                this.update();
+                return promise;
+            }
+            update() {
+                let output = '';
+                let complete = 0;
+                for (let i = 0, n = this.queue.length; i < n; i++) {
+                    let { from, to, start, end, char } = this.queue[i];
+                    if (this.frame >= end) {
+                        complete++;
+                        output += to;
+                    } else if (this.frame >= start) {
+                        if (!char || Math.random() < 0.28) {
+                            char = this.randomChar();
+                            this.queue[i].char = char;
+                        }
+                        output += `<span class="scramble-char">${char}</span>`;
+                    } else {
+                        output += from;
+                    }
+                }
+                this.el.innerHTML = output;
+                if (complete === this.queue.length) {
+                    this.resolve();
+                } else {
+                    this.frameId = requestAnimationFrame(this.update);
+                    this.frame++;
+                }
+            }
+            randomChar() {
+                return this.chars[Math.floor(Math.random() * this.chars.length)];
+            }
+        }
+
+        // ==========================================
+        // DARK MODE WITH LIQUID WAVE TRANSITION
         // ==========================================
         const themeToggle = document.getElementById('themeToggle');
         const htmlElement = document.documentElement;
@@ -859,19 +1290,48 @@
         }
         if (savedTheme) applyTheme(savedTheme);
         else if (systemPrefersDark) applyTheme('dark');
-        themeToggle.addEventListener('click', () => applyTheme(htmlElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+        themeToggle.addEventListener('click', (e) => {
+            AudioHaptic.playClunk();
+            const isDark = htmlElement.getAttribute('data-theme') === 'dark';
+            const nextTheme = isDark ? 'light' : 'dark';
+
+            if (!document.startViewTransition) {
+                applyTheme(nextTheme);
+                return;
+            }
+
+            const x = e.clientX ?? (window.innerWidth / 2);
+            const y = e.clientY ?? (window.innerHeight / 2);
+            const endRadius = Math.hypot(
+                Math.max(x, window.innerWidth - x),
+                Math.max(y, window.innerHeight - y)
+            );
+
+            const transition = document.startViewTransition(() => {
+                applyTheme(nextTheme);
+            });
+
+            transition.ready.then(() => {
+                document.documentElement.animate(
+                    {
+                        clipPath: [
+                            `circle(0px at ${x}px ${y}px)`,
+                            `circle(${endRadius}px at ${x}px ${y}px)`
+                        ]
+                    },
+                    {
+                        duration: 650,
+                        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                        pseudoElement: '::view-transition-new(root)'
+                    }
+                );
+            });
+        });
 
         // ==========================================
-        // TOOLS DATA - EDIT THIS ARRAY TO ADD/MODIFY TOOLS
+        // TOOLS DATA
         // ==========================================
-        // Each tool has:
-        // - id: unique identifier
-        // - name: display name
-        // - icon: emoji icon
-        // - descShort: one line shown on card
-        // - descFull: detailed tooltip on hover
-        // - path: link to tool (folder/ or https://...)
-        // - docPath: link to documentation (file path or URL)
         const tools = [
             {
                 id: 'datastore-copier',
@@ -888,7 +1348,7 @@
                 name: 'Sweep',
                 icon: '🧹',
                 descShort: 'Scan code locally for secrets before pasting',
-                descFull: 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href=\"https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b\" target=\"_blank\" style=\"color: var(--dista-orange); text-decoration: underline; word-break: break-all;\">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.',
+                descFull: 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href="https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b" target="_blank" style="color: var(--dista-orange); text-decoration: underline; word-break: break-all;">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.',
                 path: 'tool-2/',
                 docPath: 'docs/index.html#section-sweep',
                 status: 'active'
@@ -902,6 +1362,16 @@
                 path: 'tool-3/',
                 docPath: 'docs/index.html#section-crypto-vault',
                 status: 'active'
+            },
+            {
+                id: 'tool-coming',
+                name: 'Cluster Operations Monitor',
+                icon: '🖥️',
+                descShort: 'Kubernetes cluster state streams and debug console',
+                descFull: 'Real-time telemetry and pod status monitor for GKE clusters. Includes shell console wrapper, node logs streamer, and custom event alerting system.',
+                path: '#',
+                docPath: '#',
+                status: 'coming-soon'
             }
         ];
 
@@ -940,8 +1410,13 @@
                             ${tool.descFull}
                         </div>
 
-                        <div class="tool-icon"><span class="float-emoji" style="animation-delay: -${Math.random() * 4}s;">${tool.icon}</span></div>
-                        <h4 class="tool-name">${tool.name}</h4>
+                        <div class="tool-icon">
+                            <span class="float-emoji" style="animation-delay: -${Math.random() * 4}s;">${tool.icon}</span>
+                        </div>
+                        <h4 class="tool-name">
+                            <span class="status-indicator status-${tool.status}"></span>
+                            <span class="tool-name-text">${tool.name}</span>
+                        </h4>
 
                         <!-- Short description always visible -->
                         <p class="tool-desc-short">${tool.descShort}</p>
@@ -968,7 +1443,449 @@
         }
 
         // ==========================================
-        // EASTER EGG
+        // CONSTELLATION CANVAS SIMULATION
+        // ==========================================
+        let constellationAnimationId = null;
+        function initConstellationBackground() {
+            const canvas = document.getElementById('constellationCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            let particles = [];
+            let width = 0;
+            let height = 0;
+            let mouse = { x: null, y: null };
+            
+            function resize() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+            
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = e.clientX;
+                mouse.y = e.clientY;
+            });
+            
+            window.addEventListener('mouseleave', () => {
+                mouse.x = null;
+                mouse.y = null;
+            });
+            
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.baseSpeedX = (Math.random() - 0.5) * 0.6;
+                    this.baseSpeedY = (Math.random() - 0.5) * 0.6;
+                    this.vx = this.baseSpeedX;
+                    this.vy = this.baseSpeedY;
+                    this.radius = Math.random() * 2 + 1.2;
+                }
+                update() {
+                    if (mouse.x !== null && mouse.y !== null) {
+                        const dx = this.x - mouse.x;
+                        const dy = this.y - mouse.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist < 150) {
+                            const force = (150 - dist) / 150;
+                            const angle = Math.atan2(dy, dx);
+                            this.vx += Math.cos(angle) * force * 0.6;
+                            this.vy += Math.sin(angle) * force * 0.6;
+                        }
+                    }
+                    
+                    this.vx += (this.baseSpeedX - this.vx) * 0.05;
+                    this.vy += (this.baseSpeedY - this.vy) * 0.05;
+                    
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    
+                    if (this.x < 0) { this.x = width; }
+                    else if (this.x > width) { this.x = 0; }
+                    if (this.y < 0) { this.y = height; }
+                    else if (this.y > height) { this.y = 0; }
+                }
+                draw() {
+                    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                    ctx.fillStyle = isDark ? 'rgba(247, 148, 29, 0.6)' : 'rgba(247, 148, 29, 0.4)';
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            const count = Math.min(65, Math.floor((width * height) / 22000));
+            particles = [];
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+            
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                
+                particles.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+                
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist < 100) {
+                            const opacity = (1 - dist / 100) * 0.22;
+                            ctx.strokeStyle = isDark ? `rgba(247, 148, 29, ${opacity})` : `rgba(232, 93, 4, ${opacity})`;
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+                constellationAnimationId = requestAnimationFrame(animate);
+            }
+            cancelAnimationFrame(constellationAnimationId);
+            animate();
+        }
+
+        // ==========================================
+        // TERMINAL WELCOME BOOT sequence
+        // ==========================================
+        function showWelcomeAnimation() {
+            return new Promise((resolve) => {
+                setTimeout(() => AudioHaptic.playSwoosh(), 100);
+
+                const overlay = document.createElement('div');
+                overlay.className = 'terminal-overlay';
+                
+                overlay.innerHTML = `
+                    <div class="terminal-log-container" id="terminalLogs"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #2ecc71; padding-top:1rem; font-size:0.9rem;">
+                        <div>DISTA SECURE CORE BOOTLOADER v4.9</div>
+                        <div>LOADER PORTAL STATUS: ACTIVE</div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                document.body.style.overflow = 'hidden';
+                
+                const logContainer = overlay.querySelector('#terminalLogs');
+                
+                const bootLogs = [
+                    "> DISTA CENTRAL OS KERNEL BOOT SEQUENCE INITIATED...",
+                    "> MOUNTING ROOT DIRECTORY SYSTEMS: SUCCESS",
+                    "> DECRYPTING KEYSTORE VAULTS... 0x81F27A0B",
+                    "> ESTABLISHING GCP INFRASTRUCTURE MANAGER HANDSHAKE... ACTIVE",
+                    "> SECURING CREDENTIAL PARSER SWEEP ENGINE... SHIELD STATUS: 100%",
+                    "> INITIALIZING AUDIO SYNTH HAPTICS CHIP... COMPLETED",
+                    "> RESOLVING DOM MATRIX GRID CANVAS PIXELS... RENDER OK",
+                    "> INJECTING QUANTUM CONSTELLATION NETWORK... ACTIVE",
+                    "> DECRYPTION PROTOCOLS... ALL SYSTEM LAYERS STABLE [100%]"
+                ];
+                
+                let lineIdx = 0;
+                function printNextLine() {
+                    if (lineIdx < bootLogs.length) {
+                        const line = document.createElement('div');
+                        line.textContent = bootLogs[lineIdx];
+                        logContainer.appendChild(line);
+                        logContainer.scrollTop = logContainer.scrollHeight;
+                        AudioHaptic.playTick();
+                        
+                        lineIdx++;
+                        setTimeout(printNextLine, 100 + Math.random() * 80);
+                    } else {
+                        const progressWrapper = document.createElement('div');
+                        progressWrapper.style.marginTop = '1.5rem';
+                        progressWrapper.innerHTML = `
+                            <div>PORTAL COMPILATION: <span id="bootPercent">0%</span></div>
+                            <div style="font-family: monospace; letter-spacing: 2px;" id="bootBar">[................................]</div>
+                        `;
+                        logContainer.appendChild(progressWrapper);
+                        
+                        let percent = 0;
+                        const barSize = 32;
+                        
+                        function updateProgress() {
+                            if (percent < 100) {
+                                percent += 5;
+                                const filledChars = Math.floor((percent / 100) * barSize);
+                                const barText = '[' + '■'.repeat(filledChars) + '.'.repeat(barSize - filledChars) + ']';
+                                document.getElementById('bootPercent').textContent = `${percent}%`;
+                                document.getElementById('bootBar').textContent = barText;
+                                AudioHaptic.playTick();
+                                setTimeout(updateProgress, 30 + Math.random() * 20);
+                            } else {
+                                setTimeout(() => {
+                                    AudioHaptic.playClunk();
+                                    AudioHaptic.playSwoosh();
+                                    
+                                    overlay.classList.add('terminal-flash-collapse');
+                                    setTimeout(() => {
+                                        overlay.remove();
+                                        document.body.style.overflow = '';
+                                        resolve();
+                                    }, 600);
+                                }, 300);
+                            }
+                        }
+                        setTimeout(updateProgress, 100);
+                    }
+                }
+                setTimeout(printNextLine, 150);
+            });
+        }
+
+        // ==========================================
+        // DEFRAG CARD LOADING sequnce
+        // ==========================================
+        function openToolWithEffect(url) {
+            AudioHaptic.playSwoosh();
+            const overlay = document.getElementById('defragOverlay');
+            const grid = document.getElementById('defragGrid');
+            const statusText = document.getElementById('defragStatus');
+            const percentText = document.getElementById('defragPercentage');
+            const progressBar = document.getElementById('defragProgressBar');
+            
+            grid.innerHTML = '';
+            const totalBlocks = 80;
+            const blocks = [];
+            
+            const classes = ['unallocated', 'fragmented', 'unmovable', 'writing', 'reading'];
+            for (let i = 0; i < totalBlocks; i++) {
+                const block = document.createElement('div');
+                block.className = 'defrag-block';
+                const rand = Math.random();
+                let type = 'unallocated';
+                if (rand < 0.25) type = 'fragmented';
+                else if (rand < 0.35) type = 'unmovable';
+                else if (rand < 0.45) type = 'writing';
+                else if (rand < 0.55) type = 'reading';
+                
+                block.classList.add(type);
+                grid.appendChild(block);
+                blocks.push({ el: block, type: type });
+            }
+            
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            let progress = 0;
+            const targetToolName = url.replace(/[^a-zA-Z]/g, '').toUpperCase() || 'EXTERNAL';
+            statusText.textContent = `DEFRAGMENTING ${targetToolName} SECTORS...`;
+            
+            function step() {
+                if (progress < 100) {
+                    progress += Math.floor(Math.random() * 4) + 1.5;
+                    if (progress > 100) progress = 100;
+                    
+                    percentText.textContent = `${Math.floor(progress)}%`;
+                    progressBar.style.width = `${progress}%`;
+                    
+                    const sweepIndex = Math.floor((progress / 100) * totalBlocks);
+                    for (let i = 0; i < totalBlocks; i++) {
+                        if (i < sweepIndex) {
+                            if (blocks[i].type !== 'unmovable') {
+                                blocks[i].el.className = 'defrag-block optimized';
+                            }
+                        } else {
+                            const rand = Math.random();
+                            if (rand < 0.15 && blocks[i].type !== 'unmovable') {
+                                const newTypes = ['reading', 'writing', 'fragmented', 'unallocated'];
+                                const newType = newTypes[Math.floor(Math.random() * newTypes.length)];
+                                blocks[i].el.className = `defrag-block ${newType}`;
+                            }
+                        }
+                    }
+                    
+                    if (Math.random() < 0.45) {
+                        AudioHaptic.playTick();
+                    }
+                    
+                    setTimeout(step, 30 + Math.random() * 20);
+                } else {
+                    for (let i = 0; i < totalBlocks; i++) {
+                        if (blocks[i].type !== 'unmovable') {
+                            blocks[i].el.className = 'defrag-block optimized';
+                        }
+                    }
+                    AudioHaptic.playClunk();
+                    setTimeout(() => {
+                        window.location.href = url;
+                    }, 250);
+                }
+            }
+            
+            setTimeout(step, 200);
+        }
+
+        // ==========================================
+        // SPOTLIGHT, GRAVITY & PARALLAX EFFECT
+        // ==========================================
+        function initSpotlightCards() {
+            const cards = document.querySelectorAll('.tool-card');
+            cards.forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    card.style.setProperty('--mouse-x', `${x}px`);
+                    card.style.setProperty('--mouse-y', `${y}px`);
+
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const rotateX = ((y - centerY) / centerY) * -5;
+                    const rotateY = ((x - centerX) / centerX) * 5;
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px) scale(1.02)`;
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = '';
+                });
+            });
+
+            // Card hover tick sound logic
+            document.addEventListener('mouseenter', (e) => {
+                const card = e.target.closest('.tool-card');
+                if (card && !card.classList.contains('disabled')) {
+                    AudioHaptic.playTick();
+                }
+            }, true);
+        }
+
+        function initParallaxHero() {
+            const grid3d = document.querySelector('.hero-grid-3d');
+            const subtitle = document.getElementById('typingSubtitle');
+            const foreground = document.getElementById('heroForeground');
+            
+            if (foreground) {
+                for (let i = 0; i < 15; i++) {
+                    const part = document.createElement('div');
+                    part.className = 'parallax-particle';
+                    const size = Math.random() * 40 + 20;
+                    part.style.width = `${size}px`;
+                    part.style.height = `${size}px`;
+                    part.style.left = `${Math.random() * 100}%`;
+                    part.style.top = `${Math.random() * 100}%`;
+                    part.dataset.depth = Math.random() * 1.2 + 0.8;
+                    foreground.appendChild(part);
+                }
+            }
+            
+            window.addEventListener('scroll', () => {
+                const scrolled = window.scrollY;
+                if (grid3d) {
+                    grid3d.style.transform = `translateY(${scrolled * 0.45}px)`;
+                }
+                if (subtitle) {
+                    subtitle.style.transform = `translateY(${scrolled * 0.15}px)`;
+                }
+                if (foreground) {
+                    const particles = foreground.querySelectorAll('.parallax-particle');
+                    particles.forEach(p => {
+                        const depth = parseFloat(p.dataset.depth || 1);
+                        p.style.transform = `translateY(${scrolled * 1.35 * depth}px)`;
+                    });
+                }
+            }, { passive: true });
+        }
+
+        function initGravityCards() {
+            document.addEventListener('mousemove', (e) => {
+                const cards = document.querySelectorAll('.tool-card');
+                cards.forEach(card => {
+                    if (card.classList.contains('disabled')) return;
+                    
+                    const rect = card.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const dx = e.clientX - centerX;
+                    const dy = e.clientY - centerY;
+                    const distance = Math.hypot(dx, dy);
+                    
+                    const isHovered = (
+                        e.clientX >= rect.left && 
+                        e.clientX <= rect.right && 
+                        e.clientY >= rect.top && 
+                        e.clientY <= rect.bottom
+                    );
+                    
+                    if (isHovered) {
+                        card.classList.add('hovered');
+                        return;
+                    }
+                    
+                    card.classList.remove('hovered');
+                    
+                    const gravityRadius = 260;
+                    if (distance < gravityRadius) {
+                        const strength = (1 - distance / gravityRadius) * 4;
+                        const tiltX = (dy / distance) * strength;
+                        const tiltY = -(dx / distance) * strength;
+                        card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.01)`;
+                        card.style.boxShadow = `var(--shadow), 0 4px 18px rgba(247, 148, 29, ${0.12 * strength / 4})`;
+                    } else {
+                        if (card.style.transform && !card.classList.contains('hovered')) {
+                            card.style.transform = '';
+                            card.style.boxShadow = '';
+                        }
+                    }
+                });
+            });
+        }
+
+        function initMagneticButtons() {
+            const magnets = document.querySelectorAll('.btn-open-tool, .btn-doc-link');
+            magnets.forEach(magnet => {
+                magnet.addEventListener('mousemove', (e) => {
+                    const rect = magnet.getBoundingClientRect();
+                    const x = e.clientX - rect.left - rect.width / 2;
+                    const y = e.clientY - rect.top - rect.height / 2;
+                    magnet.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+                });
+                magnet.addEventListener('mouseleave', () => {
+                    magnet.style.transform = '';
+                });
+            });
+        }
+
+        // ==========================================
+        // COMMAND PALETTE
+        // ==========================================
+        const cmdPalette = document.getElementById('cmdPalette');
+        const cmdSearch = document.getElementById('cmdSearch');
+        const cmdResults = document.getElementById('cmdResults');
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                AudioHaptic.playSwoosh();
+                cmdPalette.style.display = 'flex';
+                cmdSearch.focus();
+                renderCmdResults('');
+            }
+            if (e.key === 'Escape') cmdPalette.style.display = 'none';
+        });
+
+        cmdPalette.addEventListener('click', (e) => {
+            if (e.target === cmdPalette) cmdPalette.style.display = 'none';
+        });
+
+        cmdSearch.addEventListener('input', (e) => renderCmdResults(e.target.value));
+
+        function renderCmdResults(query) {
+            const filtered = tools.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
+            cmdResults.innerHTML = filtered.map(t => 
+                `<li onclick="openToolWithEffect('${t.path}')"><span class="icon">${t.icon}</span> ${t.name}</li>`
+            ).join('') || '<li style="color: var(--text-muted); cursor: default;">No tools found...</li>';
+        }
+
+        // ==========================================
+        // EASTER EGG & SCRATCH
         // ==========================================
         let logoClicks = 0;
         const logoImg = document.querySelector('.logo-img');
@@ -983,7 +1900,6 @@
             });
         }
 
-        // Footer clicks easter egg to open admin page
         window.addEventListener('DOMContentLoaded', () => {
             let footerClicks = 0;
             const footerText = document.querySelector('.footer p');
@@ -1053,14 +1969,12 @@
             const width = canvas.width;
             const height = canvas.height;
 
-            // Draw orange gradient background
             const grad = ctx.createLinearGradient(0, 0, width, height);
             grad.addColorStop(0, '#f7941d');
             grad.addColorStop(1, '#b15a0c');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, width, height);
 
-            // Text on top of canvas
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
             ctx.textAlign = 'center';
@@ -1084,6 +1998,23 @@
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
                 scratch(clientX - rect.left, clientY - rect.top);
             }
+
+            // Click scramble hover listener
+            document.addEventListener('mouseover', (e) => {
+                const card = e.target.closest('.tool-card');
+                if (!card || card.classList.contains('disabled')) return;
+                
+                const titleTextEl = card.querySelector('.tool-name-text');
+                if (!titleTextEl || titleTextEl.dataset.scrambling === 'true') return;
+                
+                titleTextEl.dataset.scrambling = 'true';
+                const originalText = titleTextEl.textContent.trim();
+                
+                const scrambler = new TextScrambler(titleTextEl);
+                scrambler.setText(originalText).then(() => {
+                    titleTextEl.dataset.scrambling = 'false';
+                });
+            });
 
             function startDraw(e) {
                 isDrawing = true;
@@ -1126,6 +2057,9 @@
             }
         }
 
+        // ==========================================
+        // TEXT WRITING & MATRIX EFFECT
+        // ==========================================
         function typeWriterEffect() {
             const text = "A collection of utilities for internal development, data management, and operational tasks. Click on any tool card to open it.";
             const speed = 20;
@@ -1133,7 +2067,6 @@
             const target = document.getElementById('typingSubtitle');
             if (!target) return;
             
-            // Add cursor initially
             target.innerHTML = '<span class="typing-text"></span><span class="typing-cursor"></span>';
             const textSpan = target.querySelector('.typing-text');
             
@@ -1143,7 +2076,6 @@
                     i++;
                     setTimeout(type, speed);
                 } else {
-                    // Optional: Remove cursor after 3 seconds
                     setTimeout(() => {
                         const cursor = target.querySelector('.typing-cursor');
                         if (cursor) cursor.remove();
@@ -1153,200 +2085,6 @@
             type();
         }
 
-        function showWelcomeAnimation() {
-            return new Promise((resolve) => {
-                const overlay = document.createElement('div');
-                overlay.style.position = 'fixed';
-                overlay.style.top = '0';
-                overlay.style.left = '0';
-                overlay.style.right = '0';
-                overlay.style.bottom = '0';
-                overlay.style.background = 'rgba(7, 10, 15, 0.98)';
-                overlay.style.backdropFilter = 'blur(16px)';
-                overlay.style.display = 'flex';
-                overlay.style.flexDirection = 'column';
-                overlay.style.alignItems = 'center';
-                overlay.style.justifyContent = 'center';
-                overlay.style.zIndex = '10000';
-                overlay.style.opacity = '0';
-                overlay.style.transition = 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
-                
-                overlay.innerHTML = `
-                    <div style="text-align:center; transform: scale(0.95); transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)" id="welcome-content">
-                        <div class="mb-4 d-flex justify-content-center" style="margin-bottom: 2rem;">
-                            <div style="width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle, var(--dista-orange) 0%, transparent 70%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(247, 148, 29, 0.3); animation: pulseGlowWelcome 2s infinite alternate">
-                                <i class="bi bi-cpu-fill" style="color:var(--dista-orange); font-size: 2rem; line-height: 80px; text-align: center; width: 100%"></i>
-                            </div>
-                        </div>
-                        <div style="color:var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.25em; font-weight: 700; margin-bottom: 12px; animation: fadeInUp 0.8s ease-out">
-                            Dista Operations Portal
-                        </div>
-                        <h1 style="color:#ffffff; font-size: 3rem; font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 0 20px rgba(255,255,255,0.15); animation: fadeInUp 1s ease-out">
-                            Welcome, Distan
-                        </h1>
-                        <div style="width: 60px; height: 3px; background: var(--dista-orange); margin: 0 auto; border-radius: 2px; animation: scaleWidthWelcome 1.2s ease-out"></div>
-                    </div>
-                `;
-                
-                document.body.appendChild(overlay);
-                
-                // Trigger browser reflow
-                overlay.getBoundingClientRect();
-                
-                // Fade in
-                overlay.style.opacity = '1';
-                const content = overlay.querySelector('#welcome-content');
-                if (content) content.style.transform = 'scale(1)';
-                
-                // Hide page scrolling while overlay is visible
-                document.body.style.overflow = 'hidden';
-                
-                setTimeout(() => {
-                    // Fade out
-                    overlay.style.opacity = '0';
-                    if (content) content.style.transform = 'scale(1.03)';
-                    setTimeout(() => {
-                        overlay.remove();
-                        document.body.style.overflow = '';
-                        resolve();
-                    }, 600);
-                }, 2200);
-            });
-        }
-
-        function initSpotlightCards() {
-            const cards = document.querySelectorAll('.tool-card');
-            cards.forEach(card => {
-                card.addEventListener('mousemove', e => {
-                    const rect = card.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
-                    card.style.setProperty('--mouse-x', `${x}px`);
-                    card.style.setProperty('--mouse-y', `${y}px`);
-
-                    // 3D Tilt logic
-                    const centerX = rect.width / 2;
-                    const centerY = rect.height / 2;
-                    const rotateX = ((y - centerY) / centerY) * -5; // Max 5deg tilt
-                    const rotateY = ((x - centerX) / centerX) * 5;
-                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px) scale(1.02)`;
-                });
-
-                // Reset transform on mouse leave
-                card.addEventListener('mouseleave', () => {
-                    card.style.transform = '';
-                });
-            });
-        }
-
-        function initMagneticButtons() {
-            const magnets = document.querySelectorAll('.btn-open-tool, .btn-doc-link');
-            magnets.forEach(magnet => {
-                magnet.addEventListener('mousemove', (e) => {
-                    const rect = magnet.getBoundingClientRect();
-                    const x = e.clientX - rect.left - rect.width / 2;
-                    const y = e.clientY - rect.top - rect.height / 2;
-                    magnet.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
-                });
-                magnet.addEventListener('mouseleave', () => {
-                    magnet.style.transform = '';
-                });
-            });
-        }
-
-        function openToolWithEffect(url) {
-            const portal = document.createElement('div');
-            portal.style.position = 'fixed';
-            portal.style.top = '50%';
-            portal.style.left = '50%';
-            portal.style.transform = 'translate(-50%, -50%) scale(0)';
-            portal.style.width = '2vmax';
-            portal.style.height = '2vmax';
-            portal.style.background = 'var(--dista-orange)';
-            portal.style.borderRadius = '50%';
-            portal.style.zIndex = '9999';
-            portal.style.transition = 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
-            document.body.appendChild(portal);
-
-            // Trigger animation
-            requestAnimationFrame(() => {
-                portal.style.transform = 'translate(-50%, -50%) scale(120)';
-                portal.style.opacity = '0.85';
-            });
-
-            setTimeout(() => {
-                window.location.href = url;
-            }, 500);
-        }
-
-        // Command Palette Logic
-        const cmdPalette = document.getElementById('cmdPalette');
-        const cmdSearch = document.getElementById('cmdSearch');
-        const cmdResults = document.getElementById('cmdResults');
-
-        document.addEventListener('keydown', (e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                cmdPalette.style.display = 'flex';
-                cmdSearch.focus();
-                renderCmdResults('');
-            }
-            if (e.key === 'Escape') cmdPalette.style.display = 'none';
-        });
-
-        cmdPalette.addEventListener('click', (e) => {
-            if (e.target === cmdPalette) cmdPalette.style.display = 'none';
-        });
-
-        cmdSearch.addEventListener('input', (e) => renderCmdResults(e.target.value));
-
-        function renderCmdResults(query) {
-            const filtered = tools.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
-            cmdResults.innerHTML = filtered.map(t => 
-                `<li onclick="openToolWithEffect('${t.path}')"><span class="icon">${t.icon}</span> ${t.name}</li>`
-            ).join('') || '<li style="color: var(--text-muted); cursor: default;">No tools found...</li>';
-        }
-
-        // Custom Cursor Physics
-        function initCustomCursor() {
-            if (window.matchMedia('(pointer: fine)').matches) { // Only on devices with a mouse
-                const dot = document.getElementById('cursorDot');
-                const outline = document.getElementById('cursorOutline');
-                
-                // Hide default cursor globally
-                document.body.style.cursor = 'none'; 
-                document.querySelectorAll('a, button, input, canvas, .tool-card').forEach(el => el.style.cursor = 'none');
-
-                let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
-
-                window.addEventListener('mousemove', (e) => {
-                    mouseX = e.clientX; mouseY = e.clientY;
-                    dot.style.left = `${mouseX}px`;
-                    dot.style.top = `${mouseY}px`;
-                });
-
-                // The outline lags behind using a spring loop
-                function animateCursor() {
-                    outlineX += (mouseX - outlineX) * 0.15; // Adjust 0.15 for springiness
-                    outlineY += (mouseY - outlineY) * 0.15;
-                    outline.style.left = `${outlineX}px`;
-                    outline.style.top = `${outlineY}px`;
-                    requestAnimationFrame(animateCursor);
-                }
-                animateCursor();
-
-                // Grow cursor dynamically on hover via delegation
-                document.addEventListener('mouseover', (e) => {
-                    if (e.target.closest('a, button, .tool-card, .scratch-canvas, #themeToggle, .theme-toggle, .scratch-container')) {
-                        outline.classList.add('hover-grow');
-                    } else {
-                        outline.classList.remove('hover-grow');
-                    }
-                });
-            }
-        }
-
-        // Hero Matrix Background Rain
         function initHeroMatrix() {
             const canvas = document.getElementById('heroMatrix');
             if (!canvas) return;
@@ -1365,13 +2103,13 @@
             let drops = Array(columns).fill(1);
 
             function draw() {
-                ctx.fillStyle = 'rgba(248, 249, 250, 0.08)'; // Fade out previous frames
+                ctx.fillStyle = 'rgba(248, 249, 250, 0.08)';
                 if (document.documentElement.getAttribute('data-theme') === 'dark') {
                     ctx.fillStyle = 'rgba(8, 9, 10, 0.08)';
                 }
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                ctx.fillStyle = '#f7941d'; // Dista Orange
+                ctx.fillStyle = '#f7941d';
                 ctx.font = `${fontSize}px monospace`;
 
                 for (let i = 0; i < drops.length; i++) {
@@ -1388,7 +2126,7 @@
         }
 
         // ==========================================
-        // INIT
+        // INIT ALL SYSTEMS
         // ==========================================
         async function runInit() {
             renderTools();
@@ -1397,10 +2135,26 @@
             initCustomCursor();
             initHeroMatrix();
             initScratchCard();
+            initConstellationBackground();
+            initParallaxHero();
+            initGravityCards();
+            
+            // Set up mute toggle UI
+            AudioHaptic.updateUI();
+            document.getElementById('muteToggle').addEventListener('click', () => {
+                AudioHaptic.toggleMute();
+            });
+
             await showWelcomeAnimation();
             typeWriterEffect();
+            
+            // Scramble landing page headers on entrance
+            const headerScrambler = new TextScrambler(document.getElementById('scrambleHeader'));
+            headerScrambler.setText("Dista Internal Tools");
+            
+            const heroScrambler = new TextScrambler(document.getElementById('scrambleHero'));
+            heroScrambler.setText("Welcome to Dista Internal Tools");
         }
-
         window.addEventListener('DOMContentLoaded', runInit);
     </script>
 </body>
