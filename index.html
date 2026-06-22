@@ -1880,21 +1880,20 @@
                 cards.forEach(card => {
                     if (card.classList.contains('disabled')) return;
                     
-                    const rect = card.getBoundingClientRect();
-                    const isHovered = (
-                        e.clientX >= rect.left && 
-                        e.clientX <= rect.right && 
-                        e.clientY >= rect.top && 
-                        e.clientY <= rect.bottom
-                    );
+                    const isHovered = card.matches(':hover');
                     
                     if (isHovered) {
                         hoveredCard = card;
                         card.classList.add('hovered');
+                        if (card.parentElement) {
+                            card.parentElement.style.zIndex = '100';
+                            card.parentElement.style.position = 'relative';
+                        }
                         
                         // Dynamically update tooltip left/right/top positions
                         const tooltip = card.querySelector('.tool-desc-full');
                         if (tooltip) {
+                            const rect = card.getBoundingClientRect();
                             const windowWidth = window.innerWidth;
                             const cardCenter = rect.left + rect.width / 2;
                             if (windowWidth < 992) { // 992px breakpoint for medium/tablet/mobile fallback
@@ -1913,6 +1912,10 @@
                         }
                     } else {
                         card.classList.remove('hovered');
+                        if (card.parentElement) {
+                            card.parentElement.style.zIndex = '';
+                            card.parentElement.style.position = '';
+                        }
                     }
                 });
                 
@@ -1964,6 +1967,10 @@
                     card.classList.remove('hovered', 'other-card-hovered');
                     card.style.transform = '';
                     card.style.boxShadow = '';
+                    if (card.parentElement) {
+                        card.parentElement.style.zIndex = '';
+                        card.parentElement.style.position = '';
+                    }
                 });
             });
         }
