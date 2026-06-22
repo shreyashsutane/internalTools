@@ -202,9 +202,15 @@
             background-clip: padding-box; 
             border-radius: 12px;
             padding: 1.5rem;
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, opacity 0.4s ease, filter 0.4s ease;
             height: 100%;
             position: relative;
+        }
+        .tool-card.other-card-hovered {
+            transform: translateY(24px) scale(0.96) !important;
+            opacity: 0.45;
+            filter: blur(1.5px);
+            box-shadow: none !important;
         }
         /* Conic border gradient */
         .tool-card::before {
@@ -273,46 +279,63 @@
         /* Full description - tooltip style */
         .tool-desc-full {
             position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%) translateY(10px);
             background: var(--bg-card);
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1rem;
-            width: 280px;
+            border-radius: 12px;
+            padding: 1.2rem;
+            width: 300px;
             box-shadow: var(--shadow-hover);
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s ease;
-            z-index: 100;
-            font-size: 0.85rem;
+            transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1000;
+            font-size: 0.9rem;
             color: var(--text-muted);
             line-height: 1.5;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-color: var(--tool-color, var(--dista-orange));
         }
-        .tool-desc-full::after {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            border: 8px solid transparent;
-            border-top-color: var(--border-color);
+        /* Left positioning */
+        .tool-desc-full.desc-left {
+            right: 108%;
+            left: auto;
+            top: 50%;
+            bottom: auto;
+            transform: translateY(-50%) translateX(-20px);
         }
-        .tool-desc-full::before {
-            content: '';
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            border: 7px solid transparent;
-            border-top-color: var(--bg-card);
-            z-index: 1;
-        }
-        .tool-card:hover .tool-desc-full {
+        .tool-card:hover .tool-desc-full.desc-left {
             opacity: 1;
             visibility: visible;
-            transform: translateX(-50%) translateY(-8px);
+            transform: translateY(-50%) translateX(0);
+        }
+        /* Right positioning */
+        .tool-desc-full.desc-right {
+            left: 108%;
+            right: auto;
+            top: 50%;
+            bottom: auto;
+            transform: translateY(-50%) translateX(20px);
+        }
+        .tool-card:hover .tool-desc-full.desc-right {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(-50%) translateX(0);
+        }
+        /* Mobile fallback positioning (top of the card) */
+        .tool-desc-full.desc-top {
+            bottom: 108%;
+            left: 50%;
+            right: auto;
+            top: auto;
+            transform: translateX(-50%) translateY(10px);
+            width: 90vw;
+            max-width: 320px;
+        }
+        .tool-card:hover .tool-desc-full.desc-top {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
         }
 
         .btn-open-tool {
@@ -1850,16 +1873,13 @@
         function initGravityCards() {
             document.addEventListener('mousemove', (e) => {
                 const cards = document.querySelectorAll('.tool-card');
+                let hoveredCard = null;
+                
+                // First pass: detect if any card is hovered, and calculate tooltip positions
                 cards.forEach(card => {
                     if (card.classList.contains('disabled')) return;
                     
                     const rect = card.getBoundingClientRect();
-                    const centerX = rect.left + rect.width / 2;
-                    const centerY = rect.top + rect.height / 2;
-                    const dx = e.clientX - centerX;
-                    const dy = e.clientY - centerY;
-                    const distance = Math.hypot(dx, dy);
-                    
                     const isHovered = (
                         e.clientX >= rect.left && 
                         e.clientX <= rect.right && 
@@ -1868,25 +1888,81 @@
                     );
                     
                     if (isHovered) {
+                        hoveredCard = card;
                         card.classList.add('hovered');
-                        return;
-                    }
-                    
-                    card.classList.remove('hovered');
-                    
-                    const gravityRadius = 260;
-                    if (distance < gravityRadius) {
-                        const strength = (1 - distance / gravityRadius) * 4;
-                        const tiltX = (dy / distance) * strength;
-                        const tiltY = -(dx / distance) * strength;
-                        card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.01)`;
-                        card.style.boxShadow = `var(--shadow), 0 4px 18px rgba(247, 148, 29, ${0.12 * strength / 4})`;
+                        
+                        // Dynamically update tooltip left/right/top positions
+                        const tooltip = card.querySelector('.tool-desc-full');
+                        if (tooltip) {
+                            const windowWidth = window.innerWidth;
+                            const cardCenter = rect.left + rect.width / 2;
+                            if (windowWidth < 992) { // 992px breakpoint for medium/tablet/mobile fallback
+                                tooltip.classList.remove('desc-left', 'desc-right');
+                                tooltip.classList.add('desc-top');
+                            } else {
+                                tooltip.classList.remove('desc-top');
+                                if (cardCenter > windowWidth / 2) {
+                                    tooltip.classList.remove('desc-right');
+                                    tooltip.classList.add('desc-left');
+                                } else {
+                                    tooltip.classList.remove('desc-left');
+                                    tooltip.classList.add('desc-right');
+                                }
+                            }
+                        }
                     } else {
-                        if (card.style.transform && !card.classList.contains('hovered')) {
+                        card.classList.remove('hovered');
+                    }
+                });
+                
+                // Second pass: handle magnetic gravity transforms AND other-card shifting
+                cards.forEach(card => {
+                    if (card.classList.contains('disabled')) return;
+                    
+                    if (hoveredCard) {
+                        // If there is a hovered card, apply other-card-hovered to all other cards
+                        if (card !== hoveredCard) {
+                            card.classList.add('other-card-hovered');
                             card.style.transform = '';
                             card.style.boxShadow = '';
+                        } else {
+                            card.classList.remove('other-card-hovered');
+                        }
+                    } else {
+                        // If no card is hovered, remove other-card-hovered class and restore gravity tilt
+                        card.classList.remove('other-card-hovered');
+                        
+                        const rect = card.getBoundingClientRect();
+                        const centerX = rect.left + rect.width / 2;
+                        const centerY = rect.top + rect.height / 2;
+                        const dx = e.clientX - centerX;
+                        const dy = e.clientY - centerY;
+                        const distance = Math.hypot(dx, dy);
+                        
+                        const gravityRadius = 260;
+                        if (distance < gravityRadius) {
+                            const strength = (1 - distance / gravityRadius) * 4;
+                            const tiltX = (dy / distance) * strength;
+                            const tiltY = -(dx / distance) * strength;
+                            card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.01)`;
+                            card.style.boxShadow = `var(--shadow), 0 4px 18px rgba(247, 148, 29, ${0.12 * strength / 4})`;
+                        } else {
+                            if (card.style.transform) {
+                                card.style.transform = '';
+                                card.style.boxShadow = '';
+                            }
                         }
                     }
+                });
+            });
+
+            // Reset all card animations when mouse leaves the document window
+            document.addEventListener('mouseleave', () => {
+                const cards = document.querySelectorAll('.tool-card');
+                cards.forEach(card => {
+                    card.classList.remove('hovered', 'other-card-hovered');
+                    card.style.transform = '';
+                    card.style.boxShadow = '';
                 });
             });
         }
