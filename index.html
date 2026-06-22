@@ -6,37 +6,41 @@
     <title>Dista Internal Tools</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-body: #f8f9fa;
             --bg-card: #ffffff;
-            --text-main: #212529;
-            --text-muted: #6c757d;
-            --border-color: #dee2e6;
+            --text-main: #1d2129;
+            --text-muted: #656d76;
+            --border-color: #e5e8eb;
             --dista-orange: #f7941d;
             --dista-orange-dark: #e85d04;
-            --shadow: 0 4px 12px rgba(0,0,0,0.08);
-            --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
+            --shadow: 0 8px 30px rgba(0,0,0,0.03);
+            --shadow-hover: 0 16px 40px rgba(0,0,0,0.08);
             --input-bg: #ffffff;
-            --input-text: #212529;
+            --input-text: #1d2129;
         }
         [data-theme="dark"] {
-            --bg-body: #121212;
-            --bg-card: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-muted: #a0a0a0;
-            --border-color: #444444;
-            --shadow: 0 4px 12px rgba(0,0,0,0.3);
-            --shadow-hover: 0 8px 24px rgba(0,0,0,0.5);
-            --input-bg: #2d2d2d;
+            --bg-body: #07080a;
+            --bg-card: rgba(18, 20, 26, 0.55);
+            --text-main: #f0f2f5;
+            --text-muted: #8e9aa8;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --shadow: 0 8px 32px rgba(0,0,0,0.5);
+            --shadow-hover: 0 16px 48px rgba(0,0,0,0.7);
+            --input-bg: #111318;
             --input-text: #ffffff;
         }
 
         body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-body);
             color: var(--text-main);
             min-height: 100vh;
-            transition: background-color 0.3s, color 0.3s;
+            transition: background-color 0.4s ease, color 0.4s ease;
         }
 
         /* Header */
@@ -1362,16 +1366,6 @@
                 path: 'tool-3/',
                 docPath: 'docs/index.html#section-crypto-vault',
                 status: 'active'
-            },
-            {
-                id: 'tool-coming',
-                name: 'Cluster Operations Monitor',
-                icon: '🖥️',
-                descShort: 'Kubernetes cluster state streams and debug console',
-                descFull: 'Real-time telemetry and pod status monitor for GKE clusters. Includes shell console wrapper, node logs streamer, and custom event alerting system.',
-                path: '#',
-                docPath: '#',
-                status: 'coming-soon'
             }
         ];
 
