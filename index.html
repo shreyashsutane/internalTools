@@ -79,24 +79,89 @@
             transform: scale(1.1) rotate(360deg);
         }
 
-        /* Hero */
+        /* Hero Section with 3D Grid */
         .hero-section {
-            background: linear-gradient(135deg, rgba(247,148,29,0.1) 0%, rgba(232,93,4,0.05) 100%);
-            padding: 3rem 0;
-            margin-bottom: 2rem;
+            position: relative;
+            background: linear-gradient(135deg, rgba(247,148,29,0.06) 0%, rgba(232,93,4,0.02) 100%);
+            padding: 4.5rem 0 3.5rem;
+            margin-bottom: 2.5rem;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border-color);
         }
         [data-theme="dark"] .hero-section {
-            background: linear-gradient(135deg, rgba(247,148,29,0.05) 0%, rgba(232,93,4,0.02) 100%);
+            background: linear-gradient(135deg, rgba(247,148,29,0.02) 0%, rgba(232,93,4,0.01) 100%);
+            border-bottom-color: rgba(255, 255, 255, 0.05);
+        }
+        /* Perspective grid background */
+        .hero-grid-3d {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.15;
+            mask-image: linear-gradient(to bottom, transparent 10%, black 60%, transparent 95%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 10%, black 60%, transparent 95%);
+        }
+        [data-theme="dark"] .hero-grid-3d {
+            opacity: 0.22;
+        }
+        .hero-grid-3d::before {
+            content: '';
+            position: absolute;
+            bottom: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                linear-gradient(var(--border-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: perspective(300px) rotateX(65deg) translateY(0px);
+            animation: gridScroll 15s linear infinite;
+        }
+        @keyframes gridScroll {
+            0% { transform: perspective(300px) rotateX(65deg) translateY(0px); }
+            100% { transform: perspective(300px) rotateX(65deg) translateY(50px); }
         }
         .hero-title {
-            font-size: 2.5rem;
+            font-size: 2.75rem;
             font-weight: 800;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
+            display: inline-block;
+        }
+        .hero-title-text {
+            background: linear-gradient(135deg, var(--dista-orange) 0%, var(--dista-orange-dark) 50%, #ff5d5d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         .hero-subtitle {
             font-size: 1.1rem;
             color: var(--text-muted);
             max-width: 600px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Tool Cards Brand Specifics */
+        .card-datastore-copier {
+            --tool-color: var(--dista-orange);
+            --tool-glow: rgba(247, 148, 29, 0.08);
+            --tool-glow-hover: rgba(247, 148, 29, 0.35);
+        }
+        .card-tool-2 {
+            --tool-color: #5fd98a;
+            --tool-glow: rgba(95, 217, 138, 0.08);
+            --tool-glow-hover: rgba(95, 217, 138, 0.35);
+        }
+        .card-tool-3 {
+            --tool-color: #ffb454;
+            --tool-glow: rgba(255, 180, 84, 0.08);
+            --tool-glow-hover: rgba(255, 180, 84, 0.35);
         }
 
         /* Tool Cards */
@@ -105,18 +170,36 @@
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 1.5rem;
-            transition: all 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
             height: 100%;
             position: relative;
-            overflow: visible;
+            overflow: hidden;
         }
-        .tool-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-hover);
-            border-color: var(--dista-orange);
+        /* Spotlight Glow overlay */
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 12px;
+            background: radial-gradient(
+                250px circle at var(--mouse-x, -999px) var(--mouse-y, -999px),
+                var(--tool-glow, rgba(247, 148, 29, 0.08)) 0%,
+                transparent 70%
+            );
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .tool-card:hover::before {
+            opacity: 1;
+        }
+        .tool-card > * {
+            position: relative;
+            z-index: 2;
         }
         .tool-card.active {
-            border-left: 4px solid var(--dista-orange);
+            border-left: 4px solid var(--tool-color);
         }
         .tool-card.disabled {
             opacity: 0.6;
@@ -125,7 +208,6 @@
         .tool-card.disabled:hover {
             transform: none;
             box-shadow: var(--shadow);
-            border-color: var(--border-color);
         }
 
         .tool-icon {
@@ -419,29 +501,49 @@
             z-index: -10;
             overflow: hidden;
             pointer-events: none;
-            background: radial-gradient(circle at 10% 20%, rgba(247,148,29,0.03) 0%, transparent 40%),
-                        radial-gradient(circle at 90% 80%, rgba(232,93,4,0.03) 0%, transparent 40%);
+            background: #f8f9fa;
             transition: background 0.4s ease;
         }
         [data-theme="dark"] .ambient-bg {
-            background: radial-gradient(circle at 10% 20%, rgba(247,148,29,0.015) 0%, transparent 40%),
-                        radial-gradient(circle at 90% 80%, rgba(232,93,4,0.015) 0%, transparent 40%);
+            background: #08090a;
         }
-        .ambient-bg::before {
+        /* Glassy glowing blobs in background */
+        .ambient-bg::before, .ambient-bg::after {
             content: '';
             position: absolute;
-            top: -20%;
-            left: -20%;
-            width: 140%;
-            height: 140%;
-            background-image: 
-                linear-gradient(var(--border-color) 1px, transparent 1px),
-                linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
-            background-size: 80px 80px;
-            opacity: 0.15;
-            mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
-            -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
-            animation: floatBg 25s ease-in-out infinite;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(247,148,29,0.08) 0%, transparent 70%);
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: -1;
+            animation: floatBlob1 20s infinite alternate ease-in-out;
+        }
+        .ambient-bg::after {
+            background: radial-gradient(circle, rgba(91, 156, 255, 0.08) 0%, transparent 70%);
+            width: 500px;
+            height: 500px;
+            right: 10%;
+            bottom: 10%;
+            animation: floatBlob2 25s infinite alternate ease-in-out;
+        }
+        [data-theme="dark"] .ambient-bg::before {
+            background: radial-gradient(circle, rgba(247,148,29,0.04) 0%, transparent 70%);
+        }
+        [data-theme="dark"] .ambient-bg::after {
+            background: radial-gradient(circle, rgba(91, 156, 255, 0.04) 0%, transparent 70%);
+        }
+
+        @keyframes floatBlob1 {
+            0% { transform: translate(-10%, -10%) scale(1); }
+            50% { transform: translate(20%, 10%) scale(1.2); }
+            100% { transform: translate(-10%, -10%) scale(1); }
+        }
+        @keyframes floatBlob2 {
+            0% { transform: translate(10%, 10%) scale(1.1); }
+            50% { transform: translate(-15%, -20%) scale(0.9); }
+            100% { transform: translate(10%, 10%) scale(1.1); }
         }
 
         /* Smooth transitions for theme toggling */
@@ -450,9 +552,7 @@
         }
 
         /* Tool Cards Hover Enhancements */
-        .tool-card {
-            overflow: hidden; /* to clip the shine sweep */
-        }
+        /* Tool Cards Hover Enhancements */
         .tool-card::after {
             content: '';
             position: absolute;
@@ -463,6 +563,7 @@
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
             transform: skewX(-25deg);
             pointer-events: none;
+            z-index: 1;
         }
         [data-theme="dark"] .tool-card::after {
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
@@ -472,8 +573,8 @@
         }
         .tool-card:hover {
             transform: translateY(-8px) scale(1.01);
-            box-shadow: var(--shadow-hover), 0 0 15px rgba(247,148,29,0.15);
-            border-color: var(--dista-orange);
+            box-shadow: var(--shadow-hover), 0 8px 30px var(--tool-glow-hover, rgba(247, 148, 29, 0.3));
+            border-color: var(--tool-color, var(--dista-orange));
         }
         .tool-card:hover .tool-icon {
             transform: scale(1.1) translateY(-3px);
@@ -545,9 +646,10 @@
 
     <!-- Hero Section -->
     <section class="hero-section">
-        <div class="container animate-fade-in-up" style="max-width: 1200px; animation-delay: 0.1s;">
+        <div class="hero-grid-3d"></div>
+        <div class="container animate-fade-in-up" style="max-width: 1200px; animation-delay: 0.1s; position: relative; z-index: 1;">
             <div class="text-center">
-                <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> Welcome to Dista Internal Tools</h2>
+                <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text">Welcome to Dista Internal Tools</span></h2>
                 <p class="hero-subtitle mx-auto" id="typingSubtitle" style="min-height: 54px;"></p>
             </div>
         </div>
@@ -685,7 +787,7 @@
                 card.style.animationDelay = `${0.3 + index * 0.1}s`;
 
                 card.innerHTML = `
-                    <div class="tool-card ${isActive ? 'active' : 'disabled'}" style="position: relative;">
+                    <div class="tool-card ${isActive ? 'active' : 'disabled'} card-${tool.id}" style="position: relative;">
                         <!-- Full description tooltip (appears on hover) -->
                         <div class="tool-desc-full">
                             <strong>${tool.name}</strong><br>
@@ -957,11 +1059,25 @@
             });
         }
 
+        function initSpotlightCards() {
+            const cards = document.querySelectorAll('.tool-card');
+            cards.forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    card.style.setProperty('--mouse-x', `${x}px`);
+                    card.style.setProperty('--mouse-y', `${y}px`);
+                });
+            });
+        }
+
         // ==========================================
         // INIT
         // ==========================================
         async function runInit() {
             renderTools();
+            initSpotlightCards();
             initScratchCard();
             await showWelcomeAnimation();
             typeWriterEffect();
