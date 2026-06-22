@@ -637,10 +637,11 @@
         .tool-card:hover .tool-card-sweep-wrap::after {
             animation: sweep 0.8s ease-in-out;
         }
-        .tool-card:hover {
+        .tool-card:hover, .tool-card.hovered {
             transform: translateY(-8px) scale(1.01);
             box-shadow: var(--shadow-hover), 0 8px 30px var(--tool-glow-hover, rgba(247, 148, 29, 0.3));
             border-color: var(--tool-color, var(--dista-orange));
+            z-index: 100;
         }
         .tool-card:hover .tool-icon {
             transform: scale(1.1) translateY(-3px);
