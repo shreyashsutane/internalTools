@@ -41,12 +41,21 @@
 
         /* Header */
         .header-bar {
-            background: var(--bg-card);
-            box-shadow: var(--shadow);
+            background: rgba(255, 255, 255, 0.75); /* Semi-transparent light */
+            backdrop-filter: saturate(180%) blur(12px);
+            -webkit-backdrop-filter: saturate(180%) blur(12px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
             padding: 1rem 0;
             position: sticky;
             top: 0;
             z-index: 1000;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        /* Update for Dark Mode */
+        [data-theme="dark"] .header-bar {
+            background: rgba(18, 18, 18, 0.75);
+            border-bottom-color: rgba(255,255,255,0.05);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         .logo-img {
             height: 45px;
@@ -135,9 +144,31 @@
         }
         .hero-title-text {
             background: linear-gradient(135deg, var(--dista-orange) 0%, var(--dista-orange-dark) 50%, #ff5d5d 100%);
+            background-size: 200% 200%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            animation: gradientShift 4s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 3px;
+            height: 1.1rem;
+            background-color: var(--dista-orange);
+            margin-left: 4px;
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            from, to { background-color: transparent }
+            50% { background-color: var(--dista-orange) }
         }
         .hero-subtitle {
             font-size: 1.1rem;
@@ -802,7 +833,7 @@
 
                         <div class="tool-actions">
                             ${isActive 
-                                ? `<a href="${tool.path}" class="btn-open-tool">
+                                ? `<a href="javascript:void(0)" onclick="openToolWithEffect('${tool.path}')" class="btn-open-tool">
                                      <i class="bi bi-box-arrow-up-right me-1"></i>Open Tool
                                    </a>`
                                 : `<span class="badge-locked"><i class="bi bi-lock-fill me-1"></i>Coming Soon</span>`
@@ -982,17 +1013,26 @@
 
         function typeWriterEffect() {
             const text = "A collection of utilities for internal development, data management, and operational tasks. Click on any tool card to open it.";
-            const speed = 20; // speed in ms
+            const speed = 20;
             let i = 0;
             const target = document.getElementById('typingSubtitle');
             if (!target) return;
-            target.innerHTML = '';
+            
+            // Add cursor initially
+            target.innerHTML = '<span class="typing-text"></span><span class="typing-cursor"></span>';
+            const textSpan = target.querySelector('.typing-text');
             
             function type() {
                 if (i < text.length) {
-                    target.innerHTML += text.charAt(i);
+                    textSpan.textContent += text.charAt(i);
                     i++;
                     setTimeout(type, speed);
+                } else {
+                    // Optional: Remove cursor after 3 seconds
+                    setTimeout(() => {
+                        const cursor = target.querySelector('.typing-cursor');
+                        if (cursor) cursor.remove();
+                    }, 3000);
                 }
             }
             type();
@@ -1068,8 +1108,60 @@
                     const y = e.clientY - rect.top;
                     card.style.setProperty('--mouse-x', `${x}px`);
                     card.style.setProperty('--mouse-y', `${y}px`);
+
+                    // 3D Tilt logic
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    const rotateX = ((y - centerY) / centerY) * -5; // Max 5deg tilt
+                    const rotateY = ((x - centerX) / centerX) * 5;
+                    card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-8px) scale(1.02)`;
+                });
+
+                // Reset transform on mouse leave
+                card.addEventListener('mouseleave', () => {
+                    card.style.transform = '';
                 });
             });
+        }
+
+        function initMagneticButtons() {
+            const magnets = document.querySelectorAll('.btn-open-tool, .btn-doc-link');
+            magnets.forEach(magnet => {
+                magnet.addEventListener('mousemove', (e) => {
+                    const rect = magnet.getBoundingClientRect();
+                    const x = e.clientX - rect.left - rect.width / 2;
+                    const y = e.clientY - rect.top - rect.height / 2;
+                    magnet.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+                });
+                magnet.addEventListener('mouseleave', () => {
+                    magnet.style.transform = '';
+                });
+            });
+        }
+
+        function openToolWithEffect(url) {
+            const portal = document.createElement('div');
+            portal.style.position = 'fixed';
+            portal.style.top = '50%';
+            portal.style.left = '50%';
+            portal.style.transform = 'translate(-50%, -50%) scale(0)';
+            portal.style.width = '2vmax';
+            portal.style.height = '2vmax';
+            portal.style.background = 'var(--dista-orange)';
+            portal.style.borderRadius = '50%';
+            portal.style.zIndex = '9999';
+            portal.style.transition = 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+            document.body.appendChild(portal);
+
+            // Trigger animation
+            requestAnimationFrame(() => {
+                portal.style.transform = 'translate(-50%, -50%) scale(120)';
+                portal.style.opacity = '0.85';
+            });
+
+            setTimeout(() => {
+                window.location.href = url;
+            }, 500);
         }
 
         // ==========================================
@@ -1078,6 +1170,7 @@
         async function runInit() {
             renderTools();
             initSpotlightCards();
+            initMagneticButtons();
             initScratchCard();
             await showWelcomeAnimation();
             typeWriterEffect();
