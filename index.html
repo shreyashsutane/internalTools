@@ -6,41 +6,37 @@
     <title>Dista Internal Tools</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-body: #f8f9fa;
             --bg-card: #ffffff;
-            --text-main: #1d2129;
-            --text-muted: #656d76;
-            --border-color: #e5e8eb;
+            --text-main: #212529;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
             --dista-orange: #f7941d;
             --dista-orange-dark: #e85d04;
-            --shadow: 0 8px 30px rgba(0,0,0,0.03);
-            --shadow-hover: 0 16px 40px rgba(0,0,0,0.08);
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
             --input-bg: #ffffff;
-            --input-text: #1d2129;
+            --input-text: #212529;
         }
         [data-theme="dark"] {
-            --bg-body: #07080a;
-            --bg-card: rgba(18, 20, 26, 0.55);
-            --text-main: #f0f2f5;
-            --text-muted: #8e9aa8;
-            --border-color: rgba(255, 255, 255, 0.08);
-            --shadow: 0 8px 32px rgba(0,0,0,0.5);
-            --shadow-hover: 0 16px 48px rgba(0,0,0,0.7);
-            --input-bg: #111318;
+            --bg-body: #121212;
+            --bg-card: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: #444444;
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --shadow-hover: 0 8px 24px rgba(0,0,0,0.5);
+            --input-bg: #2d2d2d;
             --input-text: #ffffff;
         }
 
         body {
-            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-body);
             color: var(--text-main);
             min-height: 100vh;
-            transition: background-color 0.4s ease, color 0.4s ease;
+            transition: background-color 0.3s, color 0.3s;
         }
 
         /* Header */
@@ -202,12 +198,11 @@
         /* Tool Cards */
         .tool-card {
             background: var(--bg-card);
-            border: 1px solid var(--border-color); 
-            backdrop-filter: blur(16px) saturate(180%);
-            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid transparent; 
+            background-clip: padding-box; 
             border-radius: 12px;
             padding: 1.5rem;
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
             height: 100%;
             position: relative;
             overflow: hidden;
@@ -877,99 +872,36 @@
         }
 
         /* Terminal & Defrag Loading overlays */
-        /* Cyberpunk HUD Overlay styles */
-        .hud-overlay {
+        .terminal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: #06070a;
-            color: var(--dista-orange);
-            font-family: 'Share Tech Mono', monospace;
+            background: #08090b;
+            color: #2ecc71;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 3rem;
             z-index: 100000;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 1;
-            transition: opacity 0.5s ease;
-        }
-        .hud-scan-container {
-            position: relative;
-            width: 420px;
-            padding: 2.5rem;
-            background: rgba(12, 13, 16, 0.85);
-            border: 1px solid rgba(247, 148, 29, 0.2);
-            border-radius: 16px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(247, 148, 29, 0.05);
-            backdrop-filter: blur(10px);
+            flex-direction: column;
+            justify-content: space-between;
             overflow: hidden;
         }
-        .hud-ring {
-            width: 120px; height: 120px;
-            border: 2px dashed rgba(247, 148, 29, 0.3);
-            border-top-color: var(--dista-orange);
-            border-bottom-color: var(--dista-orange);
-            border-radius: 50%;
-            margin: 0 auto 1.5rem;
-            animation: spin 6s linear infinite;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        .hud-ring::before {
-            content: '';
-            width: 95px; height: 95px;
-            border: 1px solid rgba(247, 148, 29, 0.15);
-            border-left-color: var(--dista-orange);
-            border-right-color: var(--dista-orange);
-            border-radius: 50%;
-            position: absolute;
-            animation: spin-reverse 3s linear infinite;
-        }
-        .hud-icon-core {
-            font-size: 2.1rem;
-            color: var(--dista-orange);
-            animation: pulseGlowWelcome 1.5s infinite alternate;
-        }
-        .hud-title {
-            font-size: 1.15rem;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            font-weight: 700;
-            margin-bottom: 1.25rem;
-            color: #ffffff;
-            text-shadow: 0 0 8px rgba(247, 148, 29, 0.5);
-        }
-        .hud-status-log {
-            text-align: left;
-            margin: 0 auto;
-            max-width: 320px;
+        .terminal-log-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 2rem;
+            text-shadow: 0 0 5px rgba(46, 204, 113, 0.4);
+            font-size: 1.1rem;
             line-height: 1.6;
-            font-size: 0.9rem;
-            color: #a0aab8;
         }
-        .hud-laser {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 2px;
-            background: linear-gradient(90deg, transparent, var(--dista-orange), transparent);
-            box-shadow: 0 0 10px var(--dista-orange);
-            animation: laser-sweep 2.5s linear infinite;
-            pointer-events: none;
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px; height: 16px;
+            background: #2ecc71;
+            animation: blink 0.8s step-end infinite;
+            vertical-align: middle;
         }
-        .hud-flash-collapse {
+        .terminal-flash-collapse {
             animation: flash-collapse 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        @keyframes laser-sweep {
-            0% { top: 0%; opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        @keyframes spin-reverse {
-            to { transform: rotate(-360deg); }
         }
         @keyframes flash-collapse {
             0% { transform: scale(1); filter: brightness(1) contrast(1); opacity: 1; }
@@ -1215,17 +1147,17 @@
                 const gain = ctx.createGain();
                 
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(1600, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.015);
+                osc.frequency.setValueAtTime(1000, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.04);
                 
-                gain.gain.setValueAtTime(0.012, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.015);
+                gain.gain.setValueAtTime(0.015, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.04);
                 
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 
                 osc.start();
-                osc.stop(ctx.currentTime + 0.016);
+                osc.stop(ctx.currentTime + 0.05);
             },
             playClunk() {
                 if (this.muted) return;
@@ -1237,17 +1169,17 @@
                 const gain = ctx.createGain();
                 
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(100, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.06);
+                osc.frequency.setValueAtTime(120, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.15);
                 
-                gain.gain.setValueAtTime(0.12, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.07);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
                 
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 
                 osc.start();
-                osc.stop(ctx.currentTime + 0.08);
+                osc.stop(ctx.currentTime + 0.2);
             },
             playSwoosh() {
                 if (this.muted) return;
@@ -1619,56 +1551,82 @@
                 setTimeout(() => AudioHaptic.playSwoosh(), 100);
 
                 const overlay = document.createElement('div');
-                overlay.className = 'hud-overlay';
+                overlay.className = 'terminal-overlay';
                 
                 overlay.innerHTML = `
-                    <div class="hud-scan-container">
-                        <div class="hud-laser"></div>
-                        <div class="hud-ring">
-                            <i class="bi bi-cpu-fill hud-icon-core"></i>
-                        </div>
-                        <div class="hud-title">System Diagnostics</div>
-                        <div class="hud-status-log" id="hudLogs"></div>
+                    <div class="terminal-log-container" id="terminalLogs"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #2ecc71; padding-top:1rem; font-size:0.9rem;">
+                        <div>DISTA SECURE CORE BOOTLOADER v4.9</div>
+                        <div>LOADER PORTAL STATUS: ACTIVE</div>
                     </div>
                 `;
                 document.body.appendChild(overlay);
                 document.body.style.overflow = 'hidden';
                 
-                const logContainer = overlay.querySelector('#hudLogs');
+                const logContainer = overlay.querySelector('#terminalLogs');
                 
-                const hudLines = [
-                    "SYSTEM INITIALIZING...",
-                    "├─ NETWORKING: SUBNET SECURE",
-                    "├─ GCP KEYSTORE: ONLINE",
-                    "├─ SECURE VAULT ENGINE: DEPLOYED",
-                    "└─ PORTAL INITIALIZATION: 100% OK"
+                const bootLogs = [
+                    "> DISTA CENTRAL OS KERNEL BOOT SEQUENCE INITIATED...",
+                    "> MOUNTING ROOT DIRECTORY SYSTEMS: SUCCESS",
+                    "> DECRYPTING KEYSTORE VAULTS... 0x81F27A0B",
+                    "> ESTABLISHING GCP INFRASTRUCTURE MANAGER HANDSHAKE... ACTIVE",
+                    "> SECURING CREDENTIAL PARSER SWEEP ENGINE... SHIELD STATUS: 100%",
+                    "> INITIALIZING AUDIO SYNTH HAPTICS CHIP... COMPLETED",
+                    "> RESOLVING DOM MATRIX GRID CANVAS PIXELS... RENDER OK",
+                    "> INJECTING QUANTUM CONSTELLATION NETWORK... ACTIVE",
+                    "> DECRYPTION PROTOCOLS... ALL SYSTEM LAYERS STABLE [100%]"
                 ];
                 
                 let lineIdx = 0;
                 function printNextLine() {
-                    if (lineIdx < hudLines.length) {
+                    if (lineIdx < bootLogs.length) {
                         const line = document.createElement('div');
-                        line.textContent = hudLines[lineIdx];
+                        line.textContent = bootLogs[lineIdx];
                         logContainer.appendChild(line);
+                        logContainer.scrollTop = logContainer.scrollHeight;
                         AudioHaptic.playTick();
                         
                         lineIdx++;
-                        setTimeout(printNextLine, 180 + Math.random() * 80);
+                        setTimeout(printNextLine, 100 + Math.random() * 80);
                     } else {
-                        setTimeout(() => {
-                            AudioHaptic.playClunk();
-                            AudioHaptic.playSwoosh();
-                            
-                            overlay.classList.add('hud-flash-collapse');
-                            setTimeout(() => {
-                                overlay.remove();
-                                document.body.style.overflow = '';
-                                resolve();
-                            }, 600);
-                        }, 500);
+                        const progressWrapper = document.createElement('div');
+                        progressWrapper.style.marginTop = '1.5rem';
+                        progressWrapper.innerHTML = `
+                            <div>PORTAL COMPILATION: <span id="bootPercent">0%</span></div>
+                            <div style="font-family: monospace; letter-spacing: 2px;" id="bootBar">[................................]</div>
+                        `;
+                        logContainer.appendChild(progressWrapper);
+                        
+                        let percent = 0;
+                        const barSize = 32;
+                        
+                        function updateProgress() {
+                            if (percent < 100) {
+                                percent += 5;
+                                const filledChars = Math.floor((percent / 100) * barSize);
+                                const barText = '[' + '■'.repeat(filledChars) + '.'.repeat(barSize - filledChars) + ']';
+                                document.getElementById('bootPercent').textContent = `${percent}%`;
+                                document.getElementById('bootBar').textContent = barText;
+                                AudioHaptic.playTick();
+                                setTimeout(updateProgress, 30 + Math.random() * 20);
+                            } else {
+                                setTimeout(() => {
+                                    AudioHaptic.playClunk();
+                                    AudioHaptic.playSwoosh();
+                                    
+                                    overlay.classList.add('terminal-flash-collapse');
+                                    setTimeout(() => {
+                                        overlay.remove();
+                                        document.body.style.overflow = '';
+                                        resolve();
+                                    }, 600);
+                                }, 300);
+                            }
+                        }
+                        setTimeout(updateProgress, 100);
                     }
                 }
-                setTimeout(printNextLine, 200);
+                setTimeout(printNextLine, 150);
             });
         }
 
