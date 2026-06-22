@@ -205,7 +205,6 @@
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
             height: 100%;
             position: relative;
-            overflow: hidden;
         }
         /* Conic border gradient */
         .tool-card::before {
@@ -590,7 +589,15 @@
 
         /* Tool Cards Hover Enhancements */
         /* Tool Cards Hover Enhancements */
-        .tool-card::after {
+        .tool-card-sweep-wrap {
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .tool-card-sweep-wrap::after {
             content: '';
             position: absolute;
             top: 0;
@@ -600,12 +607,11 @@
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
             transform: skewX(-25deg);
             pointer-events: none;
-            z-index: 1;
         }
-        [data-theme="dark"] .tool-card::after {
+        [data-theme="dark"] .tool-card-sweep-wrap::after {
             background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
         }
-        .tool-card:hover::after {
+        .tool-card:hover .tool-card-sweep-wrap::after {
             animation: sweep 0.8s ease-in-out;
         }
         .tool-card:hover {
@@ -780,9 +786,12 @@
             display: inline-block;
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s;
         }
+        /* Comment out holographic/glitch hover animations as requested */
+        /*
         .tool-card:hover .tool-icon {
             animation: holo-glitch 0.25s cubic-bezier(.25, .46, .45, .94) both infinite alternate;
         }
+        */
         .tool-icon::after {
             content: '';
             position: absolute;
@@ -797,12 +806,14 @@
             );
             opacity: 0;
             pointer-events: none;
-            z-index: 10;
+            z-index: 1;
         }
+        /*
         .tool-card:hover .tool-icon::after {
             opacity: 0.6;
             animation: scanline-sweep 1.2s linear infinite;
         }
+        */
         @keyframes scanline-sweep {
             0% { transform: translateY(-100%); }
             100% { transform: translateY(100%); }
@@ -1394,6 +1405,7 @@
 
                 card.innerHTML = `
                     <div class="tool-card ${isActive ? 'active' : 'disabled'} card-${tool.id}" style="position: relative;">
+                        <div class="tool-card-sweep-wrap"></div>
                         <!-- Full description tooltip (appears on hover) -->
                         <div class="tool-desc-full">
                             <strong>${tool.name}</strong><br>
@@ -1554,10 +1566,12 @@
                 overlay.className = 'terminal-overlay';
                 
                 overlay.innerHTML = `
-                    <div class="terminal-log-container" id="terminalLogs"></div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #2ecc71; padding-top:1rem; font-size:0.9rem;">
-                        <div>DISTA SECURE CORE BOOTLOADER v4.9</div>
-                        <div>LOADER PORTAL STATUS: ACTIVE</div>
+                    <div id="terminalContent" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; width: 100%; transition: opacity 0.5s ease; opacity: 1;">
+                        <div class="terminal-log-container" id="terminalLogs"></div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #2ecc71; padding-top:1rem; font-size:0.9rem;">
+                            <div>DISTA SECURE CORE BOOTLOADER v4.9</div>
+                            <div>LOADER PORTAL STATUS: ACTIVE</div>
+                        </div>
                     </div>
                 `;
                 document.body.appendChild(overlay);
@@ -1612,14 +1626,63 @@
                             } else {
                                 setTimeout(() => {
                                     AudioHaptic.playClunk();
-                                    AudioHaptic.playSwoosh();
                                     
-                                    overlay.classList.add('terminal-flash-collapse');
+                                    // Transition to Welcome screen
+                                    const terminalContent = document.getElementById('terminalContent');
+                                    terminalContent.style.opacity = '0';
+                                    
                                     setTimeout(() => {
-                                        overlay.remove();
-                                        document.body.style.overflow = '';
-                                        resolve();
-                                    }, 600);
+                                        terminalContent.style.display = 'none';
+                                        
+                                        // Center overlay contents for the greeting card
+                                        overlay.style.justifyContent = 'center';
+                                        overlay.style.alignItems = 'center';
+                                        
+                                        // Create welcome message element
+                                        const welcomeContainer = document.createElement('div');
+                                        welcomeContainer.id = 'welcomeContent';
+                                        welcomeContainer.style.opacity = '0';
+                                        welcomeContainer.style.transition = 'opacity 0.8s ease';
+                                        welcomeContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+                                        welcomeContainer.style.textAlign = 'center';
+                                        
+                                        welcomeContainer.innerHTML = `
+                                            <div style="text-align:center; transform: scale(0.95); transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)" id="welcome-card">
+                                                <div style="margin-bottom: 2rem; display: flex; justify-content: center;">
+                                                    <div style="width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle, var(--dista-orange) 0%, transparent 70%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(247, 148, 29, 0.3); animation: pulseGlowWelcome 2s infinite alternate">
+                                                        <i class="bi bi-cpu-fill" style="color:var(--dista-orange); font-size: 2.2rem; display: flex; align-items: center; justify-content: center;"></i>
+                                                    </div>
+                                                </div>
+                                                <div style="color:var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.25em; font-weight: 700; margin-bottom: 12px;">
+                                                    Dista Operations Portal
+                                                </div>
+                                                <h1 style="color:#ffffff; font-size: 3rem; font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 0 20px rgba(255,255,255,0.15);">
+                                                    Welcome, Distan
+                                                </h1>
+                                                <div style="width: 60px; height: 3px; background: var(--dista-orange); margin: 0 auto; border-radius: 2px; animation: scaleWidthWelcome 1.2s ease-out"></div>
+                                            </div>
+                                        `;
+                                        overlay.appendChild(welcomeContainer);
+                                        
+                                        // Trigger browser reflow and fade in welcome screen
+                                        welcomeContainer.getBoundingClientRect();
+                                        welcomeContainer.style.opacity = '1';
+                                        
+                                        // Play futuristic swoosh sound
+                                        AudioHaptic.playSwoosh();
+                                        
+                                        // Show welcome card for 2.2 seconds before CRT turn-off fadeout
+                                        setTimeout(() => {
+                                            AudioHaptic.playSwoosh();
+                                            overlay.classList.add('terminal-flash-collapse');
+                                            setTimeout(() => {
+                                                overlay.remove();
+                                                document.body.style.overflow = '';
+                                                resolve();
+                                            }, 600);
+                                        }, 2200);
+                                        
+                                    }, 500);
                                 }, 300);
                             }
                         }
