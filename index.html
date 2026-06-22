@@ -330,6 +330,50 @@
         [data-theme="dark"] .notes-card ul {
             color: #ffda6a;
         }
+
+        /* Scratch Card styles */
+        .scratch-container {
+            position: relative;
+            display: inline-block;
+            width: 140px;
+            height: 26px;
+            vertical-align: middle;
+            margin-left: 8px;
+            user-select: none;
+            overflow: hidden;
+            border-radius: 6px;
+        }
+        .scratch-reveal-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #d63031;
+            background: rgba(0, 0, 0, 0.08);
+            border: 1px dashed #e1b12c;
+            border-radius: 6px;
+        }
+        [data-theme="dark"] .scratch-reveal-text {
+            color: #ff7675;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: #f1c40f;
+        }
+        .scratch-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+            border-radius: 6px;
+            z-index: 2;
+            transition: opacity 0.4s ease;
+            touch-action: none;
+        }
     </style>
 <base target="_self">
 </head>
@@ -376,9 +420,18 @@
             <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>Important Notes</h5>
             <ul>
                 <li>Always backup your Datastore before using any copy tools</li>
-                <li>Tools require appropriate GCP permissions — ensure your account has access</li>
-                <li>Report any issues or bugs to the development team</li>
-                <li>Tools are for internal use only — do not share externally</li>
+                <li>GCP permissions required:
+                    <ul style="list-style-type: circle; margin-top: 0.25rem; padding-left: 1.25rem;">
+                        <li><strong>GCP Infrastructure Manager</strong>: requires <code>BigQuery Admin</code> (for schema sync / query transfer) and <code>Cloud Datastore Owner</code> / <code>User</code> (for entity copy).</li>
+                        <li><strong>Sweep</strong> &amp; <strong>Crypto Vault</strong>: 100% client-side, require no cloud permissions.</li>
+                    </ul>
+                </li>
+                <li>If facing any issue, scratch here:
+                    <span class="scratch-container">
+                        <span class="scratch-reveal-text">contact D-0198</span>
+                        <canvas class="scratch-canvas" width="140" height="26"></canvas>
+                    </span>
+                </li>
             </ul>
         </div>
     </section>
@@ -595,10 +648,91 @@
             });
         }
 
+        function initScratchCard() {
+            const canvas = document.querySelector('.scratch-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Draw orange gradient background
+            const grad = ctx.createLinearGradient(0, 0, width, height);
+            grad.addColorStop(0, '#f7941d');
+            grad.addColorStop(1, '#b15a0c');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Text on top of canvas
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Scratch here 🔍', width / 2, height / 2);
+
+            let isDrawing = false;
+
+            function scratch(x, y) {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, Math.PI * 2);
+                ctx.fill();
+                checkScratchPercentage();
+            }
+
+            function handleMove(e) {
+                if (!isDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                scratch(clientX - rect.left, clientY - rect.top);
+            }
+
+            function startDraw(e) {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                scratch(clientX - rect.left, clientY - rect.top);
+            }
+
+            function stopDraw() {
+                isDrawing = false;
+            }
+
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', stopDraw);
+
+            canvas.addEventListener('touchstart', startDraw);
+            canvas.addEventListener('touchmove', handleMove);
+            window.addEventListener('touchend', stopDraw);
+
+            function checkScratchPercentage() {
+                try {
+                    const imgData = ctx.getImageData(0, 0, width, height);
+                    const data = imgData.data;
+                    let transparentCount = 0;
+                    for (let i = 3; i < data.length; i += 4) {
+                        if (data[i] === 0) {
+                            transparentCount++;
+                        }
+                    }
+                    const percentage = (transparentCount / (width * height)) * 100;
+                    if (percentage > 45) {
+                        canvas.style.opacity = '0';
+                        setTimeout(() => {
+                            canvas.style.display = 'none';
+                        }, 400);
+                    }
+                } catch (err) {}
+            }
+        }
+
         // ==========================================
         // INIT
         // ==========================================
         renderTools();
+        initScratchCard();
     </script>
 </body>
 </html>
