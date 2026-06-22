@@ -2075,6 +2075,41 @@
             type();
         }
 
+        function initCustomCursor() {
+            if (window.matchMedia('(pointer: fine)').matches) {
+                const dot = document.getElementById('cursorDot');
+                const outline = document.getElementById('cursorOutline');
+                
+                document.body.style.cursor = 'none'; 
+                document.querySelectorAll('a, button, input, canvas, .tool-card').forEach(el => el.style.cursor = 'none');
+
+                let mouseX = 0, mouseY = 0, outlineX = 0, outlineY = 0;
+
+                window.addEventListener('mousemove', (e) => {
+                    mouseX = e.clientX; mouseY = e.clientY;
+                    dot.style.left = `${mouseX}px`;
+                    dot.style.top = `${mouseY}px`;
+                });
+
+                function animateCursor() {
+                    outlineX += (mouseX - outlineX) * 0.15;
+                    outlineY += (mouseY - outlineY) * 0.15;
+                    outline.style.left = `${outlineX}px`;
+                    outline.style.top = `${outlineY}px`;
+                    requestAnimationFrame(animateCursor);
+                }
+                animateCursor();
+
+                document.addEventListener('mouseover', (e) => {
+                    if (e.target.closest('a, button, .tool-card, .scratch-canvas, #themeToggle, .theme-toggle, .scratch-container')) {
+                        outline.classList.add('hover-grow');
+                    } else {
+                        outline.classList.remove('hover-grow');
+                    }
+                });
+            }
+        }
+
         function initHeroMatrix() {
             const canvas = document.getElementById('heroMatrix');
             if (!canvas) return;
