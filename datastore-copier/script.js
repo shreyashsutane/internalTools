@@ -272,12 +272,20 @@ const AuditLog = {
                     await AuditLog.addLog("BQ_SCHEMA_REVERT", "—", log.tgtProject, `Reverted sync of ${state.backupData.length} tables from log ${logId}.`, "SUCCESS");
                     if (State.mode === 'bq' && State.bq.src) await App.runBqCompare();
                 } else if (state.type === 'QUERY_SYNC') {
-                    let deleted = 0;
+                    let deleted = 0, restored = 0;
                     for (const item of state.backupData) {
-                        await Api.deleteQuery(item.name);
-                        deleted++;
+                        if (item.action === 'create' || !item.action) {
+                            await Api.deleteQuery(item.name);
+                            deleted++;
+                        } else if (item.action === 'update' && item.prevQuery) {
+                            await Api.deleteQuery(item.name);
+                            const parts = item.name.split('/');
+                            const loc = parts[3] || 'us';
+                            await Api.createQuery(log.tgtProject, loc, item.prevQuery);
+                            restored++;
+                        }
                     }
-                    Utils.toast(`Reverted scheduled query sync. Deleted: ${deleted}`, "ok");
+                    Utils.toast(`Reverted scheduled query sync. Restored: ${restored}, Deleted: ${deleted}`, "ok");
                     await AuditLog.addLog("QUERY_REVERT", "—", log.tgtProject, `Reverted sync of ${state.backupData.length} scheduled queries from log ${logId}.`, "SUCCESS");
                     if (State.mode === 'query' && State.query.src) await App.runQueryFetch();
                 } else if (state.type === 'DATASTORE_COPY') {
@@ -1106,7 +1114,67 @@ const App = {
         if(!State.query.src || !State.query.tgt) return Utils.toast("Select projects", "err");
         Utils.hide('sec-forms'); Utils.show('sec-loading'); Utils.$('load-title').textContent = "Fetching Scheduled Queries";
         try { 
-            State.query.queries = await Api.getQueries(State.query.src, State.query.srcLoc); 
+            const [srcQueries, tgtQueries] = await Promise.all([
+                Api.getQueries(State.query.src, State.query.srcLoc),
+                Api.getQueries(State.query.tgt, State.query.tgtLoc)
+            ]);
+
+            const tgtMap = new Map();
+            tgtQueries.forEach(q => {
+                if (q.displayName) {
+                    tgtMap.set(q.displayName, q);
+                }
+            });
+
+            const srcMap = new Map();
+            srcQueries.forEach(q => {
+                if (q.displayName) {
+                    srcMap.set(q.displayName, q);
+                }
+            });
+
+            const allNames = new Set([...srcMap.keys(), ...tgtMap.keys()]);
+            State.query.queries = [];
+
+            allNames.forEach(name => {
+                const srcQ = srcMap.get(name);
+                const tgtQ = tgtMap.get(name);
+
+                let status = 'identical';
+                let diffFields = [];
+
+                if (srcQ && tgtQ) {
+                    const srcSched = srcQ.schedule || '';
+                    const tgtSched = tgtQ.schedule || '';
+                    const srcDs = srcQ.destinationDatasetId || '';
+                    const tgtDs = tgtQ.destinationDatasetId || '';
+                    const srcSql = srcQ.params?.query || '';
+                    const tgtSql = tgtQ.params?.query || '';
+
+                    if (srcSched !== tgtSched || srcDs !== tgtDs || srcSql !== tgtSql) {
+                        status = 'different';
+                        if (srcSched !== tgtSched) diffFields.push('schedule');
+                        if (srcDs !== tgtDs) diffFields.push('destinationDatasetId');
+                        if (srcSql !== tgtSql) diffFields.push('query');
+                    }
+                } else if (srcQ) {
+                    status = 'source_only';
+                } else {
+                    status = 'target_only';
+                }
+
+                State.query.queries.push({
+                    name: srcQ ? srcQ.name : tgtQ.name,
+                    displayName: name,
+                    status,
+                    srcQuery: srcQ || null,
+                    tgtQuery: tgtQ || null,
+                    diffFields
+                });
+            });
+
+            State.query.queries.sort((a, b) => a.displayName.localeCompare(b.displayName));
+
             Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-query'); 
             App.renderQueryResults();
         } catch(e) { Utils.hide('sec-loading'); Utils.show('sec-forms'); Utils.toast(e.message, 'err'); }
@@ -1117,6 +1185,24 @@ const App = {
             container.innerHTML = `<div class="card p-6 text-center text-sm" style="color:var(--muted)">No scheduled queries found.</div>`;
             return;
         }
+
+        const total = State.query.queries.length;
+        const srcOnly = State.query.queries.filter(q => q.status === 'source_only').length;
+        const tgtOnly = State.query.queries.filter(q => q.status === 'target_only').length;
+        const diff = State.query.queries.filter(q => q.status === 'different').length;
+        const eq = State.query.queries.filter(q => q.status === 'identical').length;
+
+        const summaryEl = Utils.$('q-summary');
+        if (summaryEl) {
+            summaryEl.innerHTML = `
+                <div class="p-3 rounded-lg text-center" style="background:var(--bg)"><div class="text-lg font-bold mono">${total}</div><div class="text-[10px]" style="color:var(--muted)">Total</div></div>
+                <div class="p-3 rounded-lg text-center" style="background:var(--bg)"><div class="text-lg font-bold mono" style="color:var(--info)">${srcOnly}</div><div class="text-[10px]" style="color:var(--muted)">Src Only</div></div>
+                <div class="p-3 rounded-lg text-center" style="background:var(--bg)"><div class="text-lg font-bold mono" style="color:var(--warn)">${diff}</div><div class="text-[10px]" style="color:var(--muted)">Different</div></div>
+                <div class="p-3 rounded-lg text-center" style="background:var(--bg)"><div class="text-lg font-bold mono" style="color:var(--ok)">${eq}</div><div class="text-[10px]" style="color:var(--muted)">Identical</div></div>
+                <div class="p-3 rounded-lg text-center" style="background:var(--bg)"><div class="text-lg font-bold mono" style="color:var(--muted)">${tgtOnly}</div><div class="text-[10px]" style="color:var(--muted)">Tgt Only</div></div>
+            `;
+        }
+
         const tableHtml = `
             <div class="card" style="padding:0;overflow:hidden">
                 <table class="w-full text-xs mono" style="border-collapse:collapse">
@@ -1124,6 +1210,7 @@ const App = {
                         <tr style="background:var(--bg2)">
                             <th class="text-left px-4 py-3 w-10"><div class="chk" id="chk-all-q" onclick="App.toggleAllQ()"></div></th>
                             <th class="text-left px-4 py-3" style="color:var(--muted)">Display Name</th>
+                            <th class="text-left px-4 py-3 w-32" style="color:var(--muted)">Status</th>
                             <th class="text-left px-4 py-3" style="color:var(--muted)">Schedule</th>
                             <th class="text-left px-4 py-3" style="color:var(--muted)">Dataset ID</th>
                         </tr>
@@ -1137,16 +1224,46 @@ const App = {
         State.query.queries.forEach(q => {
             const qId = q.name; const sel = State.query.selected.has(qId);
             const tr = document.createElement('tr'); tr.style.borderBottom = '1px solid var(--brd)';
+            
+            let badgeText = '';
+            let badgeColor = '';
+            let badgeBg = '';
+            if (q.status === 'source_only') {
+                badgeText = 'SRC ONLY';
+                badgeColor = 'var(--info)';
+                badgeBg = 'var(--info-dim)';
+            } else if (q.status === 'target_only') {
+                badgeText = 'TGT ONLY';
+                badgeColor = 'var(--muted)';
+                badgeBg = 'var(--hover)';
+            } else if (q.status === 'identical') {
+                badgeText = 'IDENTICAL';
+                badgeColor = 'var(--ok)';
+                badgeBg = 'var(--ok-dim)';
+            } else if (q.status === 'different') {
+                badgeText = 'DIFFERENT';
+                badgeColor = 'var(--warn)';
+                badgeBg = 'var(--warn-dim)';
+            }
+
+            const isCopyable = q.srcQuery !== null;
+            const chkHtml = isCopyable 
+                ? `<div class="chk ${sel?'on':''}"></div>` 
+                : `<div class="chk disabled" style="opacity:0.3;cursor:not-allowed"></div>`;
+
             tr.innerHTML = `
-                <td class="px-4 py-3"><div class="chk ${sel?'on':''}"></div></td>
+                <td class="px-4 py-3">${chkHtml}</td>
                 <td class="px-4 py-3 cursor-pointer font-semibold" style="color:var(--fg)">${Utils.escapeHtml(q.displayName)} <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:4px"></i></td>
-                <td class="px-4 py-3" style="color:var(--muted)">${Utils.escapeHtml(q.schedule || 'Manual')}</td>
-                <td class="px-4 py-3" style="color:var(--accent)">${Utils.escapeHtml(q.destinationDatasetId || '—')}</td>
+                <td class="px-4 py-3"><span class="badge status-badge" style="background:${badgeBg};color:${badgeColor}">${badgeText}</span></td>
+                <td class="px-4 py-3" style="color:var(--muted)">${Utils.escapeHtml(q.srcQuery?.schedule || q.tgtQuery?.schedule || 'Manual')}</td>
+                <td class="px-4 py-3" style="color:var(--accent)">${Utils.escapeHtml(q.srcQuery?.destinationDatasetId || q.tgtQuery?.destinationDatasetId || '—')}</td>
             `;
             const keyTd = tr.querySelectorAll('td')[1];
             keyTd.onclick = () => App.toggleQueryDetails(tr, q);
-            const chk = tr.querySelector('.chk');
-            chk.onclick = () => App.toggleQSelect(qId, chk);
+            if (isCopyable) {
+                const chk = tr.querySelector('.chk');
+                chk.onclick = () => App.toggleQSelect(qId, chk);
+            }
             rowsContainer.appendChild(tr);
         });
         App.updateSelectAllQState();
@@ -1159,29 +1276,91 @@ const App = {
         App.updateSelectAllQState();
     },
     toggleAllQ: () => {
-        const allSel = State.query.selected.size === State.query.queries.length && State.query.queries.length > 0;
+        const copyableQueries = State.query.queries.filter(q => q.srcQuery !== null);
+        const allSel = State.query.selected.size === copyableQueries.length && copyableQueries.length > 0;
         if (allSel) State.query.selected.clear();
-        else State.query.queries.forEach(q => State.query.selected.add(q.name));
+        else copyableQueries.forEach(q => State.query.selected.add(q.name));
         App.renderQueryResults();
         Utils.$('btn-q-copy').disabled = State.query.selected.size === 0;
     },
     updateSelectAllQState: () => {
         const chkAll = Utils.$('chk-all-q'); if(!chkAll) return;
-        const isAll = State.query.queries.length > 0 && State.query.selected.size === State.query.queries.length;
+        const copyableQueries = State.query.queries.filter(q => q.srcQuery !== null);
+        const isAll = copyableQueries.length > 0 && State.query.selected.size === copyableQueries.length;
         chkAll.classList.toggle('on', isAll);
     },
     toggleQueryDetails: (tr, q) => {
         const existingNext = tr.nextElementSibling;
         if (existingNext?.classList.contains('expand-row')) { existingNext.remove(); return; }
         const expTr = document.createElement('tr'); expTr.className = 'expand-row'; expTr.style.borderBottom = '1px solid var(--brd)';
-        const sql = q.params?.query || '';
-        const html = `
-            <div class="p-3 rounded" style="background:var(--bg)">
-                <div class="mb-2 font-bold text-[10px] tracking-wider" style="color:var(--muted)">SQL QUERY:</div>
-                <pre class="p-3 rounded text-[11px] overflow-x-auto" style="background:#090d12;border:1px solid var(--brd2);color:var(--accent2)">${Utils.escapeHtml(sql)}</pre>
-            </div>
-        `;
-        expTr.innerHTML = `<td colspan="4" class="px-6 py-3" style="background:var(--bg)">${html}</td>`;
+        
+        let html = '';
+        if (q.status === 'different') {
+            const srcSched = q.srcQuery?.schedule || 'Manual';
+            const tgtSched = q.tgtQuery?.schedule || 'Manual';
+            const srcDs = q.srcQuery?.destinationDatasetId || '—';
+            const tgtDs = q.tgtQuery?.destinationDatasetId || '—';
+            const srcSql = q.srcQuery?.params?.query || '';
+            const tgtSql = q.tgtQuery?.params?.query || '';
+            const diffFieldsList = q.diffFields.join(', ');
+
+            html = `
+                <div class="mb-3 text-[11px]" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                    <div>
+                        <div class="font-bold text-[10px] text-zinc-500 mb-1">SOURCE CONFIG:</div>
+                        <div style="background:var(--bg2); border:1px solid var(--brd); padding: 8px; border-radius: 6px;">
+                            <div><strong>Schedule:</strong> ${Utils.escapeHtml(srcSched)}</div>
+                            <div><strong>Dataset ID:</strong> ${Utils.escapeHtml(srcDs)}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="font-bold text-[10px] text-zinc-500 mb-1">TARGET CONFIG:</div>
+                        <div style="background:var(--bg2); border:1px solid var(--brd); padding: 8px; border-radius: 6px;">
+                            <div><strong>Schedule:</strong> ${Utils.escapeHtml(tgtSched)}</div>
+                            <div><strong>Dataset ID:</strong> ${Utils.escapeHtml(tgtDs)}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3 rounded mb-3" style="background:var(--bg); border: 1px solid var(--warn-dim)">
+                    <span style="color:var(--warn); font-weight:bold; font-size:11px">DIFFERENCES DETECTED IN: ${diffFieldsList.toUpperCase()}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="mb-1 font-bold text-[10px] tracking-wider" style="color:var(--info)">SOURCE SQL:</div>
+                        <pre class="p-3 rounded text-[11px] overflow-x-auto" style="background:#090d12;border:1px solid var(--brd2);color:var(--accent2)">${Utils.escapeHtml(srcSql)}</pre>
+                    </div>
+                    <div>
+                        <div class="mb-1 font-bold text-[10px] tracking-wider" style="color:var(--muted)">TARGET SQL:</div>
+                        <pre class="p-3 rounded text-[11px] overflow-x-auto" style="background:#090d12;border:1px solid var(--brd2);color:var(--accent2)">${Utils.escapeHtml(tgtSql)}</pre>
+                    </div>
+                </div>
+            `;
+        } else if (q.status === 'identical') {
+            const sql = q.srcQuery?.params?.query || '';
+            html = `
+                <div class="p-3 rounded" style="background:var(--bg)">
+                    <div class="mb-2 font-bold text-[10px] tracking-wider" style="color:var(--ok)">SQL QUERY (IDENTICAL):</div>
+                    <pre class="p-3 rounded text-[11px] overflow-x-auto" style="background:#090d12;border:1px solid var(--brd2);color:var(--accent2)">${Utils.escapeHtml(sql)}</pre>
+                </div>
+            `;
+        } else if (q.status === 'source_only') {
+            const sql = q.srcQuery?.params?.query || '';
+            html = `
+                <div class="p-3 rounded" style="background:var(--bg)">
+                    <div class="mb-2 font-bold text-[10px] tracking-wider" style="color:var(--info)">SOURCE SQL (ONLY IN SOURCE):</div>
+                    <pre class="p-3 rounded text-[11px] overflow-x-auto" style="background:#090d12;border:1px solid var(--brd2);color:var(--accent2)">${Utils.escapeHtml(sql)}</pre>
+                </div>
+            `;
+        } else if (q.status === 'target_only') {
+            const sql = q.tgtQuery?.params?.query || '';
+            html = `
+                <div class="p-3 rounded" style="background:var(--bg)">
+                    <div class="mb-2 font-bold text-[10px] tracking-wider" style="color:var(--muted)">TARGET SQL (ONLY IN TARGET):</div>
+                    <pre class="p-3 rounded text-[11px] overflow-x-auto" style="background:#090d12;border:1px solid var(--brd2);color:var(--accent2)">${Utils.escapeHtml(sql)}</pre>
+                </div>
+            `;
+        }
+        expTr.innerHTML = `<td colspan="5" class="px-6 py-3" style="background:var(--bg)">${html}</td>`;
         tr.after(expTr);
     },
     openQueryCopyModal: () => {
@@ -1214,19 +1393,37 @@ const App = {
         let ok = 0, fail = 0;
         const backupData = [];
         for (let i = 0; i < selected.length; i++) {
-            const qId = selected[i]; const q = State.query.queries.find(x => x.name === qId);
-            if (!q) continue;
+            const qId = selected[i];
+            const cmpObj = State.query.queries.find(x => x.name === qId);
+            if (!cmpObj || !cmpObj.srcQuery) continue;
+            const q = cmpObj.srcQuery;
             Utils.$('load-msg').textContent = `Copying ${i+1}/${selected.length}: ${q.displayName}`;
             try {
+                let actionApplied = 'create';
+                if (cmpObj.tgtQuery) {
+                    await Api.deleteQuery(cmpObj.tgtQuery.name);
+                    actionApplied = 'update';
+                }
                 const created = await Api.createQuery(State.query.tgt, State.query.tgtLoc, q);
                 if (created && created.name) {
                     backupData.push({
+                        action: actionApplied,
                         name: created.name,
-                        displayName: q.displayName
+                        displayName: q.displayName,
+                        prevQuery: cmpObj.tgtQuery ? {
+                            displayName: cmpObj.tgtQuery.displayName,
+                            schedule: cmpObj.tgtQuery.schedule,
+                            destinationDatasetId: cmpObj.tgtQuery.destinationDatasetId,
+                            params: cmpObj.tgtQuery.params
+                        } : null
                     });
                 }
                 ok++;
-            } catch (e) { fail++; Utils.toast(`Failed: ${q.displayName} - ${e.message}`, 'err'); }
+            } catch (e) { 
+                fail++; 
+                console.error(`Query copy error for ${q.displayName}:`, e);
+                Utils.toast(`Failed: ${q.displayName} - ${e.message}`, 'err'); 
+            }
         }
         Utils.hide('sec-loading'); Utils.toast(`Queries copied. Success: ${ok}, Failed: ${fail}`, ok > 0 ? 'ok' : 'err');
         const status = fail === 0 && ok > 0 ? "SUCCESS" : (ok > 0 ? "PARTIAL" : "FAILED");
