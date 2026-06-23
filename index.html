@@ -812,6 +812,10 @@
             50% { transform: translateY(-5px) scale(1.05); }
             100% { transform: translateY(0px) scale(1); }
         }
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: scale(0.95); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
         .float-emoji {
             display: inline-block;
             animation: floatEmoji 4s ease-in-out infinite;
@@ -1136,17 +1140,35 @@
             color: #8a99ad;
         }
         .defrag-progress-bar-wrapper {
-            background: #222a36;
-            height: 6px;
-            border-radius: 3px;
+            background: #11161d;
+            height: 16px;
+            border-radius: 8px;
+            border: 2px solid #222a36;
             overflow: hidden;
             margin-top: 1rem;
+            position: relative;
         }
         .defrag-progress-bar {
-            background: var(--brand-orange);
+            background: 
+                linear-gradient(135deg, #e74c3c 25%, transparent 25%),
+                linear-gradient(225deg, #e74c3c 25%, transparent 25%),
+                linear-gradient(45deg, #e74c3c 25%, transparent 25%),
+                linear-gradient(315deg, #e74c3c 25%, transparent 25%);
+            background-position: -10px 0, -10px 0, 0 0, 0 0;
+            background-size: 20px 20px;
+            background-color: #c0392b;
             height: 100%;
             width: 0%;
             transition: width 0.1s linear;
+            animation: snake-crawl 0.8s linear infinite;
+        }
+        @keyframes snake-crawl {
+            0% {
+                background-position: -10px 0, -10px 0, 0 0, 0 0;
+            }
+            100% {
+                background-position: 10px 0, 10px 0, 20px 0, 20px 0;
+            }
         }
 
         /* Scramble Characters & Constellation Background */
@@ -1321,6 +1343,24 @@
             </div>
             <div class="defrag-progress-bar-wrapper">
                 <div class="defrag-progress-bar" id="defragProgressBar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dino Game Overlay -->
+    <div id="dinoOverlay" class="easter-egg-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
+        <div class="dino-game-container" style="background: #11161d; border: 2px solid var(--brand-orange); border-radius: 16px; padding: 2rem; width: 90%; max-width: 600px; text-align: center; box-shadow: 0 0 30px rgba(247, 148, 29, 0.2); position: relative;">
+            <button class="btn-open-tool" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;" onclick="closeDinoGame()">×</button>
+            <h3 style="font-family: monospace; color: #ffffff; margin-bottom: 1rem; font-weight: 800; letter-spacing: 2px;">⚡ CHROME DINO RUN (DARK MODE) ⚡</h3>
+            <div style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">[Spacebar] or [Tap Screen] to Jump | Avoid Cacti</div>
+            <canvas id="dinoCanvas" width="500" height="150" style="background: #1b222c; border-radius: 8px; border: 1px solid #2d3846; display: block; margin: 0 auto; width: 100%; max-width: 500px; height: 150px;"></canvas>
+            <div id="dinoScoreContainer" style="font-family: monospace; font-size: 1.2rem; margin-top: 1rem; color: #ffffff; display: flex; justify-content: space-between; padding: 0 1rem;">
+                <span>SCORE: <span id="dinoScore">00000</span></span>
+                <span>HI: <span id="dinoHighScore">00000</span></span>
+            </div>
+            <div id="dinoGameOver" style="display: none; margin-top: 1rem;">
+                <div style="font-family: monospace; color: #ff5d5d; font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem; animation: pulse 1s infinite alternate;">GAME OVER</div>
+                <button class="btn-feedback" onclick="startDinoGame()" style="margin: 0 auto;">Play Again</button>
             </div>
         </div>
     </div>
@@ -2313,6 +2353,264 @@
             });
         }
 
+        // ==========================================
+        // CHROME DINO RUN GAME EASTER EGG (DARK MODE)
+        // ==========================================
+        let dinoGameRunning = false;
+        let dinoId = null;
+        let dinoCanvas, dinoCtx;
+        let dinoHighScore = localStorage.getItem('dino_highscore') || 0;
+
+        // Game state
+        let dinoY = 110;
+        let dinoVelocityY = 0;
+        const gravity = 0.6;
+        const jumpStrength = -10;
+        let isJumping = false;
+        let dinoFrame = 0;
+
+        let obstacles = [];
+        let obstacleTimer = 0;
+        let score = 0;
+        let gameSpeed = 5;
+
+        class Cactus {
+            constructor(x, width, height) {
+                this.x = x;
+                this.width = width;
+                this.height = height;
+                this.y = 130 - height;
+            }
+            update() {
+                this.x -= gameSpeed;
+            }
+            draw(ctx) {
+                ctx.fillStyle = '#ff5d5d'; // Red Cacti
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                // Draw details
+                ctx.fillStyle = '#c0392b';
+                ctx.fillRect(this.x + 2, this.y + 2, this.width - 4, this.height - 2);
+            }
+        }
+
+        function initDinoListeners() {
+            const dinoEmoji = document.querySelector('.hero-title .float-emoji');
+            if (dinoEmoji) {
+                dinoEmoji.style.cursor = 'pointer';
+                dinoEmoji.title = "Play Chrome Dino Game!";
+                dinoEmoji.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    AudioHaptic.playClunk();
+                    openDinoGame();
+                });
+            }
+
+            // Keyboard controls
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && dinoGameRunning) {
+                    e.preventDefault();
+                    jumpDino();
+                }
+            });
+
+            // Touch/click controls
+            const canvas = document.getElementById('dinoCanvas');
+            if (canvas) {
+                canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    jumpDino();
+                });
+                canvas.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    jumpDino();
+                });
+            }
+        }
+
+        function openDinoGame() {
+            const overlay = document.getElementById('dinoOverlay');
+            overlay.style.display = 'flex';
+            requestAnimationFrame(() => {
+                overlay.style.opacity = '1';
+            });
+            
+            // Load high score
+            document.getElementById('dinoHighScore').textContent = String(dinoHighScore).padStart(5, '0');
+            
+            startDinoGame();
+        }
+
+        function closeDinoGame() {
+            dinoGameRunning = false;
+            cancelAnimationFrame(dinoId);
+            const overlay = document.getElementById('dinoOverlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 300);
+        }
+
+        function startDinoGame() {
+            dinoGameRunning = true;
+            score = 0;
+            gameSpeed = 5;
+            obstacles = [];
+            obstacleTimer = 0;
+            dinoY = 110;
+            dinoVelocityY = 0;
+            isJumping = false;
+            
+            document.getElementById('dinoGameOver').style.display = 'none';
+            
+            dinoCanvas = document.getElementById('dinoCanvas');
+            dinoCtx = dinoCanvas.getContext('2d');
+            
+            loopDino();
+        }
+
+        function jumpDino() {
+            if (!isJumping) {
+                dinoVelocityY = jumpStrength;
+                isJumping = true;
+                AudioHaptic.playTick(); // Tick sound for jumping!
+            }
+        }
+
+        function loopDino() {
+            if (!dinoGameRunning) return;
+            
+            dinoCtx.clearRect(0, 0, dinoCanvas.width, dinoCanvas.height);
+            
+            // 1. Draw Horizon Line
+            dinoCtx.strokeStyle = '#2d3846';
+            dinoCtx.lineWidth = 2;
+            dinoCtx.beginPath();
+            dinoCtx.moveTo(0, 130);
+            dinoCtx.lineTo(500, 130);
+            dinoCtx.stroke();
+            
+            // 2. Physics & Dino Logic
+            dinoVelocityY += gravity;
+            dinoY += dinoVelocityY;
+            if (dinoY >= 110) {
+                dinoY = 110;
+                dinoVelocityY = 0;
+                isJumping = false;
+            }
+            
+            dinoFrame++;
+            
+            // 3. Draw Dino
+            drawDino(dinoCtx, 40, dinoY);
+            
+            // 4. Obstacles Spawn
+            obstacleTimer++;
+            if (obstacleTimer > 100 + Math.random() * 50) {
+                const height = 20 + Math.random() * 25;
+                const width = 10 + Math.random() * 10;
+                obstacles.push(new Cactus(500, width, height));
+                obstacleTimer = 0;
+            }
+            
+            // 5. Update & Draw Obstacles
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.update();
+                obs.draw(dinoCtx);
+                
+                // Collision Detection
+                if (checkCollision(40, dinoY, 20, 20, obs.x, obs.y, obs.width, obs.height)) {
+                    gameOverDino();
+                    return;
+                }
+                
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+            
+            // 6. Score & Difficulty
+            score += 0.15;
+            const currentScore = Math.floor(score);
+            document.getElementById('dinoScore').textContent = String(currentScore).padStart(5, '0');
+            
+            // Chime sound every 100 points!
+            if (currentScore > 0 && currentScore % 100 === 0 && Math.floor(score - 0.15) % 100 !== 0) {
+                playDinoChime();
+            }
+            
+            gameSpeed = 5 + Math.floor(currentScore / 200);
+            
+            dinoId = requestAnimationFrame(loopDino);
+        }
+
+        function drawDino(ctx, x, y) {
+            ctx.fillStyle = '#2ecc71'; // Green Dino
+            
+            // Draw body
+            ctx.fillRect(x + 4, y, 12, 16);
+            // Draw head
+            ctx.fillRect(x + 10, y - 6, 8, 8);
+            // Draw eye
+            ctx.fillStyle = '#11161d';
+            ctx.fillRect(x + 12, y - 4, 2, 2);
+            
+            // Dino leg animation (wiggling)
+            ctx.fillStyle = '#27ae60';
+            if (isJumping) {
+                ctx.fillRect(x + 4, y + 16, 3, 4);
+                ctx.fillRect(x + 11, y + 16, 3, 4);
+            } else {
+                const walkCycle = Math.floor(dinoFrame / 6) % 2;
+                ctx.fillRect(x + 4, y + 16, 3, walkCycle === 0 ? 4 : 2);
+                ctx.fillRect(x + 11, y + 16, 3, walkCycle === 1 ? 4 : 2);
+            }
+        }
+
+        function checkCollision(rx, ry, rw, rh, ox, oy, ow, oh) {
+            return rx + 4 < ox + ow &&
+                   rx + rw - 4 > ox &&
+                   ry + 4 < oy + oh &&
+                   ry + rh - 4 > oy;
+        }
+
+        function gameOverDino() {
+            dinoGameRunning = false;
+            AudioHaptic.playClunk(); // Game over sound!
+            
+            const currentScore = Math.floor(score);
+            if (currentScore > dinoHighScore) {
+                dinoHighScore = currentScore;
+                localStorage.setItem('dino_highscore', dinoHighScore);
+                document.getElementById('dinoHighScore').textContent = String(dinoHighScore).padStart(5, '0');
+            }
+            
+            document.getElementById('dinoGameOver').style.display = 'block';
+        }
+
+        function playDinoChime() {
+            if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+                const ctx = AudioHaptic.ctx || new (window.AudioContext || window.webkitAudioContext)();
+                if (AudioHaptic.muted) return;
+                
+                const now = ctx.currentTime;
+                const playTone = (freq, time) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(freq, time);
+                    gain.gain.setValueAtTime(0.05, time);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.15);
+                    osc.start(time);
+                    osc.stop(time + 0.15);
+                };
+                
+                playTone(987.77, now); // B5
+                playTone(1318.51, now + 0.08); // E6
+            }
+        }
+
         function initScratchCard() {
             const canvas = document.querySelector('.scratch-canvas');
             if (!canvas) return;
@@ -2651,6 +2949,7 @@
             initParallaxHero();
             initGravityCards();
             initFeedbackSystem();
+            initDinoListeners();
             
             // Set up mute toggle UI
             AudioHaptic.updateUI();
