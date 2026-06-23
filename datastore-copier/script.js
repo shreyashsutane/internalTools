@@ -383,7 +383,7 @@ const Api = {
     getDataset: async (pid, did) => { return Api.fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets/${did}`); },
     createDataset: async (pid, did, location) => { try { const body = {datasetReference:{projectId:pid,datasetId:did}}; if (location) body.location = location; await Api.fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets`, { method:'POST', body: JSON.stringify(body) }); } catch(e) { if (!e.message.includes('Already Exists') && !e.message.includes('alreadyExists')) throw e; } },
     createTable: async (pid, did, tid, fields) => { return Api.fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets/${did}/tables`, { method:'POST', body: JSON.stringify({tableReference:{projectId:pid,datasetId:did,tableId:tid},schema:{fields}}) }); },
-    patchTable: async (pid, did, tid, fields) => { return Api.fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets/${did}/tables/${tid}`, { method:'PUT', body: JSON.stringify({tableReference:{projectId:pid,datasetId:did,tableId:tid},schema:{fields}}) }); },
+    patchTable: async (pid, did, tid, fields) => { return Api.fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets/${did}/tables/${tid}`, { method:'PATCH', body: JSON.stringify({tableReference:{projectId:pid,datasetId:did,tableId:tid},schema:{fields}}) }); },
     getQueries: async (pid, loc) => { const d = await Api.fetch(`https://bigquerydatatransfer.googleapis.com/v1/projects/${pid}/locations/${loc}/transferConfigs`); return (d.transferConfigs||[]).filter(x => x.dataSourceId === 'scheduled_query'); },
     createQuery: async (pid, loc, cfg) => { return Api.fetch(`https://bigquerydatatransfer.googleapis.com/v1/projects/${pid}/locations/${loc}/transferConfigs`, { method:'POST', body: JSON.stringify({displayName:cfg.displayName,dataSourceId:"scheduled_query",schedule:cfg.schedule,destinationDatasetId:cfg.destinationDatasetId,params:cfg.params}) }); },
     deleteTable: async (pid, did, tid) => { return Api.fetch(`https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets/${did}/tables/${tid}`, { method: 'DELETE' }); },
@@ -1074,15 +1074,8 @@ const App = {
                     try {
                         await Api.patchTable(toPid, dataset, table, fromSchema);
                     } catch (patchErr) {
-                        const errMsg = patchErr.message.toLowerCase();
-                        if (errMsg.includes('does not match') || errMsg.includes('missing') || errMsg.includes('incompatible') || errMsg.includes('type')) {
-                            console.log(`Schema mismatch for target table ${table}. Recreating table...`);
-                            await Api.deleteTable(toPid, dataset, table);
-                            await Api.createTable(toPid, dataset, table, fromSchema);
-                            actionApplied = 'recreate';
-                        } else {
-                            throw patchErr;
-                        }
+                        // Prevent silent table deletion and data loss. Reject incompatible schema changes.
+                        throw new Error(`Incompatible schema change on destination table (change of field type, mode, or deleted column). Sync failed to prevent data loss. Error: ${patchErr.message}`);
                     }
                 }
                 
