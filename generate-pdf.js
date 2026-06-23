@@ -1032,6 +1032,74 @@ window.addEventListener('DOMContentLoaded', () => {
             <span>Page 20</span>
         </div>
     </div>
+
+    <!-- 📄 PAGE 15: SCHEDULED QUERIES SYNC -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 15</span>
+        </div>
+
+        <h1 class="sec-title">15. Scheduled Queries Sync & Comparison</h1>
+        <p>
+            The scheduled queries sync utility allows comparing Google BigQuery Data Transfer Service transfer configurations side-by-side between source and destination projects.
+        </p>
+
+        <h2 class="subsec-title">15.1 Property Comparison Criteria</h2>
+        <p>
+            Configurations are matched by their <code>displayName</code>. Discrepancies are calculated on the schedule frequency, destination dataset, and query body text:
+        </p>
+        <pre><code>// Comparison status checking
+let status = 'identical';
+if (srcQ && tgtQ) {
+    if ((srcQ.schedule || '') !== (tgtQ.schedule || '') ||
+        (srcQ.destinationDatasetId || '') !== (tgtQ.destinationDatasetId || '') ||
+        (srcQ.params?.query || '') !== (tgtQ.params?.query || '')) {
+        status = 'different';
+    }
+}</code></pre>
+
+        <h2 class="subsec-title">15.2 Overwrite Protection & Safe Revert</h2>
+        <p>
+            When syncing a query that already exists in the target, the utility deletes the target query first before creating the new version, backing up the old configuration so it can be restored on revert.
+        </p>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 21</span>
+        </div>
+    </div>
+
+    <!-- 📄 PAGE 16: TOKEN MASK VISIBILITY -->
+    <div class="page">
+        <div class="header-print">
+            <span>GCP Infrastructure Manager - Documentation</span>
+            <span>Section 16</span>
+        </div>
+
+        <h1 class="sec-title">16. Token Visibility & Password Masking</h1>
+        <p>
+            To prevent credential leaks, the paste token input is masked by default and features an interactive show/hide toggle.
+        </p>
+
+        <h2 class="subsec-title">16.1 Toggle Visibility Logic</h2>
+        <p>
+            Clicking the absolute eye icon button toggles the input field type between <code>password</code> and <code>text</code>:
+        </p>
+        <pre><code>// Input type toggle listener
+toggleBtn.onclick = () => {
+    const isPassword = tokenInp.type === 'password';
+    tokenInp.type = isPassword ? 'text' : 'password';
+    toggleBtn.innerHTML = isPassword 
+        ? '&lt;i class="fa-solid fa-eye"&gt;&lt;/i&gt;' 
+        : '&lt;i class="fa-solid fa-eye-slash"&gt;&lt;/i&gt;';
+};</code></pre>
+
+        <div class="footer-print">
+            <span>© 2026 Dista — Internal Use Only</span>
+            <span>Page 22</span>
+        </div>
+    </div>
 </body>
 </html>
 
