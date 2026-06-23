@@ -2587,10 +2587,12 @@
                 // 2. Prepare Formspree background email dispatch
                 const formspreePayload = {
                     name: name,
-                    email: email || 'N/A',
                     message: message,
                     _subject: "Dista Operations Portal Feedback"
                 };
+                if (email && email.trim() !== "") {
+                    formspreePayload.email = email.trim();
+                }
 
                 const formspreeUrl = (FORMSPREE_FORM_ID && FORMSPREE_FORM_ID.trim() !== "")
                     ? `https://formspree.io/f/${FORMSPREE_FORM_ID.trim()}`
