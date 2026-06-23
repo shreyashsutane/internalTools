@@ -1919,32 +1919,30 @@
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
             
-            let progress = 0;
+            let currentBlockIndex = 0;
             const targetToolName = url.replace(/[^a-zA-Z]/g, '').toUpperCase() || 'EXTERNAL';
             statusText.textContent = `DEFRAGMENTING ${targetToolName} SECTORS...`;
             
             function step() {
-                if (progress < 100) {
-                    progress += Math.floor(Math.random() * 4) + 1.5;
-                    if (progress > 100) progress = 100;
+                if (currentBlockIndex <= totalBlocks) {
+                    const progress = (currentBlockIndex / totalBlocks) * 100;
                     
                     percentText.textContent = `${Math.floor(progress)}%`;
                     progressBar.style.width = `${progress}%`;
                     
-                    const sweepIndex = Math.floor((progress / 100) * totalBlocks);
                     for (let s = 0; s < totalBlocks; s++) {
                         const r = Math.floor(s / 20);
                         const c = (r % 2 === 0) ? (s % 20) : (19 - (s % 20));
                         const actualIndex = r * 20 + c;
                         
-                        if (s < sweepIndex) {
+                        if (s < currentBlockIndex) {
                             if (blocks[actualIndex].type !== 'unmovable') {
                                 blocks[actualIndex].el.className = 'defrag-block optimized';
                             }
-                        } else if (s === sweepIndex) {
+                        } else if (s === currentBlockIndex) {
                             // Active scanning head: alternate between reading and writing states dynamically
                             if (blocks[actualIndex].type !== 'unmovable') {
-                                const headState = (Math.floor(progress * 2) % 2 === 0) ? 'reading' : 'writing';
+                                const headState = (currentBlockIndex % 2 === 0) ? 'reading' : 'writing';
                                 blocks[actualIndex].el.className = `defrag-block ${headState}`;
                             }
                         } else {
@@ -1957,7 +1955,10 @@
                         AudioHaptic.playTick();
                     }
                     
-                    setTimeout(step, 30 + Math.random() * 20);
+                    currentBlockIndex++;
+                    // Track seek delay: simulate physical seek head latency by pausing when switching rows
+                    const delay = (currentBlockIndex > 0 && currentBlockIndex < totalBlocks && currentBlockIndex % 20 === 0) ? 120 : (12 + Math.random() * 8);
+                    setTimeout(step, delay);
                 } else {
                     for (let i = 0; i < totalBlocks; i++) {
                         if (blocks[i].type !== 'unmovable') {
