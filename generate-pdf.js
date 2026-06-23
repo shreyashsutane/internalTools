@@ -1,5 +1,5 @@
 /**
- * Dista Tools - Visual PDF Documentation Generator
+ * Visual PDF Documentation Generator
  * Compiles a beautiful HTML document with SVG flowcharts and exports it to PDF via Puppeteer.
  */
 
@@ -285,7 +285,7 @@ const HTML_CONTENT = `
             <div class="cover-metadata">
                 <div class="meta-item">
                     <strong>Project Name</strong>
-                    Dista Internal Tools Portal
+                    Internal Tools Portal
                 </div>
                 <div class="meta-item">
                     <strong>Version</strong>
@@ -297,7 +297,7 @@ const HTML_CONTENT = `
                 </div>
                 <div class="meta-item">
                     <strong>Deployment URL</strong>
-                    https://dista-tools.web.app/
+                    https://gcp-tools.web.app/
                 </div>
             </div>
         </div>
@@ -312,7 +312,7 @@ const HTML_CONTENT = `
 
         <h1 class="sec-title">1. System Architecture Overview</h1>
         <p>
-            The <strong>GCP Infrastructure Manager</strong> is a modern utility tool built inside the Dista Internal Tools ecosystem. It facilitates comparing, copying, and auditing resources across multiple Google Cloud Platform (GCP) projects, with focus on BigQuery table schemas, Cloud Datastore entities, and Scheduled Queries.
+            The <strong>GCP Infrastructure Manager</strong> is a modern utility tool built inside the Internal Tools ecosystem. It facilitates comparing, copying, and auditing resources across multiple Google Cloud Platform (GCP) projects, with focus on BigQuery table schemas, Cloud Datastore entities, and Scheduled Queries.
         </p>
 
         <h2 class="subsec-title">1.1 Core System Architecture Diagram</h2>
@@ -380,7 +380,7 @@ const HTML_CONTENT = `
         </div>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 2</span>
         </div>
     </div>
@@ -407,12 +407,12 @@ const HTML_CONTENT = `
     <span class="token-keyword">if</span> (user.<span class="token-function">toLowerCase</span>() === <span class="token-string">'shreyash'</span>) {
         email = <span class="token-string">'shreyashs14102002@gmail.com'</span>; <span class="token-comment">// Maps Shreyash to deployment email</span>
     } <span class="token-keyword">else</span> {
-        email = <span class="token-string">&#96;&#36;{user.toLowerCase()}@dista.ai&#96;</span>;
+        email = <span class="token-string">&#96;&#36;{user.toLowerCase()}@company.com&#96;</span>;
     }
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 2</span>
         </div>
     </div>
@@ -452,7 +452,7 @@ if (!firestoreRes.ok) throw new Error('Access denied. Not registered as an admin
         </div>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 3</span>
         </div>
     </div>
@@ -487,7 +487,7 @@ service cloud.firestore {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 4</span>
         </div>
     </div>
@@ -517,7 +517,7 @@ service cloud.firestore {
 });</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 5</span>
         </div>
     </div>
@@ -564,7 +564,7 @@ await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/
 });</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 6</span>
         </div>
     </div>
@@ -586,7 +586,7 @@ await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/
 });</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 7</span>
         </div>
     </div>
@@ -619,7 +619,7 @@ async function executeBqCopy(direction) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 8</span>
         </div>
     </div>
@@ -651,7 +651,7 @@ async function syncTableSchema(project, tableId, schema) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 9</span>
         </div>
     </div>
@@ -683,7 +683,7 @@ function applyReplacements(entity, findStr, replaceStr) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 10</span>
         </div>
     </div>
@@ -718,7 +718,7 @@ async function fetchGcp(url, options) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 11</span>
         </div>
     </div>
@@ -752,7 +752,7 @@ function saveProperty(key, value, type) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 12</span>
         </div>
     </div>
@@ -789,7 +789,7 @@ async function copyScheduledQuery(srcProj, tgtProj, config) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 13</span>
         </div>
     </div>
@@ -824,7 +824,7 @@ async function encryptLog(plaintext, password) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 14</span>
         </div>
     </div>
@@ -857,7 +857,7 @@ async function encryptLog(plaintext, password) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 15</span>
         </div>
     </div>
@@ -871,7 +871,7 @@ async function encryptLog(plaintext, password) {
 
         <h1 class="sec-title">11. Deployment & Local Server Architecture</h1>
         <p>
-            The Dista tools portal is served locally using a custom Node.js static server, and deployed to GCP Firebase Hosting.
+            The tools portal is served locally using a custom Node.js static server, and deployed to GCP Firebase Hosting.
         </p>
 
         <h2 class="subsec-title">11.1 Local Static Server Routing</h2>
@@ -891,7 +891,7 @@ const server = http.createServer((req, res) => {
 });</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 16</span>
         </div>
     </div>
@@ -927,7 +927,7 @@ async function smoothMove(page, selector) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 17</span>
         </div>
     </div>
@@ -959,7 +959,7 @@ function getValidBytes(str) {
 }</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 18</span>
         </div>
     </div>
@@ -986,7 +986,7 @@ const config = {
 const encrypted = CryptoJS.AES.encrypt(data, key, config).toString();</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 19</span>
         </div>
     </div>
@@ -1003,9 +1003,9 @@ const encrypted = CryptoJS.AES.encrypt(data, key, config).toString();</code></pr
             To facilitate development access without exposing plain navigation paths, the portal implements two client-side easter egg handlers:
         </p>
 
-        <h2 class="subsec-title">14.1 Dista Logo Credits Modal</h2>
+        <h2 class="subsec-title">14.1 Header Logo Credits Modal</h2>
         <p>
-            Clicking 3 times on the Dista header logo displays a custom credits overlay displaying creators and contributors info.
+            Clicking 3 times on the header title logo displays a custom credits overlay displaying creators and contributors info.
         </p>
 
         <h2 class="subsec-title">14.2 Footer Admin Page Redirection</h2>
@@ -1028,7 +1028,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 20</span>
         </div>
     </div>
@@ -1065,7 +1065,7 @@ if (srcQ && tgtQ) {
         </p>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 21</span>
         </div>
     </div>
@@ -1096,7 +1096,7 @@ toggleBtn.onclick = () => {
 };</code></pre>
 
         <div class="footer-print">
-            <span>© 2026 Dista — Internal Use Only</span>
+            <span>© 2026 — Internal Use Only</span>
             <span>Page 22</span>
         </div>
     </div>

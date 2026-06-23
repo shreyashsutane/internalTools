@@ -1,5 +1,5 @@
 /**
- * Dista Tools - Comprehensive GCP Infrastructure Manager Test Suite
+ * Comprehensive GCP Infrastructure Manager Test Suite
  * Evaluates all features (BQ Schema, Scheduled Queries, Datastore) visually on your desktop screen.
  */
 
@@ -16,7 +16,7 @@ try {
 
 const puppeteer = require('puppeteer');
 
-const URL = `https://dista-tools.web.app/datastore-copier/`;
+const URL = `https://gcp-tools.web.app/datastore-copier/`;
 
 const SRC_PROJECT = 'project-c0e231c7-2177-4eb0-979';
 const TGT_PROJECT = 'second-project-16364';

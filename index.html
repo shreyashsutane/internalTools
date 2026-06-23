@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dista Internal Tools</title>
+    <title>Internal Tools Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -13,8 +13,8 @@
             --text-main: #212529;
             --text-muted: #6c757d;
             --border-color: #dee2e6;
-            --dista-orange: #f7941d;
-            --dista-orange-dark: #e85d04;
+            --brand-orange: #f7941d;
+            --brand-orange-dark: #e85d04;
             --shadow: 0 4px 12px rgba(0,0,0,0.08);
             --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
             --input-bg: #ffffff;
@@ -82,9 +82,9 @@
             transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s, color 0.2s, border-color 0.2s;
         }
         .theme-toggle:hover {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             color: white;
-            border-color: var(--dista-orange);
+            border-color: var(--brand-orange);
             transform: scale(1.1) rotate(360deg);
         }
         .btn-feedback {
@@ -104,9 +104,9 @@
             transition: all 0.3s ease;
         }
         .btn-feedback:hover {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             color: white;
-            border-color: var(--dista-orange);
+            border-color: var(--brand-orange);
             transform: scale(1.05);
         }
         .btn-feedback i {
@@ -137,7 +137,7 @@
             max-width: 480px;
             padding: 2rem;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-            border-color: var(--dista-orange);
+            border-color: var(--brand-orange);
             position: relative;
             transform: scale(0.95);
             transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -182,7 +182,7 @@
             transition: border-color 0.2s;
         }
         .feedback-form .form-control:focus {
-            border-color: var(--dista-orange);
+            border-color: var(--brand-orange);
             outline: none;
             box-shadow: 0 0 0 2px rgba(247, 148, 29, 0.2);
         }
@@ -193,7 +193,7 @@
             margin-top: 1.5rem;
         }
         .btn-feedback-submit {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             border: none;
             color: white;
             padding: 0.6rem 1.5rem;
@@ -203,7 +203,7 @@
             cursor: pointer;
         }
         .btn-feedback-submit:hover {
-            background: var(--dista-orange-dark);
+            background: var(--brand-orange-dark);
             transform: scale(1.03);
         }
         .btn-feedback-cancel {
@@ -278,7 +278,7 @@
             display: inline-block;
         }
         .hero-title-text {
-            background: linear-gradient(135deg, var(--dista-orange) 0%, var(--dista-orange-dark) 50%, #ff5d5d 100%);
+            background: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-orange-dark) 50%, #ff5d5d 100%);
             background-size: 200% 200%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -296,14 +296,14 @@
             display: inline-block;
             width: 3px;
             height: 1.1rem;
-            background-color: var(--dista-orange);
+            background-color: var(--brand-orange);
             margin-left: 4px;
             vertical-align: text-bottom;
             animation: blink 1s step-end infinite;
         }
         @keyframes blink {
             from, to { background-color: transparent }
-            50% { background-color: var(--dista-orange) }
+            50% { background-color: var(--brand-orange) }
         }
         .hero-subtitle {
             font-size: 1.1rem;
@@ -315,7 +315,7 @@
 
         /* Tool Cards Brand Specifics */
         .card-datastore-copier {
-            --tool-color: var(--dista-orange);
+            --tool-color: var(--brand-orange);
             --tool-glow: rgba(247, 148, 29, 0.08);
             --tool-glow-hover: rgba(247, 148, 29, 0.35);
         }
@@ -356,7 +356,7 @@
             padding: 1.5px;
             background: conic-gradient(from var(--angle, 0deg), 
                         transparent 0%, 
-                        var(--tool-color, var(--dista-orange)) 10%, 
+                        var(--tool-color, var(--brand-orange)) 10%, 
                         transparent 30%, 
                         transparent 100%);
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -393,7 +393,7 @@
             display: inline-block;
         }
         .tool-card.active .tool-icon {
-            color: var(--dista-orange);
+            color: var(--brand-orange);
         }
 
         .tool-name {
@@ -429,7 +429,7 @@
             line-height: 1.5;
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border-color: var(--tool-color, var(--dista-orange));
+            border-color: var(--tool-color, var(--brand-orange));
         }
         /* Left positioning */
         .tool-desc-full.desc-left {
@@ -474,7 +474,7 @@
         }
 
         .btn-open-tool {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             border: none;
             color: white;
             padding: 0.5rem 1.5rem;
@@ -485,15 +485,15 @@
             display: inline-block;
         }
         .btn-open-tool:hover {
-            background: var(--dista-orange-dark);
+            background: var(--brand-orange-dark);
             color: white;
             transform: scale(1.05);
         }
 
         .btn-doc-link {
             background: var(--bg-body);
-            border: 1px solid var(--dista-orange);
-            color: var(--dista-orange);
+            border: 1px solid var(--brand-orange);
+            color: var(--brand-orange);
             padding: 0.5rem 1rem;
             border-radius: 8px;
             font-weight: 600;
@@ -503,7 +503,7 @@
             font-size: 0.85rem;
         }
         .btn-doc-link:hover {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             color: white;
             transform: scale(1.05);
         }
@@ -534,12 +534,12 @@
             transition: all 0.3s;
         }
         .add-tool-section:hover {
-            border-color: var(--dista-orange);
+            border-color: var(--brand-orange);
         }
         .add-tool-btn {
             background: none;
-            border: 2px solid var(--dista-orange);
-            color: var(--dista-orange);
+            border: 2px solid var(--brand-orange);
+            color: var(--brand-orange);
             padding: 0.75rem 2rem;
             border-radius: 8px;
             font-weight: 600;
@@ -547,7 +547,7 @@
             transition: all 0.2s;
         }
         .add-tool-btn:hover {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             color: white;
         }
 
@@ -775,7 +775,7 @@
         .tool-card:hover, .tool-card.hovered {
             transform: translateY(-8px) scale(1.01);
             box-shadow: var(--shadow-hover), 0 8px 30px var(--tool-glow-hover, rgba(247, 148, 29, 0.3));
-            border-color: var(--tool-color, var(--dista-orange));
+            border-color: var(--tool-color, var(--brand-orange));
             z-index: 100;
         }
         .tool-card:hover .tool-icon {
@@ -894,7 +894,7 @@
             transition: background 0.15s;
         }
         #cmdResults li.active, #cmdResults li:hover { 
-            background: var(--dista-orange); 
+            background: var(--brand-orange); 
             color: white; 
         }
         #cmdResults li .icon { 
@@ -913,12 +913,12 @@
         }
         .cursor-dot {
             width: 8px; height: 8px;
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             transition: transform 0.1s ease;
         }
         .cursor-outline {
             width: 35px; height: 35px;
-            border: 2px solid var(--dista-orange);
+            border: 2px solid var(--brand-orange);
             transition: transform 0.2s ease-out, width 0.3s, height 0.3s;
         }
         .cursor-outline.hover-grow {
@@ -959,7 +959,7 @@
                 to bottom,
                 transparent 0%,
                 rgba(247, 148, 29, 0) 10%,
-                var(--tool-color, var(--dista-orange)) 50%,
+                var(--tool-color, var(--brand-orange)) 50%,
                 rgba(247, 148, 29, 0) 90%,
                 transparent 100%
             );
@@ -1143,7 +1143,7 @@
             margin-top: 1rem;
         }
         .defrag-progress-bar {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             height: 100%;
             width: 0%;
             transition: width 0.1s linear;
@@ -1151,10 +1151,10 @@
 
         /* Scramble Characters & Constellation Background */
         .scramble-char {
-            color: var(--dista-orange);
+            color: var(--brand-orange);
             font-family: monospace;
             opacity: 0.8;
-            text-shadow: 0 0 4px var(--dista-orange);
+            text-shadow: 0 0 4px var(--brand-orange);
         }
         #constellationCanvas {
             position: absolute;
@@ -1193,8 +1193,8 @@
         <div class="container" style="max-width: 1200px;">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center gap-3">
-                    <img src="assets/dista-logo.png" alt="Dista Logo" class="logo-img" onerror="this.style.display='none'">
-                    <h1 class="header-title" id="scrambleHeader">Dista Internal Tools</h1>
+                    
+                    <h1 class="header-title" id="scrambleHeader">Internal Tools Portal</h1>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <button class="btn-feedback" id="feedbackToggle" title="Send Feedback">
@@ -1214,7 +1214,7 @@
         <div class="hero-foreground-particles" id="heroForeground"></div>
         <div class="container animate-fade-in-up" style="max-width: 1200px; animation-delay: 0.1s; position: relative; z-index: 1;">
             <div class="text-center">
-                <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text" id="scrambleHero">Welcome to Dista Internal Tools</span></h2>
+                <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text" id="scrambleHero">Welcome to Internal Tools Portal</span></h2>
                 <p class="hero-subtitle mx-auto" id="typingSubtitle" style="min-height: 54px;"></p>
             </div>
         </div>
@@ -1222,7 +1222,7 @@
 
     <!-- Tools Grid -->
     <section class="container" style="max-width: 1200px;">
-        <h3 class="mb-4 fw-bold animate-fade-in-up" style="animation-delay: 0.2s;"><i class="bi bi-grid-3x3-gap-fill me-2" style="color: var(--dista-orange);"></i>Available Tools</h3>
+        <h3 class="mb-4 fw-bold animate-fade-in-up" style="animation-delay: 0.2s;"><i class="bi bi-grid-3x3-gap-fill me-2" style="color: var(--brand-orange);"></i>Available Tools</h3>
 
         <div class="row g-4" id="toolsGrid">
             <!-- Tools will be rendered here by JavaScript -->
@@ -1255,7 +1255,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>© 2026 Dista — Internal Use Only</p>
+            <p>© 2026 — Internal Use Only</p>
         </div>
     </footer>
 
@@ -1272,7 +1272,7 @@
         <div class="feedback-box">
             <div id="feedbackFormContent">
                 <div class="feedback-title">
-                    <i class="bi bi-chat-square-heart-fill" style="color: var(--dista-orange);"></i>
+                    <i class="bi bi-chat-square-heart-fill" style="color: var(--brand-orange);"></i>
                     <span>Send Portal Feedback</span>
                 </div>
                 <div class="feedback-subtitle">Have a suggestion or found an issue? Send it directly to our team.</div>
@@ -1296,7 +1296,7 @@
                 </form>
             </div>
             <div id="feedbackSuccessContent" class="text-center py-4" style="display: none; animation: fadeIn 0.4s ease;">
-                <div style="font-size: 3.5rem; color: var(--dista-orange); margin-bottom: 1rem; animation: scaleUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);">✓</div>
+                <div style="font-size: 3.5rem; color: var(--brand-orange); margin-bottom: 1rem; animation: scaleUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);">✓</div>
                 <h4 class="fw-bold mb-2">Thank you!</h4>
                 <p class="text-muted mb-0">Your feedback has been submitted successfully.</p>
             </div>
@@ -1586,7 +1586,7 @@
                 name: 'Sweep',
                 icon: '🧹',
                 descShort: 'Scan code locally for secrets before pasting',
-                descFull: 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href="https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b" target="_blank" style="color: var(--dista-orange); text-decoration: underline; word-break: break-all;">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.',
+                descFull: 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href="https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b" target="_blank" style="color: var(--brand-orange); text-decoration: underline; word-break: break-all;">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.',
                 path: 'tool-2/',
                 docPath: 'docs/index.html#section-sweep',
                 status: 'active'
@@ -1796,7 +1796,7 @@
                     <div id="terminalContent" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; width: 100%; transition: opacity 0.5s ease; opacity: 1;">
                         <div class="terminal-log-container" id="terminalLogs"></div>
                         <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #2ecc71; padding-top:1rem; font-size:0.9rem;">
-                            <div>DISTA SECURE CORE BOOTLOADER v4.9</div>
+                            <div>SECURE CORE BOOTLOADER v4.9</div>
                             <div>LOADER PORTAL STATUS: ACTIVE</div>
                         </div>
                     </div>
@@ -1807,7 +1807,7 @@
                 const logContainer = overlay.querySelector('#terminalLogs');
                 
                 const bootLogs = [
-                    "> DISTA CENTRAL OS KERNEL BOOT SEQUENCE INITIATED...",
+                    "> CENTRAL OS KERNEL BOOT SEQUENCE INITIATED...",
                     "> MOUNTING ROOT DIRECTORY SYSTEMS: SUCCESS",
                     "> DECRYPTING KEYSTORE VAULTS... 0x81F27A0B",
                     "> ESTABLISHING GCP INFRASTRUCTURE MANAGER HANDSHAKE... ACTIVE",
@@ -1876,17 +1876,17 @@
                                         welcomeContainer.innerHTML = `
                                             <div style="text-align:center; transform: scale(0.95); transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)" id="welcome-card">
                                                 <div style="margin-bottom: 2rem; display: flex; justify-content: center;">
-                                                    <div style="width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle, var(--dista-orange) 0%, transparent 70%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(247, 148, 29, 0.3); animation: pulseGlowWelcome 2s infinite alternate">
-                                                        <i class="bi bi-cpu-fill" style="color:var(--dista-orange); font-size: 2.2rem; display: flex; align-items: center; justify-content: center;"></i>
+                                                    <div style="width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle, var(--brand-orange) 0%, transparent 70%); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(247, 148, 29, 0.3); animation: pulseGlowWelcome 2s infinite alternate">
+                                                        <i class="bi bi-cpu-fill" style="color:var(--brand-orange); font-size: 2.2rem; display: flex; align-items: center; justify-content: center;"></i>
                                                     </div>
                                                 </div>
                                                 <div style="color:var(--text-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.25em; font-weight: 700; margin-bottom: 12px;">
-                                                    Dista Operations Portal
+                                                    Operations Portal
                                                 </div>
                                                 <h1 style="color:#ffffff; font-size: 3rem; font-weight: 800; margin-bottom: 1.5rem; text-shadow: 0 0 20px rgba(255,255,255,0.15);">
-                                                    Welcome, Distan
+                                                    Welcome
                                                 </h1>
-                                                <div style="width: 60px; height: 3px; background: var(--dista-orange); margin: 0 auto; border-radius: 2px; animation: scaleWidthWelcome 1.2s ease-out"></div>
+                                                <div style="width: 60px; height: 3px; background: var(--brand-orange); margin: 0 auto; border-radius: 2px; animation: scaleWidthWelcome 1.2s ease-out"></div>
                                             </div>
                                         `;
                                         overlay.appendChild(welcomeContainer);
@@ -2235,7 +2235,7 @@
         // EASTER EGG & SCRATCH
         // ==========================================
         let logoClicks = 0;
-        const logoImg = document.querySelector('.logo-img');
+        const logoImg = document.querySelector('.header-title');
         if (logoImg) {
             logoImg.style.cursor = 'pointer';
             logoImg.addEventListener('click', () => {
@@ -2281,7 +2281,7 @@
 
             const card = document.createElement('div');
             card.style.background = 'var(--bg-card)';
-            card.style.border = '2px solid var(--dista-orange)';
+            card.style.border = '2px solid var(--brand-orange)';
             card.style.borderRadius = '16px';
             card.style.padding = '2.5rem';
             card.style.textAlign = 'center';
@@ -2295,7 +2295,7 @@
                 <div style="font-size: 3rem; margin-bottom: 1rem;">✨</div>
                 <h3 style="font-weight: 800; color: var(--text-main); margin-bottom: 1rem;">Credits</h3>
                 <p style="color: var(--text-muted); font-size: 1.05rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                    Created by <strong style="color: var(--dista-orange);">Antigravity Gemini 3.5 flash</strong>, <strong>ZLM 5.1</strong>, <strong>Kimi K2.6</strong>, <strong>Claude</strong> &amp; reviewed by <strong>ChatGPT</strong>
+                    Created by <strong style="color: var(--brand-orange);">Antigravity Gemini 3.5 flash</strong>, <strong>ZLM 5.1</strong>, <strong>Kimi K2.6</strong>, <strong>Claude</strong> &amp; reviewed by <strong>ChatGPT</strong>
                 </p>
                 <button class="btn-open-tool" style="cursor: pointer; border: none; font-weight: 600; padding: 0.5rem 1.5rem; border-radius: 8px;" onclick="this.closest('.easter-egg-overlay').remove()">Close</button>
             `;
@@ -2588,7 +2588,7 @@
                 const formspreePayload = {
                     name: name,
                     message: message,
-                    _subject: "Dista Operations Portal Feedback"
+                    _subject: "Operations Portal Feedback"
                 };
                 if (email && email.trim() !== "") {
                     formspreePayload.email = email.trim();
@@ -2659,10 +2659,10 @@
             
             // Scramble landing page headers on entrance
             const headerScrambler = new TextScrambler(document.getElementById('scrambleHeader'));
-            headerScrambler.setText("Dista Internal Tools");
+            headerScrambler.setText("Internal Tools Portal");
             
             const heroScrambler = new TextScrambler(document.getElementById('scrambleHero'));
-            heroScrambler.setText("Welcome to Dista Internal Tools");
+            heroScrambler.setText("Welcome to Internal Tools Portal");
         }
         window.addEventListener('DOMContentLoaded', runInit);
 

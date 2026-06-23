@@ -1,4 +1,4 @@
-# Migration Guide: Running Dista Tools on Another Computer
+# Migration Guide: Running the Portal on Another Computer
 
 Because this portal is built using standard, vanilla web technologies and uses a lightweight Node.js server with **zero npm dependencies**, you can copy and run it on any computer without needing Antigravity or special developer tools.
 

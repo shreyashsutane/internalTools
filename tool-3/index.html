@@ -15,8 +15,8 @@
             --border-color: rgba(247, 148, 29, 0.2);
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
-            --dista-orange: #f7941d;
-            --dista-orange-dark: #e85d04;
+            --brand-orange: #f7941d;
+            --brand-orange-dark: #e85d04;
             --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             --input-bg: #0d141e;
         }
@@ -70,8 +70,8 @@
         }
 
         .btn-back:hover {
-            border-color: var(--dista-orange);
-            color: var(--dista-orange);
+            border-color: var(--brand-orange);
+            color: var(--brand-orange);
             transform: translateX(-3px);
         }
 
@@ -94,7 +94,7 @@
         .form-label {
             font-weight: 600;
             font-size: 0.9rem;
-            color: var(--dista-orange);
+            color: var(--brand-orange);
             margin-bottom: 0.5rem;
             display: flex;
             justify-content: space-between;
@@ -113,7 +113,7 @@
         .form-control:focus, .form-select:focus {
             background-color: var(--input-bg);
             color: #ffffff;
-            border-color: var(--dista-orange);
+            border-color: var(--brand-orange);
             box-shadow: 0 0 0 0.25rem rgba(247, 148, 29, 0.15);
         }
 
@@ -122,7 +122,7 @@
         }
 
         .btn-action {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             border: none;
             color: white;
             padding: 0.75rem 2.5rem;
@@ -133,7 +133,7 @@
         }
 
         .btn-action:hover {
-            background: var(--dista-orange-dark);
+            background: var(--brand-orange-dark);
             transform: scale(1.01);
         }
 
@@ -153,7 +153,7 @@
             cursor: pointer;
             padding: 4px 8px;
             background: rgba(247, 148, 29, 0.1);
-            color: var(--dista-orange);
+            color: var(--brand-orange);
             border-radius: 4px;
             font-size: 0.75rem;
             font-weight: 600;
@@ -162,14 +162,14 @@
         }
 
         .copy-badge:hover {
-            background: var(--dista-orange);
+            background: var(--brand-orange);
             color: white;
         }
 
         .sec-note {
             background: rgba(247, 148, 29, 0.03);
             border: 1px solid rgba(247, 148, 29, 0.1);
-            border-left: 3px solid var(--dista-orange);
+            border-left: 3px solid var(--brand-orange);
             border-radius: 8px;
             padding: 1.25rem;
             margin-top: 2rem;
@@ -268,7 +268,7 @@
         }
         .form-control:focus, .form-select:focus {
             background-color: #0d141e !important;
-            border-color: var(--dista-orange) !important;
+            border-color: var(--brand-orange) !important;
             box-shadow: 0 0 0 0.25rem rgba(247, 148, 29, 0.25) !important;
             color: #ffffff !important;
             transform: translateY(-1px);
@@ -292,7 +292,7 @@
     <nav class="navbar animate-fade-in">
         <div class="container" style="max-width: 1000px;">
             <a class="navbar-brand" href="/">
-                <img src="../assets/dista-logo.png" alt="Dista Logo" class="logo-img" onerror="this.style.display='none'">
+                
                 <span>Crypto Vault</span>
             </a>
             <a href="/" class="btn-back"><i class="bi bi-arrow-left"></i>Back to Portal</a>
@@ -390,7 +390,7 @@
 
             <!-- Note section -->
             <div class="sec-note mt-4">
-                <h5 class="text-white mb-2" style="font-size: 0.95rem;"><i class="bi bi-info-circle-fill me-2" style="color: var(--dista-orange);"></i>Client-Side Cryptographic Policy</h5>
+                <h5 class="text-white mb-2" style="font-size: 0.95rem;"><i class="bi bi-info-circle-fill me-2" style="color: var(--brand-orange);"></i>Client-Side Cryptographic Policy</h5>
                 <p class="mb-0">
                     This utility uses **CryptoJS** to execute **AES-128-CBC** encryption and decryption with **PKCS7 padding**. Key and IV strings are parsed dynamically through UTF-8 word conversion, conforming exactly with standard C/Java valid bytes padding logic (copied and padded/truncated to exactly 16 bytes). No sensitive key, IV, or payload data is ever transmitted over the network.
                 </p>
@@ -565,7 +565,7 @@
     <!-- Footer -->
     <footer class="footer animate-fade-in-up" style="animation-delay: 0.3s;">
         <div class="container">
-            <p>© 2026 Dista — Internal Use Only</p>
+            <p>© 2026 — Internal Use Only</p>
         </div>
     </footer>
 </body>

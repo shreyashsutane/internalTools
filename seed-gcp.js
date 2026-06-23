@@ -1,5 +1,5 @@
 /**
- * Dista Tools - GCP Test Data Seeder
+ * GCP Test Data Seeder
  * Seeds mock BigQuery datasets/tables and Datastore entities for testing.
  */
 

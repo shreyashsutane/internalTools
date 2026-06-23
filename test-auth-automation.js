@@ -1,5 +1,5 @@
 /**
- * Dista Tools - Visual Authentication & Admin Management Automation Test Suite
+ * Visual Authentication & Admin Management Automation Test Suite
  * Launches headfully against the live Firebase URL and displays a moving virtual cursor overlay to verify Auth REST flows.
  */
 
@@ -15,8 +15,8 @@ try {
 
 const puppeteer = require('puppeteer');
 
-const PORTAL_URL = 'https://dista-tools.web.app/';
-const ADMIN_URL = 'https://dista-tools.web.app/admin.html';
+const PORTAL_URL = 'https://gcp-tools.web.app/';
+const ADMIN_URL = 'https://gcp-tools.web.app/admin.html';
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
@@ -159,7 +159,7 @@ async function main() {
         await page.type('#new-admin-pass', 'AmitPass12345');
 
         await smoothMove('#new-admin-email');
-        await page.type('#new-admin-email', 'amittest@dista.ai');
+        await page.type('#new-admin-email', 'amittest@company.com');
         await delay(500);
 
         console.log('🖱️ Clicking "Add Admin Account"...');

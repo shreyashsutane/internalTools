@@ -1,6 +1,6 @@
-# Dista Internal Tools Portal Documentation
+# Internal Tools Portal Documentation
 
-Welcome to the central documentation page for the Dista Internal Tools portal.
+Welcome to the central documentation page for the Internal Tools portal.
 
 This collection of utilities is designed to assist internal development, operational data migrations, and schema management across environments.
 

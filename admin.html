@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dista Admin Panel - Operations Logs</title>
+    <title>Admin Panel - Operations Logs</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -464,7 +464,7 @@
     <div class="card login-container animate-fade-in-up" id="login-panel">
         <div class="logo-area">
             <i class="bi bi-shield-lock-fill logo-icon"></i>
-            <h1 class="title">Dista Consolidated Logs</h1>
+            <h1 class="title">Consolidated Logs</h1>
             <p class="subtitle">Enter credentials to access all user operations logs</p>
         </div>
         <form id="login-form" onsubmit="handleLogin(event)">
@@ -636,7 +636,7 @@
                 if (user.toLowerCase() === 'shreyash') {
                     email = 'shreyashs14102002@gmail.com';
                 } else {
-                    email = `${user.toLowerCase()}@dista.ai`;
+                    email = `${user.toLowerCase()}@company.com`;
                 }
             }
 
@@ -820,7 +820,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `dista_consolidated_audit_logs_${new Date().toISOString().slice(0, 10)}.json`;
+            a.download = `consolidated_audit_logs_${new Date().toISOString().slice(0, 10)}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -906,7 +906,7 @@
             let email = document.getElementById('new-admin-email').value.trim();
 
             if (!email) {
-                email = `${username.toLowerCase()}@dista.ai`;
+                email = `${username.toLowerCase()}@company.com`;
             }
 
             if (submitBtn) {
@@ -1037,7 +1037,7 @@
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:1.5rem">
-                    <label class="form-label" style="font-size:10px">Email (Optional - defaults to username@dista.ai)</label>
+                    <label class="form-label" style="font-size:10px">Email (Optional - defaults to username@company.com)</label>
                     <input type="email" id="new-admin-email" class="inp" placeholder="e.g. john@company.com" style="padding: 8px 12px 8px 12px;" autocomplete="off">
                 </div>
                 <button type="submit" class="btn" style="padding: 10px;"><i class="bi bi-person-plus-fill"></i> Add Admin Account</button>

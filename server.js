@@ -65,7 +65,7 @@ function startServer(port) {
 server.on('listening', () => {
     const addr = server.address();
     console.log(`====================================================`);
-    console.log(`Dista Internal Tools Portal running locally!`);
+    console.log(`Internal Tools Portal running locally!`);
     console.log(`Access the application at: http://localhost:${addr.port}`);
     console.log(`Access via IP: http://127.0.0.1:${addr.port}`);
     console.log(`====================================================`);

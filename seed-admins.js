@@ -1,5 +1,5 @@
 /**
- * Dista Tools - Seeder script for default Admin account
+ * Seeder script for default Admin account
  * Creates the first admin user in Firebase Auth and registers them in Firestore.
  */
 

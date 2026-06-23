@@ -49,7 +49,7 @@ const Crypto = {
         return window.crypto.subtle.deriveKey(
             {
                 name: "PBKDF2",
-                salt: enc.encode("dista-salt-12345"),
+                salt: enc.encode("brand-salt-12345"),
                 iterations: 100000,
                 hash: "SHA-256"
             },
@@ -59,7 +59,7 @@ const Crypto = {
             ["encrypt", "decrypt"]
         );
     },
-    encrypt: async (text, passphrase = 'dista-audit-log-key') => {
+    encrypt: async (text, passphrase = 'audit-log-key') => {
         try {
             const key = await Crypto.getKey(passphrase);
             const enc = new TextEncoder();
@@ -82,7 +82,7 @@ const Crypto = {
             return null;
         }
     },
-    decrypt: async (encryptedBase64, passphrase = 'dista-audit-log-key') => {
+    decrypt: async (encryptedBase64, passphrase = 'audit-log-key') => {
         try {
             const key = await Crypto.getKey(passphrase);
             const binaryString = atob(encryptedBase64);
@@ -214,7 +214,7 @@ const AuditLog = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `dista_audit_logs_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `audit_logs_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -386,7 +386,7 @@ const Api = {
             try {
                 const newToken = await UI.showTokenRenewalModal();
                 State.token = newToken;
-                localStorage.setItem('dista_access_token', newToken);
+                localStorage.setItem('access_token', newToken);
                 const tokenInp = Utils.$('inp-token');
                 if (tokenInp) tokenInp.value = newToken;
                 return Api.fetch(url, opts);
@@ -719,8 +719,8 @@ const App = {
             const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${token}`);
             if(!res.ok) throw new Error("Invalid token"); const data = await res.json();
             State.token = token; State.authEmail = data.email || 'User';
-            localStorage.setItem('dista_access_token', token);
-            localStorage.setItem('dista_auth_email', State.authEmail);
+            localStorage.setItem('access_token', token);
+            localStorage.setItem('auth_email', State.authEmail);
             try { State.projects = await Api.getProjects(); } catch(e) { Utils.toast("Could not fetch projects", "info"); }
             
             const welcomeName = App.parseWelcomeName(State.authEmail);
@@ -1845,7 +1845,7 @@ const App = {
                     
                     <div class="warning-box flex-col" style="background:rgba(247,148,29,0.06); border-color:rgba(247,148,29,0.25); display: flex;">
                         <div class="flex items-start gap-2.5 w-full">
-                            <i class="fa-solid fa-shield-halved" style="color:var(--dista-orange); margin-top: 2px;"></i>
+                            <i class="fa-solid fa-shield-halved" style="color:var(--brand-orange); margin-top: 2px;"></i>
                             <div><strong>GCP Audit Logging Recommendation</strong></div>
                         </div>
                         <div class="text-xs mt-2 pl-7" style="line-height:1.4">
@@ -1923,7 +1923,7 @@ const App = {
                 <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup!</strong> This will upsert entities. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank">Create Backup</a></div></div>
                 <div class="warning-box flex-col" style="background:rgba(247,148,29,0.06); border-color:rgba(247,148,29,0.25); display: flex;">
                     <div class="flex items-start gap-2.5 w-full">
-                        <i class="fa-solid fa-shield-halved" style="color:var(--dista-orange); margin-top: 2px;"></i>
+                        <i class="fa-solid fa-shield-halved" style="color:var(--brand-orange); margin-top: 2px;"></i>
                         <div><strong>2. Operations that need to be enabled (Data Access Logs)</strong></div>
                     </div>
                     <div class="text-xs mt-2 pl-7" style="line-height:1.4">
