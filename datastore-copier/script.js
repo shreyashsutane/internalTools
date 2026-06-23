@@ -310,6 +310,21 @@ const AuditLog = {
                     Utils.toast(`Reverted Datastore changes. Restored: ${upsertCount}, Deleted: ${deleteCount}`, "ok");
                     await AuditLog.addLog("DATASTORE_REVERT", "—", log.tgtProject, `Reverted changes for ${state.backupData.length} entities of kind ${state.kind} from log ${logId}.`, "SUCCESS");
                     if (State.mode === 'ds' && State.ds.src) await App.runDsAnalyze();
+                } else if (state.type === 'DATASTORE_EDIT') {
+                    const pid = log.tgtProject;
+                    if (state.prevEntity) {
+                        const entityCopy = JSON.parse(JSON.stringify(state.prevEntity));
+                        entityCopy.key.partitionId = { projectId: pid };
+                        await Api.commitDatastore(pid, [{ upsert: entityCopy }]);
+                        Utils.toast(`Reverted entity edit. Restored original properties.`, "ok");
+                    } else {
+                        const keyCopy = JSON.parse(JSON.stringify(state.rawKey));
+                        keyCopy.partitionId = { projectId: pid };
+                        await Api.commitDatastore(pid, [{ delete: keyCopy }]);
+                        Utils.toast(`Reverted entity edit. Deleted created entity.`, "ok");
+                    }
+                    await AuditLog.addLog("DATASTORE_EDIT_REVERT", "—", pid, `Reverted inline edit of entity ${state.keyStr}.`, "SUCCESS");
+                    if (State.mode === 'ds' && State.ds.src) await App.runDsAnalyze();
                 }
             } catch(err) {
                 console.error("Revert failed:", err);
@@ -1866,7 +1881,15 @@ const App = {
                     
                     await Api.commitDatastore(pid, [{ upsert: entity }]);
                     Utils.toast(`Successfully saved entity to ${side === 'src' ? 'source' : 'target'} project.`, "ok");
-                    await AuditLog.addLog("DATASTORE_EDIT", "—", pid, `Inline edited entity properties for ${keyStr}.`, "SUCCESS");
+                    
+                    const prevEntity = side === 'src' ? r.srcEntity : r.tgtEntity;
+                    const prevState = {
+                        type: 'DATASTORE_EDIT',
+                        prevEntity: prevEntity ? JSON.parse(JSON.stringify(prevEntity)) : null,
+                        rawKey: r.rawKey,
+                        keyStr: keyStr
+                    };
+                    await AuditLog.addLog("DATASTORE_EDIT", "—", pid, `Inline edited entity properties for ${keyStr}.`, "SUCCESS", prevState);
                     
                     const expandedKey = keyStr;
                     await App.runDsAnalyze();
