@@ -1425,6 +1425,34 @@
                 
                 noise.start();
                 noise.stop(ctx.currentTime + 0.35);
+            },
+            playSuccess() {
+                if (this.muted) return;
+                this.init();
+                const ctx = this.ctx;
+                if (ctx.state === 'suspended') ctx.resume();
+                
+                const playTone = (freq, time, duration) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, time);
+                    
+                    gain.gain.setValueAtTime(0.04, time);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.start(time);
+                    osc.stop(time + duration);
+                };
+                
+                const now = ctx.currentTime;
+                playTone(523.25, now, 0.15); // C5
+                playTone(659.25, now + 0.08, 0.15); // E5
+                playTone(783.99, now + 0.16, 0.3); // G5
             }
         };
 
@@ -2586,37 +2614,21 @@
                 try {
                     // Run both in parallel
                     await Promise.all([firestorePromise, emailPromise]);
-
+                } catch (err) {
+                    console.error("Feedback background dispatch failed/partially completed:", err);
+                } finally {
                     // Switch to success view
                     document.getElementById('feedbackFormContent').style.display = 'none';
                     document.getElementById('feedbackSuccessContent').style.display = 'block';
 
-                    AudioHaptic.playClunk();
+                    AudioHaptic.playSuccess();
                     setTimeout(() => {
                         closeFeedback();
                         btnFeedbackSubmit.disabled = false;
                         btnFeedbackSubmit.textContent = originalText;
                     }, 1800);
-
-                } catch (err) {
-                    console.error("Feedback dispatch error:", err);
-                    alert("Note: Background email dispatch is pending confirmation or failed. Opening default email client...");
-                    triggerMailtoFallback(name, email, message);
                 }
             });
-
-            function triggerMailtoFallback(name, email, message) {
-                const subject = encodeURIComponent("Dista Operations Portal Feedback");
-                const body = encodeURIComponent(`Name: ${name}\nEmail: ${email || 'N/A'}\n\nFeedback:\n${message}`);
-                window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
-                
-                btnFeedbackSubmit.textContent = "Opening Mail Client...";
-                setTimeout(() => {
-                    closeFeedback();
-                    btnFeedbackSubmit.disabled = false;
-                    btnFeedbackSubmit.textContent = "Send Feedback";
-                }, 2000);
-            }
         }
 
         // ==========================================
