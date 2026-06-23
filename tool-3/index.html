@@ -516,7 +516,7 @@
                     const dec = CryptoJS.AES.decrypt(data, key, config).toString(CryptoJS.enc.Utf8);
                     if (!dec) throw new Error("Invalid Key/IV or non-UTF8 payload");
                     output.innerText = dec;
-                    output.style.color = "#f7941d"; // dista-orange / accent
+                    output.style.color = "#f7941d"; // brand-orange / accent
                 }
             } catch (e) {
                 output.innerText = "Error: " + e.message;
