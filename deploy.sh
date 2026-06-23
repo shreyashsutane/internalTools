@@ -12,10 +12,10 @@ npx -y firebase-tools@latest login
 
 # 2. Deploy to Firebase Hosting
 echo ""
-echo "📤 Step 2: Deploying static files to dista-tools..."
-npx -y firebase-tools@latest deploy --only hosting --project dista-tools
+echo "📤 Step 2: Deploying static files to gcp-tools-portal..."
+npx -y firebase-tools@latest deploy --only hosting --project gcp-tools-portal
 
 echo ""
 echo "🎉 DEPLOYMENT COMPLETE!"
-echo "Your app is now live at: https://gcp-tools.web.app"
+echo "Your app is now live at: https://gcp-tools-portal.web.app"
 echo "===================================================="

@@ -15,8 +15,8 @@ try {
 
 const puppeteer = require('puppeteer');
 
-const PORTAL_URL = 'https://gcp-tools.web.app/';
-const ADMIN_URL = 'https://gcp-tools.web.app/admin.html';
+const PORTAL_URL = 'https://gcp-tools-portal.web.app/';
+const ADMIN_URL = 'https://gcp-tools-portal.web.app/admin.html';
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 

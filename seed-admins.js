@@ -7,7 +7,7 @@ const { execSync } = require('child_process');
 const https = require('https');
 
 const API_KEY = 'AIzaSyA2VAyhU903tZB_CQFs-_KSz9gwLDJyLt8';
-const PROJECT_ID = 'dista-tools';
+const PROJECT_ID = 'gcp-tools-portal';
 const DEFAULT_EMAIL = 'shreyashs14102002@gmail.com';
 const DEFAULT_PASS = 'Vai@12345';
 const DEFAULT_USER = 'Shreyash';

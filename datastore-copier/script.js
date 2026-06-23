@@ -134,7 +134,7 @@ const AuditLog = {
         try {
             if (!State.token) return [];
             const email = State.authEmail || 'anonymous';
-            const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery`, {
+            const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${State.token}`,
@@ -188,7 +188,7 @@ const AuditLog = {
             if (prevState) {
                 body.fields.prevState = { stringValue: JSON.stringify(prevState) };
             }
-            const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/audit_logs`, {
+            const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${State.token}`,

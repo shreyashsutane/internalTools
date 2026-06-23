@@ -297,7 +297,7 @@ const HTML_CONTENT = `
                 </div>
                 <div class="meta-item">
                     <strong>Deployment URL</strong>
-                    https://gcp-tools.web.app/
+                    https://gcp-tools-portal.web.app/
                 </div>
             </div>
         </div>
@@ -438,7 +438,7 @@ if (!authRes.ok) throw new Error('Incorrect username or password.');
 const authData = await authRes.json();
 
 // 2. Verify admin document exists in Firestore (Authorized via JWT)
-const firestoreRes = await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/&#36;{authData.localId}&#96;</span>, {
+const firestoreRes = await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/&#36;{authData.localId}&#96;</span>, {
     headers: { 'Authorization': <span class="token-string">&#96;Bearer &#36;{authData.idToken}&#96;</span> }
 });
 if (!firestoreRes.ok) throw new Error('Access denied. Not registered as an admin.');
@@ -503,7 +503,7 @@ service cloud.firestore {
         <p>
             When fetching consolidated logs on the Admin Console, the client sends a POST request with the user's JWT <code>idToken</code> to Firestore REST API:
         </p>
-        <pre><code><span class="token-keyword">const</span> res = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">'https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery'</span>, {
+        <pre><code><span class="token-keyword">const</span> res = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery'</span>, {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
@@ -557,7 +557,7 @@ const signupData = await signupRes.json();
 const newUid = signupData.localId;
 
 // Step 2: Write Firestore document permission
-await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/&#36;{newUid}?updateMask.fieldPaths=username&#96;</span>, {
+await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/&#36;{newUid}?updateMask.fieldPaths=username&#96;</span>, {
     method: 'PATCH',
     headers: { 'Authorization': <span class="token-string">&#96;Bearer &#36;{State.token}&#96;</span> },
     body: JSON.stringify({ fields: { username: { stringValue: username }, email: { stringValue: email } } })
@@ -580,7 +580,7 @@ await fetch(<span class="token-string">&#96;https://firestore.googleapis.com/v1/
         <p>
             When an admin is removed, we send a HTTP DELETE request to target <code>admins/{uid}</code>. Since Firestore Security Rules require the user's UID to exist in this collection, removing the document revokes all read access immediately:
         </p>
-        <pre><code><span class="token-keyword">const</span> res = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/&#36;{uid}&#96;</span>, {
+        <pre><code><span class="token-keyword">const</span> res = <span class="token-keyword">await</span> <span class="token-function">fetch</span>(<span class="token-string">&#96;https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/&#36;{uid}&#96;</span>, {
     method: 'DELETE',
     headers: { 'Authorization': <span class="token-string">&#96;Bearer &#36;{State.token}&#96;</span> }
 });</code></pre>

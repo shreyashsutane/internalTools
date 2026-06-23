@@ -16,7 +16,7 @@ try {
 
 const puppeteer = require('puppeteer');
 
-const URL = `https://gcp-tools.web.app/datastore-copier/`;
+const URL = `https://gcp-tools-portal.web.app/datastore-copier/`;
 
 const SRC_PROJECT = 'project-c0e231c7-2177-4eb0-979';
 const TGT_PROJECT = 'second-project-16364';

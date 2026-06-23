@@ -2572,7 +2572,7 @@
                     }
                 };
 
-                const firestorePromise = fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/feedback`, {
+                const firestorePromise = fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/feedback`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(firestorePayload)

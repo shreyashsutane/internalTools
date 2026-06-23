@@ -657,7 +657,7 @@
                 const uid = authData.localId;
 
                 // 2. Check if UID is registered in admins collection
-                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/${uid}`, {
+                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/${uid}`, {
                     headers: { 'Authorization': `Bearer ${idToken}` }
                 });
 
@@ -711,7 +711,7 @@
 
             try {
                 // Query Firestore for all documents in collection audit_logs
-                const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery`, {
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -846,7 +846,7 @@
             listBody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 12px; color:var(--muted)">Loading admins...</td></tr>`;
 
             try {
-                const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents:runQuery`, {
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -935,7 +935,7 @@
                 const newUid = signupData.localId;
 
                 // 2. Register UID in Firestore admins collection
-                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/${newUid}?updateMask.fieldPaths=username&updateMask.fieldPaths=email`, {
+                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/${newUid}?updateMask.fieldPaths=username&updateMask.fieldPaths=email`, {
                     method: 'PATCH',
                     headers: {
                         'Content-Type': 'application/json',
@@ -974,7 +974,7 @@
             }
 
             try {
-                const res = await fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/admins/${uid}`, {
+                const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/${uid}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${State.token}` }
                 });
