@@ -1270,29 +1270,36 @@
     <!-- Feedback Modal -->
     <div id="feedbackOverlay" class="feedback-overlay">
         <div class="feedback-box">
-            <div class="feedback-title">
-                <i class="bi bi-chat-square-heart-fill" style="color: var(--dista-orange);"></i>
-                <span>Send Portal Feedback</span>
+            <div id="feedbackFormContent">
+                <div class="feedback-title">
+                    <i class="bi bi-chat-square-heart-fill" style="color: var(--dista-orange);"></i>
+                    <span>Send Portal Feedback</span>
+                </div>
+                <div class="feedback-subtitle">Have a suggestion or found an issue? Send it directly to our team.</div>
+                <form id="feedbackForm" class="feedback-form">
+                    <div class="form-group">
+                        <label for="feedbackName">Name</label>
+                        <input type="text" id="feedbackName" class="form-control" placeholder="Enter your name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackEmail">Email Address (Optional)</label>
+                        <input type="email" id="feedbackEmail" class="form-control" placeholder="Enter your email for follow-up">
+                    </div>
+                    <div class="form-group">
+                        <label for="feedbackMessage">Message / Feedback</label>
+                        <textarea id="feedbackMessage" class="form-control" rows="4" placeholder="Type your suggestion or feedback here..." required></textarea>
+                    </div>
+                    <div class="feedback-actions">
+                        <button type="button" class="btn-feedback-cancel" id="btnFeedbackCancel">Cancel</button>
+                        <button type="submit" class="btn-feedback-submit" id="btnFeedbackSubmit">Send Feedback</button>
+                    </div>
+                </form>
             </div>
-            <div class="feedback-subtitle">Have a suggestion or found an issue? Send it directly to our team.</div>
-            <form id="feedbackForm" class="feedback-form">
-                <div class="form-group">
-                    <label for="feedbackName">Name</label>
-                    <input type="text" id="feedbackName" class="form-control" placeholder="Enter your name" required>
-                </div>
-                <div class="form-group">
-                    <label for="feedbackEmail">Email Address (Optional)</label>
-                    <input type="email" id="feedbackEmail" class="form-control" placeholder="Enter your email for follow-up">
-                </div>
-                <div class="form-group">
-                    <label for="feedbackMessage">Message / Feedback</label>
-                    <textarea id="feedbackMessage" class="form-control" rows="4" placeholder="Type your suggestion or feedback here..." required></textarea>
-                </div>
-                <div class="feedback-actions">
-                    <button type="button" class="btn-feedback-cancel" id="btnFeedbackCancel">Cancel</button>
-                    <button type="submit" class="btn-feedback-submit" id="btnFeedbackSubmit">Send Feedback</button>
-                </div>
-            </form>
+            <div id="feedbackSuccessContent" class="text-center py-4" style="display: none; animation: fadeIn 0.4s ease;">
+                <div style="font-size: 3.5rem; color: var(--dista-orange); margin-bottom: 1rem; animation: scaleUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);">✓</div>
+                <h4 class="fw-bold mb-2">Thank you!</h4>
+                <p class="text-muted mb-0">Your feedback has been submitted successfully.</p>
+            </div>
         </div>
     </div>
 
@@ -2485,7 +2492,7 @@
             if (!feedbackToggle || !feedbackOverlay || !btnFeedbackCancel || !feedbackForm) return;
 
             // Define target email and/or Formspree ID
-            const FEEDBACK_EMAIL = "shreyashsutane@gmail.com"; 
+            const FEEDBACK_EMAIL = "shreyashs14102002@gmail.com"; 
             const FORMSPREE_FORM_ID = ""; // If you have a Formspree ID, paste it here (e.g. "xpnqpryz")
 
             feedbackToggle.addEventListener('click', () => {
@@ -2499,6 +2506,10 @@
                 feedbackOverlay.classList.remove('active');
                 document.body.style.overflow = '';
                 feedbackForm.reset();
+                
+                // Restore view to form state
+                document.getElementById('feedbackFormContent').style.display = 'block';
+                document.getElementById('feedbackSuccessContent').style.display = 'none';
             }
 
             btnFeedbackCancel.addEventListener('click', closeFeedback);
@@ -2576,13 +2587,16 @@
                     // Run both in parallel
                     await Promise.all([firestorePromise, emailPromise]);
 
-                    btnFeedbackSubmit.textContent = "Thank you! ✓";
+                    // Switch to success view
+                    document.getElementById('feedbackFormContent').style.display = 'none';
+                    document.getElementById('feedbackSuccessContent').style.display = 'block';
+
                     AudioHaptic.playClunk();
                     setTimeout(() => {
                         closeFeedback();
                         btnFeedbackSubmit.disabled = false;
                         btnFeedbackSubmit.textContent = originalText;
-                    }, 1500);
+                    }, 1800);
 
                 } catch (err) {
                     console.error("Feedback dispatch error:", err);
