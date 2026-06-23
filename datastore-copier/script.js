@@ -1728,6 +1728,19 @@ const App = {
         
         const keysToCopy = [...State.ds.selected];
         let ok = 0;
+
+        const recursiveReplaceValue = (val, target, replace) => {
+            if (!val || typeof val !== 'object') return;
+            if (val.stringValue !== undefined && val.stringValue !== null) {
+                val.stringValue = val.stringValue.split(target).join(replace);
+            } else if (val.arrayValue && Array.isArray(val.arrayValue.values)) {
+                val.arrayValue.values.forEach(subVal => recursiveReplaceValue(subVal, target, replace));
+            } else if (val.entityValue && val.entityValue.properties) {
+                for (const k in val.entityValue.properties) {
+                    recursiveReplaceValue(val.entityValue.properties[k], target, replace);
+                }
+            }
+        };
         let fail = 0;
         const backupData = [];
         
@@ -1777,8 +1790,18 @@ const App = {
                     const entity = JSON.parse(JSON.stringify(e.entity));
                     entity.key.partitionId = { projectId: State.ds.tgt };
                     
-                    if (applyMod && modField && modTarget && entity.properties?.[modField]?.stringValue) {
-                        entity.properties[modField].stringValue = entity.properties[modField].stringValue.split(modTarget).join(modReplace);
+                    if (applyMod && modTarget) {
+                        if (modField && modField.trim() !== "" && modField !== "*") {
+                            if (entity.properties?.[modField]) {
+                                recursiveReplaceValue(entity.properties[modField], modTarget, modReplace);
+                            }
+                        } else {
+                            if (entity.properties) {
+                                for (const k in entity.properties) {
+                                    recursiveReplaceValue(entity.properties[k], modTarget, modReplace);
+                                }
+                            }
+                        }
                     }
                     
                     mutations.push({ upsert: entity });
@@ -1799,8 +1822,9 @@ const App = {
         Utils.toast(`Copy complete. Success: ${ok}, Failed: ${fail}`, ok > 0 ? 'ok' : 'err');
         const status = fail === 0 && ok > 0 ? "SUCCESS" : (ok > 0 ? "PARTIAL" : "FAILED");
         let details = `Copied ${ok} entities of kind ${State.ds.kind}.`;
-        if (applyMod && modField) {
-            details += ` Applied Find & Replace on field '${modField}': "${modTarget}" -> "${modReplace}".`;
+        if (applyMod) {
+            const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (recursively)";
+            details += ` Applied Find & Replace on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
         }
         if (State.cancelDs) {
             details += " Copy process was cancelled by the user.";
