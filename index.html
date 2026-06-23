@@ -1238,10 +1238,28 @@
     <section class="hero-section">
         <canvas id="heroMatrix" class="hero-grid-3d" style="opacity: 0.2;"></canvas>
         <div class="hero-foreground-particles" id="heroForeground"></div>
-        <div class="container animate-fade-in-up" style="max-width: 1200px; animation-delay: 0.1s; position: relative; z-index: 1;">
-            <div class="text-center">
-                <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text" id="scrambleHero">Welcome to Internal Tools Portal</span></h2>
-                <p class="hero-subtitle mx-auto" id="typingSubtitle" style="min-height: 54px;"></p>
+        <div class="container" style="max-width: 1200px; position: relative; z-index: 1;">
+            <div class="text-center" style="position: relative; min-height: 180px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                <div id="heroWelcomeContent" style="width: 100%; transition: opacity 0.3s ease; opacity: 1;">
+                    <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text" id="scrambleHero">Welcome to Internal Tools Portal</span></h2>
+                    <p class="hero-subtitle mx-auto" id="typingSubtitle" style="min-height: 54px;"></p>
+                </div>
+                
+                <!-- Hero Dino Game Content -->
+                <div id="heroDinoContent" style="display: none; width: 100%; max-width: 600px; transition: opacity 0.3s ease; opacity: 0; flex-direction: column; align-items: center;">
+                    <button class="btn-open-tool" style="position: absolute; top: -1rem; right: 0; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem; z-index: 10;" onclick="closeDinoGame()">×</button>
+                    <h3 style="font-family: monospace; color: #ffffff; margin-bottom: 0.5rem; font-size: 1.1rem; font-weight: 800; letter-spacing: 2px;">⚡ CHROME DINO RUN (DARK MODE) ⚡</h3>
+                    <div style="font-family: monospace; color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.75rem;">[Spacebar] or [Click Screen] to Jump | Avoid Cacti</div>
+                    <canvas id="dinoCanvas" width="500" height="120" style="background: rgba(27, 34, 44, 0.6); backdrop-filter: blur(4px); border-radius: 8px; border: 1px solid #2d3846; display: block; margin: 0 auto; width: 100%; max-width: 500px; height: 120px;"></canvas>
+                    <div id="dinoScoreContainer" style="font-family: monospace; font-size: 1rem; margin-top: 0.5rem; color: #ffffff; display: flex; justify-content: space-between; padding: 0 1rem; width: 100%; max-width: 500px;">
+                        <span>SCORE: <span id="dinoScore">00000</span></span>
+                        <span>HI: <span id="dinoHighScore">00000</span></span>
+                    </div>
+                    <div id="dinoGameOver" style="display: none; margin-top: 0.25rem;">
+                        <div style="font-family: monospace; color: #ff5d5d; font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; animation: pulse 1s infinite alternate;">GAME OVER</div>
+                        <button class="btn-feedback" onclick="startDinoGame()" style="margin: 0 auto; height: 32px; font-size: 0.85rem; padding: 0 1rem; border-radius: 16px;">Play Again</button>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -1347,23 +1365,6 @@
         </div>
     </div>
 
-    <!-- Dino Game Overlay -->
-    <div id="dinoOverlay" class="easter-egg-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10000; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease;">
-        <div class="dino-game-container" style="background: #11161d; border: 2px solid var(--brand-orange); border-radius: 16px; padding: 2rem; width: 90%; max-width: 600px; text-align: center; box-shadow: 0 0 30px rgba(247, 148, 29, 0.2); position: relative;">
-            <button class="btn-open-tool" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;" onclick="closeDinoGame()">×</button>
-            <h3 style="font-family: monospace; color: #ffffff; margin-bottom: 1rem; font-weight: 800; letter-spacing: 2px;">⚡ CHROME DINO RUN (DARK MODE) ⚡</h3>
-            <div style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">[Spacebar] or [Tap Screen] to Jump | Avoid Cacti</div>
-            <canvas id="dinoCanvas" width="500" height="150" style="background: #1b222c; border-radius: 8px; border: 1px solid #2d3846; display: block; margin: 0 auto; width: 100%; max-width: 500px; height: 150px;"></canvas>
-            <div id="dinoScoreContainer" style="font-family: monospace; font-size: 1.2rem; margin-top: 1rem; color: #ffffff; display: flex; justify-content: space-between; padding: 0 1rem;">
-                <span>SCORE: <span id="dinoScore">00000</span></span>
-                <span>HI: <span id="dinoHighScore">00000</span></span>
-            </div>
-            <div id="dinoGameOver" style="display: none; margin-top: 1rem;">
-                <div style="font-family: monospace; color: #ff5d5d; font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem; animation: pulse 1s infinite alternate;">GAME OVER</div>
-                <button class="btn-feedback" onclick="startDinoGame()" style="margin: 0 auto;">Play Again</button>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -2361,11 +2362,11 @@
         let dinoCanvas, dinoCtx;
         let dinoHighScore = localStorage.getItem('dino_highscore') || 0;
 
-        // Game state
-        let dinoY = 110;
+        // Game state (Adjusted for 120px height inline canvas)
+        let dinoY = 84;
         let dinoVelocityY = 0;
-        const gravity = 0.6;
-        const jumpStrength = -10;
+        const gravity = 0.55;
+        const jumpStrength = -9;
         let isJumping = false;
         let dinoFrame = 0;
 
@@ -2379,7 +2380,7 @@
                 this.x = x;
                 this.width = width;
                 this.height = height;
-                this.y = 130 - height;
+                this.y = 100 - height;
             }
             update() {
                 this.x -= gameSpeed;
@@ -2428,25 +2429,46 @@
         }
 
         function openDinoGame() {
-            const overlay = document.getElementById('dinoOverlay');
-            overlay.style.display = 'flex';
-            requestAnimationFrame(() => {
-                overlay.style.opacity = '1';
-            });
-            
-            // Load high score
-            document.getElementById('dinoHighScore').textContent = String(dinoHighScore).padStart(5, '0');
-            
-            startDinoGame();
+            const welcome = document.getElementById('heroWelcomeContent');
+            const dino = document.getElementById('heroDinoContent');
+            if (!welcome || !dino) return;
+
+            // Fade out welcome content
+            welcome.style.opacity = '0';
+            setTimeout(() => {
+                welcome.style.display = 'none';
+                
+                // Fade in dino game
+                dino.style.display = 'flex';
+                requestAnimationFrame(() => {
+                    dino.style.opacity = '1';
+                });
+                
+                // Load high score
+                document.getElementById('dinoHighScore').textContent = String(dinoHighScore).padStart(5, '0');
+                
+                startDinoGame();
+            }, 300);
         }
 
         function closeDinoGame() {
             dinoGameRunning = false;
             cancelAnimationFrame(dinoId);
-            const overlay = document.getElementById('dinoOverlay');
-            overlay.style.opacity = '0';
+            
+            const welcome = document.getElementById('heroWelcomeContent');
+            const dino = document.getElementById('heroDinoContent');
+            if (!welcome || !dino) return;
+
+            // Fade out dino game
+            dino.style.opacity = '0';
             setTimeout(() => {
-                overlay.style.display = 'none';
+                dino.style.display = 'none';
+                
+                // Fade in welcome content
+                welcome.style.display = 'block';
+                requestAnimationFrame(() => {
+                    welcome.style.opacity = '1';
+                });
             }, 300);
         }
 
@@ -2456,7 +2478,7 @@
             gameSpeed = 5;
             obstacles = [];
             obstacleTimer = 0;
-            dinoY = 110;
+            dinoY = 84;
             dinoVelocityY = 0;
             isJumping = false;
             
@@ -2481,19 +2503,19 @@
             
             dinoCtx.clearRect(0, 0, dinoCanvas.width, dinoCanvas.height);
             
-            // 1. Draw Horizon Line
+            // 1. Draw Horizon Line (at 100px Y)
             dinoCtx.strokeStyle = '#2d3846';
             dinoCtx.lineWidth = 2;
             dinoCtx.beginPath();
-            dinoCtx.moveTo(0, 130);
-            dinoCtx.lineTo(500, 130);
+            dinoCtx.moveTo(0, 100);
+            dinoCtx.lineTo(500, 100);
             dinoCtx.stroke();
             
             // 2. Physics & Dino Logic
             dinoVelocityY += gravity;
             dinoY += dinoVelocityY;
-            if (dinoY >= 110) {
-                dinoY = 110;
+            if (dinoY >= 84) {
+                dinoY = 84;
                 dinoVelocityY = 0;
                 isJumping = false;
             }
@@ -2506,8 +2528,8 @@
             // 4. Obstacles Spawn
             obstacleTimer++;
             if (obstacleTimer > 100 + Math.random() * 50) {
-                const height = 20 + Math.random() * 25;
-                const width = 10 + Math.random() * 10;
+                const height = 15 + Math.random() * 20;
+                const width = 10 + Math.random() * 8;
                 obstacles.push(new Cactus(500, width, height));
                 obstacleTimer = 0;
             }
