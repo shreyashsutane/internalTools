@@ -653,6 +653,17 @@ const App = {
         return 'User';
     },
     init: () => {
+        const toggleBtn = Utils.$('btn-toggle-token');
+        const tokenInp = Utils.$('inp-token');
+        if (toggleBtn && tokenInp) {
+            toggleBtn.onclick = () => {
+                const isPassword = tokenInp.type === 'password';
+                tokenInp.type = isPassword ? 'text' : 'password';
+                toggleBtn.innerHTML = isPassword 
+                    ? '<i class="fa-solid fa-eye"></i>' 
+                    : '<i class="fa-solid fa-eye-slash"></i>';
+            };
+        }
         Utils.$('inp-token').oninput = () => Utils.$('btn-verify').disabled = !Utils.$('inp-token').value.trim();
         Utils.$('btn-verify').onclick = App.verify;
         document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => App.selectMode(b.dataset.mode));

@@ -119,7 +119,12 @@
             <div class="card max-w-xl mx-auto" style="border-color:var(--brd2)">
                 <h2 class="font-semibold text-base mb-4">1. Authenticate</h2>
                 <div class="copyable-cmd mb-4"><code>gcloud auth print-access-token</code><button onclick="Utils.copyText('gcloud auth print-access-token')"><i class="fa-regular fa-copy"></i></button></div>
-                <input id="inp-token" class="inp mb-4" placeholder="Paste access token here...">
+                <div class="relative mb-4">
+                    <input id="inp-token" type="password" class="inp pr-10" placeholder="Paste access token here...">
+                    <button id="btn-toggle-token" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none" style="background:none; border:none; cursor:pointer;" type="button">
+                        <i class="fa-solid fa-eye-slash"></i>
+                    </button>
+                </div>
                 <button id="btn-verify" class="btn btn-p w-full" disabled><i class="fa-solid fa-key"></i> Verify Token</button>
             </div>
         </section>
