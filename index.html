@@ -1596,7 +1596,7 @@
                 card.style.animationDelay = `${0.3 + index * 0.1}s`;
 
                 card.innerHTML = `
-                    <div class="tool-card ${isActive ? 'active' : 'disabled'} card-${tool.id}" style="position: relative;">
+                    <div class="tool-card ${isActive ? 'active' : 'disabled'} card-${tool.id}" style="position: relative; cursor: ${isActive ? 'pointer' : 'default'};" ${isActive ? `onclick="if (event.target.closest('.btn-doc-link') || event.target.closest('.tool-desc-full a')) return; openToolWithEffect('${tool.path}')"` : ''}>
                         <div class="tool-card-sweep-wrap"></div>
                         <!-- Full description tooltip (appears on hover) -->
                         <div class="tool-desc-full">
@@ -1617,7 +1617,7 @@
 
                         <div class="tool-actions">
                             ${isActive 
-                                ? `<a href="javascript:void(0)" onclick="openToolWithEffect('${tool.path}')" class="btn-open-tool">
+                                ? `<a href="javascript:void(0)" onclick="event.stopPropagation(); openToolWithEffect('${tool.path}')" class="btn-open-tool">
                                      <i class="bi bi-box-arrow-up-right me-1"></i>Open Tool
                                    </a>`
                                 : `<span class="badge-locked"><i class="bi bi-lock-fill me-1"></i>Coming Soon</span>`
@@ -2522,32 +2522,71 @@
                 const originalText = btnFeedbackSubmit.textContent;
                 btnFeedbackSubmit.textContent = "Sending...";
 
-                if (FORMSPREE_FORM_ID && FORMSPREE_FORM_ID.trim() !== "") {
-                    // Background submission via Formspree API
-                    try {
-                        const response = await fetch(`https://formspree.io/f/${FORMSPREE_FORM_ID}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ name, email, message })
-                        });
-
-                        if (response.ok) {
-                            btnFeedbackSubmit.textContent = "Thank you! ✓";
-                            AudioHaptic.playClunk();
-                            setTimeout(() => {
-                                closeFeedback();
-                                btnFeedbackSubmit.disabled = false;
-                                btnFeedbackSubmit.textContent = originalText;
-                            }, 1500);
-                        } else {
-                            throw new Error("API failed");
-                        }
-                    } catch (err) {
-                        console.error("Formspree failed, falling back to mailto:", err);
-                        triggerMailtoFallback(name, email, message);
+                // 1. Prepare Cloud Firestore REST write
+                const timestamp = new Date().toISOString();
+                const firestorePayload = {
+                    fields: {
+                        name: { stringValue: name },
+                        email: { stringValue: email || 'N/A' },
+                        message: { stringValue: message },
+                        timestamp: { timestampValue: timestamp }
                     }
-                } else {
-                    // Fallback directly to mailto
+                };
+
+                const firestorePromise = fetch(`https://firestore.googleapis.com/v1/projects/dista-tools/databases/(default)/documents/feedback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(firestorePayload)
+                }).then(async (res) => {
+                    if (!res.ok) {
+                        const txt = await res.text();
+                        throw new Error(`Firestore REST API Error: ${txt}`);
+                    }
+                    return res.json();
+                });
+
+                // 2. Prepare Formspree background email dispatch
+                const formspreePayload = {
+                    name: name,
+                    email: email || 'N/A',
+                    message: message,
+                    _subject: "Dista Operations Portal Feedback"
+                };
+
+                const formspreeUrl = (FORMSPREE_FORM_ID && FORMSPREE_FORM_ID.trim() !== "")
+                    ? `https://formspree.io/f/${FORMSPREE_FORM_ID.trim()}`
+                    : `https://formspree.io/${FEEDBACK_EMAIL}`;
+
+                const emailPromise = fetch(formspreeUrl, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(formspreePayload)
+                }).then(async (res) => {
+                    if (!res.ok) {
+                        const txt = await res.text();
+                        throw new Error(`Formspree Email API Error: ${txt}`);
+                    }
+                    return res.json();
+                });
+
+                try {
+                    // Run both in parallel
+                    await Promise.all([firestorePromise, emailPromise]);
+
+                    btnFeedbackSubmit.textContent = "Thank you! ✓";
+                    AudioHaptic.playClunk();
+                    setTimeout(() => {
+                        closeFeedback();
+                        btnFeedbackSubmit.disabled = false;
+                        btnFeedbackSubmit.textContent = originalText;
+                    }, 1500);
+
+                } catch (err) {
+                    console.error("Feedback dispatch error:", err);
+                    alert("Note: Background email dispatch is pending confirmation or failed. Opening default email client...");
                     triggerMailtoFallback(name, email, message);
                 }
             });
