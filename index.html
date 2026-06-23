@@ -2328,6 +2328,15 @@
             heroScrambler.setText("Welcome to Dista Internal Tools");
         }
         window.addEventListener('DOMContentLoaded', runInit);
+
+        // Reset overlay states and restore scroll when navigating back to this page (e.g., from back-forward cache)
+        window.addEventListener('pageshow', (event) => {
+            const defragOverlay = document.getElementById('defragOverlay');
+            if (defragOverlay) {
+                defragOverlay.classList.remove('active');
+            }
+            document.body.style.overflow = '';
+        });
     </script>
 </body>
 </html>
