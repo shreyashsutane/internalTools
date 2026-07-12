@@ -4,109 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GCP Infrastructure Manager</title>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root{--bg:#0c1117;--bg2:#131b26;--card:#1a2433;--hover:#1f2d3f;--fg:#e2e8f0;--muted:#5a6f87;--accent:#00d4aa;--accent2:#00f0c0;--accent-dim:rgba(0,212,170,.12);--danger:#f87171;--danger-dim:rgba(248,113,113,.12);--warn:#fbbf24;--warn-dim:rgba(251,191,36,.12);--ok:#34d399;--ok-dim:rgba(52,211,153,.12);--info:#60a5fa;--info-dim:rgba(96,165,250,.12);--brd:#1e2d3d;--brd2:#2a3a4e}
-        *{box-sizing:border-box;margin:0;padding:0}body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;overflow-x:hidden}.mono{font-family:'JetBrains Mono',monospace}
-        ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:3px}
-        .bg-grid{background-image:linear-gradient(rgba(0,212,170,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,.02) 1px,transparent 1px);background-size:48px 48px}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes spin{to{transform:rotate(360deg)}}
-        .anim-up{animation:fadeUp .45s ease-out both}.d1{animation-delay:.08s}
-        .spinner{width:18px;height:18px;border:2px solid var(--brd2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
-        .spinner-lg{width:36px;height:36px;border:3px solid var(--brd2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
-        .btn{padding:9px 18px;border-radius:8px;font-weight:600;font-size:13px;transition:all .18s;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:7px;font-family:inherit;white-space:nowrap}
-        .btn:disabled{opacity:.45;cursor:not-allowed}.btn-p{background:var(--accent);color:#0c1117}.btn-p:hover:not(:disabled){background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,212,170,.28)}
-        .btn-s{background:var(--hover);color:var(--fg);border:1px solid var(--brd2)}.btn-s:hover:not(:disabled){background:var(--brd2)}.btn-d{background:var(--danger-dim);color:var(--danger);border:1px solid rgba(248,113,113,.25)}.btn-g{background:transparent;color:var(--muted)}.btn-g:hover:not(:disabled){background:var(--hover);color:var(--fg)}
-        .inp{background:var(--bg);border:1px solid var(--brd2);border-radius:8px;padding:10px 14px;color:var(--fg);font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;transition:border-color .2s,box-shadow .2s}
-        .inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}.inp::placeholder{color:var(--muted);opacity:.55}
-        .card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:20px}
-        .badge{padding:2px 9px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;display:inline-block}
-        .chk{width:17px;height:17px;border:2px solid var(--brd2);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
-        .chk:hover{border-color:var(--accent)}.chk.on{background:var(--accent);border-color:var(--accent)}.chk.on::after{content:'✓';color:#0c1117;font-size:11px;font-weight:800}
-        .toast{position:fixed;bottom:20px;right:20px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;transform:translateX(140%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:8px;max-width:400px}
-        .toast.show{transform:translateX(0)}.toast-ok{background:#065f46;color:#a7f3d0;border:1px solid #059669}.toast-err{background:#7f1d1d;color:#fca5a5;border:1px solid #dc2626}.toast-info{background:#1e3a5f;color:#93c5fd;border:1px solid #2563eb}
-        .warning-box{background:var(--warn-dim);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.5}
-        .warning-box i{color:var(--warn);margin-top:2px}.warning-box a{color:var(--warn);text-decoration:underline;font-weight:600}.warning-box a:hover{color:var(--fg)}
-        .dropdown-wrapper{position:relative}.dropdown-menu{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--brd2);border-radius:8px;margin-top:4px;max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 10px 25px rgba(0,0,0,.4);display:none}
-        .dropdown-menu.open{display:block}.dropdown-item{padding:10px 14px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;transition:background .1s}
-        .dropdown-item:hover{background:var(--hover)}.dropdown-item .id{font-family:'JetBrains Mono',monospace;color:var(--accent)}.dropdown-item .name{color:var(--muted);font-size:11px;margin-left:8px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .copyable-cmd{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--brd2);border-radius:8px;padding:8px 12px;margin-top:8px}
-        .copyable-cmd code{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);white-space:nowrap;overflow-x:auto}.copyable-cmd button{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;transition:color .15s}.copyable-cmd button:hover{color:var(--accent)}
-        .tab-btn{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--muted);background:transparent;border:1px solid var(--brd2);font-family:inherit}
-        .tab-btn:hover{background:var(--hover);color:var(--fg)}.tab-btn.on{color:#0c1117;background:var(--accent);border-color:var(--accent)}
-        .diff-add{background:var(--ok-dim);border-left:3px solid var(--ok)}.diff-rem{background:var(--danger-dim);border-left:3px solid var(--danger)}.diff-mod{background:var(--warn-dim);border-left:3px solid var(--warn)}
-        .filter-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}.filter-row .inp{flex:1}.filter-row select.inp{width:140px;flex:none}
-        .modal-bg{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100;animation:fadeIn 0.25s ease-out}
-        .modal{width:100%;max-width:480px;background:var(--card);border:1px solid var(--brd2);box-shadow:0 20px 40px rgba(0,0,0,0.5);animation:fadeUp 0.3s cubic-bezier(0.16,1,0.3,1)}
-
-        /* Custom Premium Tooltips */
-        .has-tooltip {
-            position: relative;
-        }
-        .has-tooltip::before {
-            content: attr(data-tooltip);
-            position: absolute;
-            top: 125%;
-            left: 50%;
-            transform: translate(-50%, -4px);
-            background: #111827; /* sleek dark background */
-            color: #f3f4f6; /* white text */
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 500;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--brd2);
-            z-index: 1000;
-        }
-        .has-tooltip:hover::before {
-            opacity: 1;
-            transform: translate(-50%, 0);
-        }
-        .has-tooltip::after {
-            content: '';
-            position: absolute;
-            top: calc(125% - 5px);
-            left: 50%;
-            transform: translate(-50%, -4px);
-            border-width: 5px;
-            border-style: solid;
-            border-color: transparent transparent var(--brd2) transparent;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.1s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
-        }
-        .has-tooltip:hover::after {
-            opacity: 1;
-            transform: translate(-50%, 0);
-        }
-
-        /* Welcome Screen Animations */
-        @keyframes pulseGlow {
-            0% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 212, 170, 0.2); }
-            100% { transform: scale(1.05); box-shadow: 0 0 40px rgba(0, 212, 170, 0.4); }
-        }
-        @keyframes fadeInUp {
-            0% { opacity: 0; transform: translateY(10px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes scaleWidth {
-            0% { width: 0; }
-            100% { width: 40px; }
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/app.css">
 </head>
 <body class="bg-grid">
+    <!-- GCP TOOLS PORTAL HEADER NAV -->
+    <div style="background: var(--bg2); border-bottom: 1px solid var(--brd2); position: sticky; top: 0; z-index: 1000; font-family: 'Space Grotesk', sans-serif;">
+        <div style="max-width: 1280px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <a href="../index.html" class="btn btn-s" style="padding: 6px 12px; font-size: 12px;">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+                </a>
+                <span style="color: var(--brd2);">|</span>
+                <span style="color: var(--fg); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-cloud" style="color:var(--accent); font-size: 14px;"></i> GCP Infrastructure Manager
+                </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <a href="../docs/index.html#section-infra-manager" target="_blank" class="btn btn-g" style="color: var(--info); font-size: 12px; padding: 6px 12px;">
+                    <i class="fa-solid fa-book"></i> Documentation
+                </a>
+                <button id="themeToggle" class="btn btn-s" style="padding: 6px 12px; font-size: 12px;" title="Toggle Dark/Light Mode">
+                    <i class="fa-solid fa-sun" id="theme-icon"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+        }
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('theme-icon');
+            if (icon) {
+                if (theme === 'dark') {
+                    icon.className = 'fa-solid fa-sun';
+                } else {
+                    icon.className = 'fa-solid fa-moon';
+                }
+            }
+        }
+        window.addEventListener('DOMContentLoaded', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            updateThemeIcon(currentTheme);
+        });
+    </script>
     <div id="toast-wrap"></div>
-    <div id="app" class="relative z-10 max-w-7xl mx-auto px-4 py-6" style="min-height:100vh">
+    <div id="app" class="relative z-10 px-4 py-8" style="min-height:100vh">
         <header class="flex items-center justify-between mb-8 anim-up">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:var(--accent-dim)"><i class="fa-solid fa-cloud" style="color:var(--accent);font-size:16px"></i></div>
@@ -116,21 +73,30 @@
         </header>
 
         <section id="sec-auth" class="anim-up d1">
-            <div class="card max-w-xl mx-auto" style="border-color:var(--brd2)">
-                <h2 class="font-semibold text-base mb-4">1. Authenticate</h2>
-                <div class="copyable-cmd mb-4"><code>gcloud auth print-access-token</code><button onclick="Utils.copyText('gcloud auth print-access-token')"><i class="fa-regular fa-copy"></i></button></div>
-                <div class="relative mb-4">
-                    <input id="inp-token" type="password" class="inp pr-10" placeholder="Paste access token here...">
-                    <button id="btn-toggle-token" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none" style="background:none; border:none; cursor:pointer;" type="button">
-                        <i class="fa-solid fa-eye-slash"></i>
-                    </button>
+            <div class="card max-w-2xl mx-auto" style="border-color:var(--brd2)">
+                <h2 class="font-semibold text-base mb-6">1. Authenticate</h2>
+                
+                <div style="margin-bottom: 20px;">
+                    <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">EXECUTE IN CLOUD SHELL</label>
+                    <div class="copyable-cmd"><code>gcloud auth print-access-token</code><button class="btn-copy-token-cmd"><i class="fa-regular fa-copy"></i></button></div>
                 </div>
+
+                <div style="margin-bottom: 24px;">
+                    <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">PASTE TEMPORARY ACCESS TOKEN</label>
+                    <div class="relative">
+                        <input id="inp-token" type="password" class="inp pr-10" placeholder="Paste access token here...">
+                        <button id="btn-toggle-token" type="button">
+                            <i class="fa-solid fa-eye-slash"></i>
+                        </button>
+                    </div>
+                </div>
+                
                 <button id="btn-verify" class="btn btn-p w-full" disabled><i class="fa-solid fa-key"></i> Verify Token</button>
             </div>
         </section>
 
         <section id="sec-modes" style="display:none" class="anim-up">
-            <div class="card max-w-2xl mx-auto text-center">
+            <div class="card max-w-4xl mx-auto text-center">
                 <h2 class="font-semibold text-base mb-6">2. Select Operation Mode</h2>
                 <div class="grid grid-cols-3 gap-4">
                     <button class="tab-btn on" data-mode="bq"><i class="fa-solid fa-table mr-2"></i>BQ Schema</button>
@@ -140,21 +106,24 @@
             </div>
         </section>
 
-        <section id="sec-forms" style="display:none" class="max-w-3xl mx-auto mt-6 anim-up">
+        <section id="sec-forms" style="display:none; position: relative; z-index: 50;" class="max-w-5xl mx-auto mt-6 anim-up">
             <!-- BQ FORM -->
-            <div id="form-bq" class="card" style="display:none">
+            <div id="form-bq" class="card" style="display:none; overflow: visible !important;">
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="bq-src" class="inp" placeholder="Search..."><div id="dd-bq-src" class="dropdown-menu"></div></div>
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="bq-tgt" class="inp" placeholder="Search..."><div id="dd-bq-tgt" class="dropdown-menu"></div></div>
                 </div>
-                <div class="grid grid-cols-3 gap-4">
-                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">DATASET</label><input id="bq-ds" class="inp" placeholder="All"><div id="dd-bq-ds" class="dropdown-menu"></div></div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE DATASET</label><input id="bq-src-ds" class="inp" placeholder="All"><div id="dd-bq-src-ds" class="dropdown-menu"></div></div>
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET DATASET</label><input id="bq-tgt-ds" class="inp" placeholder="All"><div id="dd-bq-tgt-ds" class="dropdown-menu"></div></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
                     <div><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">LOCATION</label><input id="bq-loc" class="inp" value="us"></div>
                     <div class="flex items-end"><button id="btn-bq-compare" class="btn btn-p w-full"><i class="fa-solid fa-code-compare"></i> Compare</button></div>
                 </div>
             </div>
             <!-- QUERY FORM -->
-            <div id="form-query" class="card" style="display:none">
+            <div id="form-query" class="card" style="display:none; overflow: visible !important;">
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="q-src" class="inp" placeholder="Search..."><div id="dd-q-src" class="dropdown-menu"></div></div>
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="q-tgt" class="inp" placeholder="Search..."><div id="dd-q-tgt" class="dropdown-menu"></div></div>
@@ -166,21 +135,25 @@
                 </div>
             </div>
             <!-- DATASTORE FORM -->
-            <div id="form-ds" class="card" style="display:none">
+            <div id="form-ds" class="card" style="display:none; overflow: visible !important;">
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="ds-src" class="inp" placeholder="Search..."><div id="dd-ds-src" class="dropdown-menu"></div></div>
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="ds-tgt" class="inp" placeholder="Search..."><div id="dd-ds-tgt" class="dropdown-menu"></div></div>
                 </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE DATABASE</label><input id="ds-src-db" class="inp" placeholder="Select project first..."><div id="dd-ds-src-db" class="dropdown-menu"></div></div>
+                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET DATABASE</label><input id="ds-tgt-db" class="inp" placeholder="Select project first..."><div id="dd-ds-tgt-db" class="dropdown-menu"></div></div>
+                </div>
                 <div class="mb-4 dropdown-wrapper">
                     <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">ENTITY KIND</label>
-                    <input id="ds-kind" class="inp" placeholder="Select source project first..."><div id="dd-ds-kind" class="dropdown-menu"></div>
+                    <input id="ds-kind" class="inp" placeholder="Select source database first..."><div id="dd-ds-kind" class="dropdown-menu"></div>
                 </div>
                 <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
                     <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">WHERE FILTERS</label>
                     <div id="ds-filters-container"></div>
                     <button id="btn-ds-add-filter" class="btn btn-s text-xs mt-1" style="padding:5px 10px"><i class="fa-solid fa-plus"></i> Add Filter</button>
                 </div>
-                <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)" id="ds-sidebar-replace-fields">
                     <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">MODIFICATION (FIND & REPLACE)</label>
                     <div class="grid grid-cols-2 gap-2 mb-2">
                         <div class="dropdown-wrapper"><input id="ds-mod-field" class="inp" placeholder="Field to Modify..."><div id="dd-ds-mod" class="dropdown-menu"></div></div>
@@ -235,10 +208,10 @@
                 <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Review changes carefully.</strong> Modifying Datastore entities is immediate. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank">Create Backup</a>.</div></div>
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div class="flex gap-2">
-                        <button class="btn btn-s" onclick="App.filterDsResults('all')">All <span id="ds-cnt-all" class="mono" style="font-size:10px">0</span></button>
-                        <button class="btn btn-s" onclick="App.filterDsResults('different')">Diff <span id="ds-cnt-diff" class="mono" style="font-size:10px;color:var(--warn)">0</span></button>
-                        <button class="btn btn-s" onclick="App.filterDsResults('missing')">Missing <span id="ds-cnt-miss" class="mono" style="font-size:10px;color:var(--danger)">0</span></button>
-                        <button class="btn btn-s" onclick="App.filterDsResults('identical')">Identical <span id="ds-cnt-eq" class="mono" style="font-size:10px;color:var(--ok)">0</span></button>
+                        <button class="btn btn-s" data-filter="all">All <span id="ds-cnt-all" class="mono" style="font-size:10px">0</span></button>
+                        <button class="btn btn-s" data-filter="different">Diff <span id="ds-cnt-diff" class="mono" style="font-size:10px;color:var(--warn)">0</span></button>
+                        <button class="btn btn-s" data-filter="missing">Missing <span id="ds-cnt-miss" class="mono" style="font-size:10px;color:var(--danger)">0</span></button>
+                        <button class="btn btn-s" data-filter="identical">Identical <span id="ds-cnt-eq" class="mono" style="font-size:10px;color:var(--ok)">0</span></button>
                     </div>
                     <div class="flex gap-2">
                         <button id="btn-ds-csv" class="btn btn-s" style="font-size:12px"><i class="fa-solid fa-file-csv"></i> CSV</button>
@@ -248,7 +221,7 @@
                 <div class="card" style="padding:0;overflow:hidden">
                     <table class="w-full text-xs mono" style="border-collapse:collapse">
                         <thead><tr style="background:var(--bg2)">
-                            <th class="text-left px-4 py-3 w-10"><div class="chk" id="chk-all-ds" onclick="App.toggleAllDs()"></div></th>
+                            <th class="text-left px-4 py-3 w-10"><div class="chk" id="chk-all-ds"></div></th>
                             <th class="text-left px-4 py-3" style="color:var(--muted)">Key</th>
                             <th class="text-left px-4 py-3 w-32" style="color:var(--muted)">Status</th>
                             <th class="text-left px-4 py-3 w-64" style="color:var(--muted)">Diff Summary</th>
@@ -257,6 +230,7 @@
                     </table>
                 </div>
                 <div id="ds-pagination" class="flex justify-center gap-2 mt-6"></div>
+            </div>
         </section>
 
         <!-- LOCAL AUDIT LOGS -->
@@ -271,22 +245,23 @@
                         <button id="btn-audit-export" class="btn btn-s text-xs" style="padding: 5px 10px"><i class="fa-solid fa-file-export"></i> Export JSON</button>
                     </div>
                 </div>
-                <div class="overflow-x-auto rounded-lg border" style="border-color:var(--brd2)">
-                    <table class="w-full text-xs text-left" style="border-collapse:collapse; min-width: 700px">
+                <div style="width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--brd2); border-radius: 8px;">
+                    <table class="w-full text-xs text-left" style="border-collapse:collapse; table-layout: fixed;">
                         <thead style="background:var(--bg2)">
                             <tr style="border-bottom: 1px solid var(--brd2)">
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">TIMESTAMP</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">USER</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">OPERATION</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">PROJECTS</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">STATUS</th>
+                                <th class="px-4 py-3 text-center" style="width: 35px; color:var(--muted)"></th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 135px; color:var(--muted)">TIMESTAMP</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 220px; color:var(--muted)">USER</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 130px; color:var(--muted)">OPERATION</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 230px; color:var(--muted)">PROJECTS</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 80px; color:var(--muted)">STATUS</th>
                                 <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">DETAILS</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider text-center" style="color:var(--muted)">ACTIONS</th>
+                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider text-center" style="width: 90px; color:var(--muted)">ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="audit-table-body">
                             <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-xs" style="color:var(--muted)">
+                                <td colspan="8" class="px-6 py-8 text-center text-xs" style="color:var(--muted)">
                                     <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
                                     No local audit logs recorded yet.
                                 </td>
@@ -314,6 +289,209 @@
     </div>
     <div id="modal-root" style="display:none"></div>
 
-<script src="script.js?v=2.3"></script>
+    <!-- HTML Templates for Dynamic JS Components -->
+    <template id="template-renew-token-modal">
+        <div class="p-6 text-left">
+            <div class="flex items-center gap-3 mb-4" style="color:var(--warn)">
+                <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                <h3 class="text-lg font-bold">Session Expired</h3>
+            </div>
+            <p class="text-sm mb-4" style="color:var(--muted)">
+                Your GCP access token has expired or is invalid. Please provide a new active access token to resume your operation.
+            </p>
+            <div class="mb-4">
+                <label class="block text-xs font-bold uppercase mb-1.5" style="color:var(--muted)">New Access Token</label>
+                <input id="renew-token-inp" type="password" class="inp w-full" placeholder="ya29.a0AfB_gO...">
+                <div id="renew-token-err" class="text-xs text-red-400 mt-1" style="display:none"></div>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button id="btn-renew-cancel" class="btn btn-d">Cancel</button>
+                <button id="btn-renew-submit" class="btn btn-p" disabled>Verify & Resume</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="template-json-editor-modal">
+        <div class="layout-json-editor-container p-6">
+            <!-- Header (flex-none) -->
+            <div class="flex-none flex items-center justify-between mb-4 pb-3 border-b border-zinc-200 dark:border-zinc-800">
+                <h3 class="font-semibold text-base text-fg flex items-center gap-2">
+                    <i class="fa-solid fa-code text-indigo-400"></i> JSON Diff & Editor: <span class="mono prop-key-span text-[var(--accent)]"></span>
+                </h3>
+                <button class="btn-json-close text-zinc-500 hover:text-zinc-300 log-chevron-btn"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Scrollable Body (flex-grow) -->
+            <div class="layout-json-editor-body pr-1">
+                <div class="layout-json-editor-grid gap-4">
+                    <!-- SOURCE COLUMN -->
+                    <div class="layout-json-editor-col">
+                        <div class="flex-none flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-[var(--muted)]">SOURCE VALUE (JSON)</span>
+                            <div class="flex gap-1.5">
+                                <button class="btn btn-s text-[10px] btn-fmt-src py-0.5 px-1.5">Format</button>
+                                <button class="btn btn-s text-[10px] btn-min-src py-0.5 px-1.5">Minify</button>
+                                <button class="btn btn-s text-[10px] btn-copy-src py-0.5 px-1.5"><i class="fa-regular fa-copy"></i> Copy</button>
+                            </div>
+                        </div>
+                        <textarea id="json-src-area" class="json-src-area inp mono json-textarea"></textarea>
+                        <div id="json-src-status" class="json-src-status flex-none text-[10px] mt-1 font-semibold text-[var(--ok)]">Valid JSON</div>
+                    </div>
+
+                    <!-- TARGET COLUMN -->
+                    <div class="layout-json-editor-col">
+                        <div class="flex-none flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-[var(--muted)]">TARGET VALUE (JSON)</span>
+                            <div class="flex gap-1.5">
+                                <button class="btn btn-s text-[10px] btn-fmt-tgt py-0.5 px-1.5">Format</button>
+                                <button class="btn btn-s text-[10px] btn-min-tgt py-0.5 px-1.5">Minify</button>
+                                <button class="btn btn-s text-[10px] btn-copy-tgt py-0.5 px-1.5"><i class="fa-regular fa-copy"></i> Copy</button>
+                            </div>
+                        </div>
+                        <textarea id="json-tgt-area" class="json-tgt-area inp mono json-textarea"></textarea>
+                        <div id="json-tgt-status" class="json-tgt-status flex-none text-[10px] mt-1 font-semibold text-[var(--ok)]">Valid JSON</div>
+                    </div>
+                </div>
+
+                <div class="flex-none">
+                    <span class="block text-xs font-semibold mb-2 text-[var(--muted)]">LIVE DIFFERENCES PREVIEW</span>
+                    <div id="json-diff-container" class="json-diff-container card mono text-[11px] json-diff-box">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer (flex-none) -->
+            <div class="flex-none flex justify-end gap-2 border-t pt-4 border-zinc-200 dark:border-zinc-800">
+                <button class="btn btn-s btn-json-cancel">Cancel</button>
+                <button id="btn-json-save-apply" class="btn btn-p btn-json-save-apply">Apply Changes</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="template-ds-save-confirm">
+        <div class="p-5 text-left">
+            <h3 class="font-semibold mb-4 text-base">Save Datastore Entity</h3>
+            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Overwrite Warning!</strong> This will immediately update or overwrite the properties of entity <strong class="entity-key-strong"></strong> in the project <strong class="project-id-strong"></strong>.</div></div>
+            
+            <div class="warning-box layout-warning-audit flex-col">
+                <div class="flex items-start gap-2.5 w-full">
+                    <i class="fa-solid fa-shield-halved text-[var(--warn)] mt-0.5"></i>
+                    <div><strong>GCP Audit Logging Recommendation</strong></div>
+                </div>
+                <div class="text-xs mt-2 pl-7 leading-relaxed">
+                    Ensure you have enabled <strong>Data Write</strong> audit logs for the <strong>Cloud Datastore API</strong> under <strong>IAM & Admin > Audit Logs</strong> in your GCP console.
+                </div>
+            </div>
+            
+            <p class="text-sm mt-4 mb-4">Are you sure you want to write these changes to the <span class="side-span"></span> project?</p>
+            
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-s btn-cancel">Cancel</button>
+                <button id="btn-ds-save-confirm" class="btn btn-p btn-confirm">Confirm & Save</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="template-ds-copy-modal">
+        <div class="p-5 text-left">
+            <h3 class="font-semibold mb-4 text-base">Copy Datastore Entities</h3>
+            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup!</strong> This will upsert entities. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank">Create Backup</a></div></div>
+            <div class="warning-box layout-warning-audit flex-col">
+                <div class="flex items-start gap-2.5 w-full">
+                    <i class="fa-solid fa-shield-halved text-[var(--warn)] mt-0.5"></i>
+                    <div><strong>2. Operations that need to be enabled (Data Access Logs)</strong></div>
+                </div>
+                <div class="text-xs mt-2 pl-7 leading-relaxed">
+                    <p class="mb-2">Writing or overwriting entities in Datastore uses the Commit API (under <code>google.datastore.v1.Datastore.Commit</code>). To log these actions:</p>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>Go to the <strong>GCP Console</strong>.</li>
+                        <li>Navigate to <strong>IAM &amp; Admin &gt; Audit Logs</strong>.</li>
+                        <li>Select the <strong>Cloud Datastore API</strong> from the list of services.</li>
+                        <li>Check the <strong>Data Write</strong> (for creations, updates, overwrites, and deletes) and/or <strong>Data Read</strong> (for lookups and queries) audit log types and save.</li>
+                    </ol>
+                </div>
+            </div>
+            <p class="text-xs mb-2 mt-4 text-zinc-400">From <strong class="src-pid-strong"></strong> to <strong class="tgt-pid-strong"></strong></p>
+            <p class="text-sm mb-4 font-semibold"><span class="selected-cnt-span"></span> entities selected.</p>
+            <div class="mb-4 flex items-center gap-2"><div class="chk on chk-apply-replace"></div><span class="text-xs">Apply Find & Replace modifications</span></div>
+            <div class="flex justify-end gap-2"><button class="btn btn-s btn-cancel">Cancel</button><button class="btn btn-p btn-confirm">Confirm Copy</button></div>
+        </div>
+    </template>
+
+    <template id="template-bq-copy-modal">
+        <div class="p-5 text-left">
+            <h3 class="font-semibold mb-4 text-base">Copy BigQuery Schemas</h3>
+            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup!</strong> Syncing schemas will patch or recreate tables in the destination project. <a href="https://cloud.google.com/bigquery/docs/table-snapshots-intro" target="_blank">Create Snapshots</a>.</div></div>
+            <div class="text-xs mb-3 text-zinc-400">
+                <p class="mb-1"><strong>Source (From):</strong> <span class="from-pid-span"></span></p>
+                <p class="mb-1"><strong>Destination (To):</strong> <span class="to-pid-span"></span></p>
+            </div>
+            <p class="text-sm mb-4 font-semibold"><span class="selected-cnt-span"></span> tables selected.</p>
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-s btn-cancel">Cancel</button>
+                <button class="btn btn-p btn-confirm">Confirm Copy</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="template-query-copy-modal">
+        <div class="p-5 text-left">
+            <h3 class="font-semibold mb-4 text-base">Copy Scheduled Queries</h3>
+            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Verify SQL project references!</strong> Ensure that query parameters and SQL project IDs inside the query body are updated for the destination project.</div></div>
+            <div class="text-xs mb-3 text-zinc-400">
+                <p class="mb-1"><strong>Source (From):</strong> <span class="from-pid-span"></span></p>
+                <p class="mb-1"><strong>Destination (To):</strong> <span class="to-pid-span"></span></p>
+            </div>
+            <p class="text-sm mb-4 font-semibold"><span class="selected-cnt-span"></span> scheduled queries selected.</p>
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-s btn-cancel">Cancel</button>
+                <button class="btn btn-p btn-confirm">Confirm Copy</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="template-ds-filter-row">
+        <div class="filter-row flex gap-1.5 items-center mb-2.5 anim-up">
+            <select class="inp filter-prop font-semibold text-xs filter-prop-width"></select>
+            <select class="inp filter-op font-semibold text-xs filter-op-width">
+                <option value="EQUAL">=</option>
+                <option value="LESS_THAN">&lt;</option>
+                <option value="LESS_THAN_OR_EQUAL">&lt;=</option>
+                <option value="GREATER_THAN">&gt;</option>
+                <option value="GREATER_THAN_OR_EQUAL">&gt;=</option>
+                <option value="HAS_ANCESTOR">Ancestor Key</option>
+                <option value="IN">IN (comma-sep)</option>
+                <option value="NOT_IN">NOT IN (comma-sep)</option>
+            </select>
+            <input class="inp filter-val text-xs filter-val-width" placeholder="Value">
+            <button type="button" class="btn btn-d btn-remove-filter btn-trash-padding"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+    </template>
+
+    <template id="template-log-row">
+        <tr class="log-row border-b log-row-cursor">
+            <td class="text-center py-3">
+                <button class="btn-toggle-log text-zinc-400 hover:text-zinc-200 log-chevron-btn">
+                    <i class="fa-solid fa-chevron-right log-chevron-icon"></i>
+                </button>
+            </td>
+            <td class="log-date px-6 py-3 text-[11px] font-medium mono text-[var(--muted)] log-row-cell-wrap"></td>
+            <td class="log-user px-6 py-3 text-[11px] font-semibold text-fg log-row-cell-wrap"></td>
+            <td class="px-6 py-3 text-[11px]"><span class="badge log-op bg-[var(--brd2)] text-[var(--accent2)] text-[10px]"></span></td>
+            <td class="px-6 py-3 text-[11px] log-row-cell-wrap">
+                <div class="flex flex-col">
+                    <span class="mono text-fg"><span class="text-[9px] text-[var(--muted)]">Src:</span> <span class="log-src"></span></span>
+                    <span class="mono text-fg"><span class="text-[9px] text-[var(--muted)]">Tgt:</span> <span class="log-tgt"></span></span>
+                </div>
+            </td>
+            <td class="px-6 py-3 text-[11px]">
+                <span class="badge log-status"></span>
+            </td>
+            <td class="log-details px-6 py-3 text-[11px] text-[var(--muted)] log-details-cell-wrap"></td>
+            <td class="px-6 py-3 text-center log-revert-td"></td>
+        </tr>
+    </template>
+
+<script type="module" src="js/app.js"></script>
 </body>
 </html>

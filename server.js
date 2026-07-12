@@ -21,6 +21,49 @@ const MIME_TYPES = {
 const server = http.createServer((req, res) => {
     let reqUrl = req.url.split('?')[0]; // strip query params
     
+    // Firestore Proxy Endpoints
+    if (reqUrl.startsWith('/api/audit_logs')) {
+        const https = require('https');
+        let targetUrl = '';
+        if (reqUrl === '/api/audit_logs/runQuery') {
+            targetUrl = 'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery';
+        } else {
+            targetUrl = 'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs';
+        }
+        
+        let bodyData = '';
+        req.on('data', chunk => { bodyData += chunk; });
+        req.on('end', () => {
+            const parsedUrl = new URL(targetUrl);
+            const proxyReq = https.request({
+                hostname: parsedUrl.hostname,
+                path: parsedUrl.pathname,
+                method: req.method,
+                headers: {
+                    'Authorization': req.headers['authorization'] || '',
+                    'Content-Type': 'application/json'
+                }
+            }, (proxyRes) => {
+                res.writeHead(proxyRes.statusCode || 200, {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                proxyRes.pipe(res);
+            });
+            
+            proxyReq.on('error', (e) => {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end(`Proxy Error: ${e.message}`);
+            });
+            
+            if (bodyData) {
+                proxyReq.write(bodyData);
+            }
+            proxyReq.end();
+        });
+        return;
+    }
+
     // Normalize path to prevent directory traversal
     let safeSuffix = path.normalize(reqUrl).replace(/^(\.\.[\/\\])+/, '');
     if (safeSuffix === '\\' || safeSuffix === '/') {

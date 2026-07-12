@@ -329,6 +329,11 @@
             --tool-glow: rgba(255, 180, 84, 0.08);
             --tool-glow-hover: rgba(255, 180, 84, 0.35);
         }
+        .card-tool-4 {
+            --tool-color: #38bdf8;
+            --tool-glow: rgba(56, 189, 248, 0.08);
+            --tool-glow-hover: rgba(56, 189, 248, 0.35);
+        }
 
         /* Tool Cards */
         .tool-card {
@@ -1141,33 +1146,35 @@
         }
         .defrag-progress-bar-wrapper {
             background: #11161d;
-            height: 16px;
-            border-radius: 8px;
+            background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M0 20 L10 14 L20 26 L30 14 L40 20' fill='none' stroke='%23222a36' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: repeat-x;
+            background-size: 40px 40px;
+            background-position: 0 0;
+            height: 40px;
+            border-radius: 20px;
             border: 2px solid #222a36;
             overflow: hidden;
             margin-top: 1rem;
             position: relative;
         }
         .defrag-progress-bar {
-            background: 
-                linear-gradient(135deg, #e74c3c 25%, transparent 25%),
-                linear-gradient(225deg, #e74c3c 25%, transparent 25%),
-                linear-gradient(45deg, #e74c3c 25%, transparent 25%),
-                linear-gradient(315deg, #e74c3c 25%, transparent 25%);
-            background-position: -10px 0, -10px 0, 0 0, 0 0;
-            background-size: 20px 20px;
-            background-color: #c0392b;
+            background: transparent;
+            background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cpath d='M0 20 L10 14 L20 26 L30 14 L40 20' fill='none' stroke='%23ff3b30' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: repeat-x;
+            background-size: 40px 40px;
+            background-position: 0 0;
             height: 100%;
             width: 0%;
             transition: width 0.1s linear;
             animation: snake-crawl 0.8s linear infinite;
+            filter: drop-shadow(0 0 4px rgba(255, 59, 48, 0.6));
         }
         @keyframes snake-crawl {
             0% {
-                background-position: -10px 0, -10px 0, 0 0, 0 0;
+                background-position: 0px 0;
             }
             100% {
-                background-position: 10px 0, 10px 0, 20px 0, 20px 0;
+                background-position: 40px 0;
             }
         }
 
@@ -1244,22 +1251,29 @@
                     <h2 class="hero-title"><span class="float-emoji" style="animation-delay: -0.5s;">🛠️</span> <span class="hero-title-text" id="scrambleHero">Welcome to Internal Tools Portal</span></h2>
                     <p class="hero-subtitle mx-auto" id="typingSubtitle" style="min-height: 54px;"></p>
                 </div>
-                
-                <!-- Hero Dino Game Content -->
-                <div id="heroDinoContent" style="display: none; width: 100%; max-width: 600px; transition: opacity 0.3s ease; opacity: 0; flex-direction: column; align-items: center;">
-                    <button class="btn-open-tool" style="position: absolute; top: -1rem; right: 0; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; padding: 0.25rem 0.5rem; z-index: 10;" onclick="closeDinoGame()">×</button>
-                    <h3 style="font-family: monospace; color: #ffffff; margin-bottom: 0.5rem; font-size: 1.1rem; font-weight: 800; letter-spacing: 2px;">⚡ CHROME DINO RUN (DARK MODE) ⚡</h3>
-                    <div style="font-family: monospace; color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.75rem;">[Spacebar] or [Click Screen] to Jump | Avoid Cacti</div>
-                    <canvas id="dinoCanvas" width="500" height="120" style="background: rgba(27, 34, 44, 0.6); backdrop-filter: blur(4px); border-radius: 8px; border: 1px solid #2d3846; display: block; margin: 0 auto; width: 100%; max-width: 500px; height: 120px;"></canvas>
-                    <div id="dinoScoreContainer" style="font-family: monospace; font-size: 1rem; margin-top: 0.5rem; color: #ffffff; display: flex; justify-content: space-between; padding: 0 1rem; width: 100%; max-width: 500px;">
-                        <span>SCORE: <span id="dinoScore">00000</span></span>
-                        <span>HI: <span id="dinoHighScore">00000</span></span>
-                    </div>
-                    <div id="dinoGameOver" style="display: none; margin-top: 0.25rem;">
-                        <div style="font-family: monospace; color: #ff5d5d; font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; animation: pulse 1s infinite alternate;">GAME OVER</div>
-                        <button class="btn-feedback" onclick="startDinoGame()" style="margin: 0 auto; height: 32px; font-size: 0.85rem; padding: 0 1rem; border-radius: 16px;">Play Again</button>
-                    </div>
+            </div>
+        </div>
+        
+        <!-- Hero Dino Game Content -->
+        <div id="heroDinoContent" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; transition: opacity 0.3s ease; opacity: 0; flex-direction: column; overflow: hidden; background: #11161d;">
+            <canvas id="dinoCanvas" style="display: block; width: 100%; height: 100%; pointer-events: auto;"></canvas>
+            
+            <button class="btn-open-tool" style="position: absolute; top: 1rem; right: 1.5rem; background: none; border: none; color: #ffffff; font-size: 2rem; cursor: pointer; padding: 0.25rem 0.5rem; z-index: 20; line-height: 1; text-shadow: 0 2px 4px rgba(0,0,0,0.5);" onclick="closeDinoGame()" title="Exit Game">×</button>
+            
+            <div id="dinoHeaderPanel" style="position: absolute; top: 1rem; left: 1.5rem; right: 4.5rem; z-index: 15; display: flex; justify-content: space-between; align-items: center; pointer-events: none; font-family: monospace;">
+                <div style="color: #ffffff; font-size: 1rem; font-weight: 800; letter-spacing: 2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 0.5rem;">
+                    <span>⚡ DINO RUN ⚡</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">[Space / Click] to Jump</span>
                 </div>
+                <div id="dinoScoreContainer" style="font-size: 1.1rem; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); display: flex; gap: 1.5rem;">
+                    <span>SCORE: <span id="dinoScore" style="color: var(--brand-orange); font-weight: bold;">00000</span></span>
+                    <span>HI: <span id="dinoHighScore">00000</span></span>
+                </div>
+            </div>
+
+            <div id="dinoGameOver" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 15; text-align: center; font-family: monospace; background: rgba(17, 22, 29, 0.95); border: 1px solid #ff5d5d; border-radius: 8px; padding: 1.5rem 2.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <div style="color: #ff5d5d; font-size: 1.5rem; font-weight: bold; margin-bottom: 0.75rem; animation: pulse 1s infinite alternate; letter-spacing: 2px;">GAME OVER</div>
+                <button class="btn-feedback" onclick="startDinoGame()" style="margin: 0 auto; height: 36px; font-size: 0.95rem; padding: 0 1.5rem; border-radius: 18px; pointer-events: auto;">Play Again</button>
             </div>
         </div>
     </section>
@@ -1359,8 +1373,8 @@
                 <span>SECTORS OPTIMIZED</span>
                 <span id="defragSpeed">840.4 GB/s</span>
             </div>
-            <div class="defrag-progress-bar-wrapper">
-                <div class="defrag-progress-bar" id="defragProgressBar"></div>
+            <div class="defrag-progress-bar-wrapper" id="defragProgressBarWrapper" style="background: #11161d; height: 40px; border-radius: 20px; border: 2px solid #222a36; overflow: hidden; margin-top: 1rem; position: relative;">
+                <canvas id="defragProgressBarCanvas" style="display: block; width: 100%; height: 100%; pointer-events: none;"></canvas>
             </div>
         </div>
     </div>
@@ -1498,6 +1512,77 @@
                 playTone(523.25, now, 0.15); // C5
                 playTone(659.25, now + 0.08, 0.15); // E5
                 playTone(783.99, now + 0.16, 0.3); // G5
+            },
+            playNetflix() {
+                // Synthesized Netflix "ta-dum" — works on laptop speakers via harmonics
+                if (this.muted) return;
+                this.init();
+                const ctx = this.ctx;
+
+                const _schedule = () => {
+                    const now = ctx.currentTime;
+
+                    const hit = (t, fundamental, dur, vol) => {
+                        // Sawtooth gives rich harmonic series — audible even on small speakers
+                        const osc = ctx.createOscillator();
+                        osc.type = 'sawtooth';
+                        osc.frequency.setValueAtTime(fundamental, t);
+                        osc.frequency.exponentialRampToValueAtTime(fundamental * 0.75, t + dur);
+
+                        // Low-pass to smooth harsh highs, keep body
+                        const lp = ctx.createBiquadFilter();
+                        lp.type = 'lowpass';
+                        lp.frequency.setValueAtTime(800, t);
+                        lp.frequency.exponentialRampToValueAtTime(300, t + dur);
+                        lp.Q.value = 1.0;
+
+                        const g = ctx.createGain();
+                        g.gain.setValueAtTime(0.0, t);
+                        g.gain.linearRampToValueAtTime(vol, t + 0.01);  // fast attack
+                        g.gain.exponentialRampToValueAtTime(vol * 0.4, t + dur * 0.4);
+                        g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.6);
+
+                        osc.connect(lp);
+                        lp.connect(g);
+                        g.connect(ctx.destination);
+                        osc.start(t);
+                        osc.stop(t + dur * 1.7);
+
+                        // Sub-octave sine for depth
+                        const sub = ctx.createOscillator();
+                        sub.type = 'sine';
+                        sub.frequency.setValueAtTime(fundamental * 0.5, t);
+                        const sg = ctx.createGain();
+                        sg.gain.setValueAtTime(vol * 0.5, t);
+                        sg.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.2);
+                        sub.connect(sg);
+                        sg.connect(ctx.destination);
+                        sub.start(t);
+                        sub.stop(t + dur * 1.3);
+
+                        // Sharp percussive click at onset
+                        const cBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.05), ctx.sampleRate);
+                        const cd = cBuf.getChannelData(0);
+                        for (let i = 0; i < cd.length; i++) cd[i] = (Math.random()*2-1) * Math.exp(-i/(cd.length*0.2));
+                        const click = ctx.createBufferSource();
+                        click.buffer = cBuf;
+                        const cg = ctx.createGain();
+                        cg.gain.setValueAtTime(vol * 0.6, t);
+                        click.connect(cg);
+                        cg.connect(ctx.destination);
+                        click.start(t);
+                    };
+
+                    hit(now,        130, 0.4, 0.55);   // "TA"  — C3, loud
+                    hit(now + 0.5,  98,  0.7, 0.75);   // "DUM" — G2, louder + longer
+                };
+
+                // Always resume before scheduling — ctx.resume() is async
+                if (ctx.state === 'suspended') {
+                    ctx.resume().then(_schedule);
+                } else {
+                    _schedule();
+                }
             }
         };
 
@@ -1645,6 +1730,16 @@
                 path: 'tool-3/',
                 docPath: 'docs/index.html#section-crypto-vault',
                 status: 'active'
+            },
+            {
+                id: 'tool-4',
+                name: 'Datastore Bulk Value Replacer',
+                icon: '🔀',
+                descShort: 'Bulk search and replace property values in GCP Cloud Datastore',
+                descFull: 'Upload CSV mappings to perform high-speed property value replacements across Cloud Datastore entities. Features TURBO batching (500 entities/batch), real-time speed metrics, instant CSV malformation validation, and live REST API commits.',
+                path: 'tool-4/',
+                docPath: 'docs/index.html#section-datastore-bulk-replacer',
+                status: 'active'
             }
         ];
 
@@ -1703,7 +1798,7 @@
                                 : `<span class="badge-locked"><i class="bi bi-lock-fill me-1"></i>Coming Soon</span>`
                             }
                             ${hasDoc 
-                                ? `<a href="${tool.docPath}" class="btn-doc-link" title="View Documentation">
+                                ? `<a href="${tool.docPath}" target="_blank" class="btn-doc-link" title="View Documentation">
                                      <i class="bi bi-file-text me-1"></i>Docs
                                    </a>`
                                 : ''
@@ -1940,9 +2035,6 @@
                                         welcomeContainer.getBoundingClientRect();
                                         welcomeContainer.style.opacity = '1';
                                         
-                                        // Play futuristic swoosh sound
-                                        AudioHaptic.playSwoosh();
-                                        
                                         // Show welcome card for 2.2 seconds before CRT turn-off fadeout
                                         setTimeout(() => {
                                             AudioHaptic.playSwoosh();
@@ -1968,13 +2060,105 @@
         // ==========================================
         // DEFRAG CARD LOADING sequnce
         // ==========================================
+        let defragSnakeActive = false;
+        let defragSnakeProgress = 0;
+        let defragSnakePhase = 0;
+
+        function animateDefragSnake() {
+            if (!defragSnakeActive) return;
+
+            const canvas = document.getElementById('defragProgressBarCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerY = height / 2;
+            const amplitude = 6;
+            const frequency = 0.045;
+            
+            defragSnakePhase -= 0.15;
+
+            const headX = (defragSnakeProgress / 100) * width;
+
+            // 1. Draw track
+            ctx.beginPath();
+            ctx.strokeStyle = '#222a36';
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            for (let x = 0; x < width; x += 2) {
+                const y = centerY + Math.sin(x * frequency) * amplitude;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // 2. Draw active snake
+            if (headX > 0) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.strokeStyle = '#ff3b30';
+                ctx.lineWidth = 14;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.shadowColor = '#ff3b30';
+                ctx.shadowBlur = 12;
+
+                for (let x = 0; x <= headX; x += 2) {
+                    const y = centerY + Math.sin(x * frequency + defragSnakePhase) * amplitude;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                // 3. Draw head
+                ctx.save();
+                ctx.fillStyle = '#ff3b30';
+                ctx.shadowColor = '#ff3b30';
+                ctx.shadowBlur = 15;
+                
+                const headY = centerY + Math.sin(headX * frequency + defragSnakePhase) * amplitude;
+                
+                ctx.beginPath();
+                ctx.arc(headX, headY, 13, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw tiny eyes
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.arc(headX + 3, headY - 4.5, 3, 0, Math.PI * 2);
+                ctx.arc(headX + 3, headY + 4.5, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw pupils
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(headX + 5, headY - 4.5, 1.2, 0, Math.PI * 2);
+                ctx.arc(headX + 5, headY + 4.5, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            requestAnimationFrame(animateDefragSnake);
+        }
+
         function openToolWithEffect(url) {
             AudioHaptic.playSwoosh();
             const overlay = document.getElementById('defragOverlay');
             const grid = document.getElementById('defragGrid');
             const statusText = document.getElementById('defragStatus');
             const percentText = document.getElementById('defragPercentage');
-            const progressBar = document.getElementById('defragProgressBar');
             
             grid.innerHTML = '';
             const totalBlocks = 80;
@@ -1999,6 +2183,11 @@
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
             
+            // Start snake animation
+            defragSnakeActive = true;
+            defragSnakeProgress = 0;
+            animateDefragSnake();
+            
             let currentBlockIndex = 0;
             const targetToolName = url.replace(/[^a-zA-Z]/g, '').toUpperCase() || 'EXTERNAL';
             statusText.textContent = `DEFRAGMENTING ${targetToolName} SECTORS...`;
@@ -2008,7 +2197,7 @@
                     const progress = (currentBlockIndex / totalBlocks) * 100;
                     
                     percentText.textContent = `${Math.floor(progress)}%`;
-                    progressBar.style.width = `${progress}%`;
+                    defragSnakeProgress = progress;
                     
                     for (let s = 0; s < totalBlocks; s++) {
                         const r = Math.floor(s / 20);
@@ -2020,13 +2209,11 @@
                                 blocks[actualIndex].el.className = 'defrag-block optimized';
                             }
                         } else if (s === currentBlockIndex) {
-                            // Active scanning head: alternate between reading and writing states dynamically
                             if (blocks[actualIndex].type !== 'unmovable') {
                                 const headState = (currentBlockIndex % 2 === 0) ? 'reading' : 'writing';
                                 blocks[actualIndex].el.className = `defrag-block ${headState}`;
                             }
                         } else {
-                            // Ahead of scanner: preserve the initial block type to prevent constant flickering
                             blocks[actualIndex].el.className = `defrag-block ${blocks[actualIndex].type}`;
                         }
                     }
@@ -2036,7 +2223,6 @@
                     }
                     
                     currentBlockIndex++;
-                    // Track seek delay: simulate physical seek head latency by pausing when switching rows
                     const delay = (currentBlockIndex > 0 && currentBlockIndex < totalBlocks && currentBlockIndex % 20 === 0) ? 120 : (12 + Math.random() * 8);
                     setTimeout(step, delay);
                 } else {
@@ -2045,6 +2231,7 @@
                             blocks[i].el.className = 'defrag-block optimized';
                         }
                     }
+                    defragSnakeActive = false;
                     AudioHaptic.playClunk();
                     setTimeout(() => {
                         window.location.href = url;
@@ -2361,8 +2548,11 @@
         let dinoId = null;
         let dinoCanvas, dinoCtx;
         let dinoHighScore = localStorage.getItem('dino_highscore') || 0;
+        let matrixIntervalId = null; // Suspends matrix rain during dino gameplay
 
-        // Game state (Adjusted for 120px height inline canvas)
+        // Game state (Dynamic coordinates)
+        let groundY = 100;
+        let dinoBaseY = 84;
         let dinoY = 84;
         let dinoVelocityY = 0;
         const gravity = 0.55;
@@ -2373,24 +2563,51 @@
         let obstacles = [];
         let obstacleTimer = 0;
         let score = 0;
-        let gameSpeed = 5;
+        let gameSpeed = 3.5;
+
+        // Synthwave Visuals variables
+        let gridOffset = 0;
+        let shakeTimer = 0;
+        let stars = [];
+        let particlesList = [];
 
         class Cactus {
             constructor(x, width, height) {
                 this.x = x;
                 this.width = width;
                 this.height = height;
-                this.y = 100 - height;
             }
             update() {
                 this.x -= gameSpeed;
             }
             draw(ctx) {
-                ctx.fillStyle = '#ff5d5d'; // Red Cacti
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-                // Draw details
-                ctx.fillStyle = '#c0392b';
-                ctx.fillRect(this.x + 2, this.y + 2, this.width - 4, this.height - 2);
+                const y = groundY - this.height;
+                ctx.save();
+                // Glow effect (Synthwave pink/neon red)
+                ctx.shadowColor = '#ff007f';
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = '#ff007f'; 
+                ctx.fillRect(this.x, y, this.width, this.height);
+                
+                // Draw digital core details
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowBlur = 0;
+                ctx.fillRect(this.x + this.width / 2 - 1, y + 2, 2, this.height - 4);
+                ctx.restore();
+            }
+        }
+
+        function resizeDinoCanvas() {
+            if (!dinoCanvas) return;
+            dinoCanvas.width = dinoCanvas.clientWidth;
+            dinoCanvas.height = dinoCanvas.clientHeight;
+            
+            // Re-calculate ground level dynamically
+            groundY = dinoCanvas.height - 40;
+            dinoBaseY = groundY - 16;
+            
+            if (!isJumping) {
+                dinoY = dinoBaseY;
             }
         }
 
@@ -2431,7 +2648,19 @@
         function openDinoGame() {
             const welcome = document.getElementById('heroWelcomeContent');
             const dino = document.getElementById('heroDinoContent');
+            const matrixCanvas = document.getElementById('heroMatrix');
+            const foregroundParticles = document.getElementById('heroForeground');
             if (!welcome || !dino) return;
+
+            // Suspend Matrix falling letters
+            if (matrixIntervalId) {
+                clearInterval(matrixIntervalId);
+                matrixIntervalId = null;
+            }
+
+            // Hide matrix and foreground particles
+            if (matrixCanvas) matrixCanvas.style.display = 'none';
+            if (foregroundParticles) foregroundParticles.style.display = 'none';
 
             // Fade out welcome content
             welcome.style.opacity = '0';
@@ -2454,9 +2683,12 @@
         function closeDinoGame() {
             dinoGameRunning = false;
             cancelAnimationFrame(dinoId);
+            window.removeEventListener('resize', resizeDinoCanvas);
             
             const welcome = document.getElementById('heroWelcomeContent');
             const dino = document.getElementById('heroDinoContent');
+            const matrixCanvas = document.getElementById('heroMatrix');
+            const foregroundParticles = document.getElementById('heroForeground');
             if (!welcome || !dino) return;
 
             // Fade out dino game
@@ -2464,6 +2696,13 @@
             setTimeout(() => {
                 dino.style.display = 'none';
                 
+                // Show matrix and foreground particles
+                if (matrixCanvas) matrixCanvas.style.display = 'block';
+                if (foregroundParticles) foregroundParticles.style.display = 'block';
+                
+                // Restart matrix falling letters
+                initHeroMatrix();
+
                 // Fade in welcome content
                 welcome.style.display = 'block';
                 requestAnimationFrame(() => {
@@ -2475,73 +2714,239 @@
         function startDinoGame() {
             dinoGameRunning = true;
             score = 0;
-            gameSpeed = 5;
+            gameSpeed = 3.5;
             obstacles = [];
             obstacleTimer = 0;
-            dinoY = 84;
-            dinoVelocityY = 0;
             isJumping = false;
+            shakeTimer = 0;
+            particlesList = [];
+            
+            // Seed stars
+            stars = [];
+            for (let i = 0; i < 25; i++) {
+                stars.push({
+                    x: Math.random() * 1200,
+                    y: Math.random() * 80, // upper area of banner
+                    size: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 0.15 + 0.05
+                });
+            }
             
             document.getElementById('dinoGameOver').style.display = 'none';
             
             dinoCanvas = document.getElementById('dinoCanvas');
             dinoCtx = dinoCanvas.getContext('2d');
             
+            // Set dynamic sizes
+            resizeDinoCanvas();
+            dinoY = dinoBaseY;
+            dinoVelocityY = 0;
+            
+            // Listen for window resize
+            window.removeEventListener('resize', resizeDinoCanvas);
+            window.addEventListener('resize', resizeDinoCanvas);
+            
             loopDino();
         }
 
         function jumpDino() {
+            if (!dinoGameRunning) return;
             if (!isJumping) {
                 dinoVelocityY = jumpStrength;
                 isJumping = true;
                 AudioHaptic.playTick(); // Tick sound for jumping!
+                
+                // Spawn jump burst particles
+                for (let i = 0; i < 6; i++) {
+                    particlesList.push({
+                        x: 44,
+                        y: groundY - 4,
+                        vx: -gameSpeed * 0.2 + (Math.random() - 0.5) * 4,
+                        vy: -Math.random() * 4 - 1,
+                        color: '#39ff14',
+                        life: 1.0,
+                        size: Math.random() * 3 + 1
+                    });
+                }
             }
+        }
+
+        function drawSynthwaveSun(ctx, x, y, radius) {
+            ctx.save();
+            const grad = ctx.createLinearGradient(x, y - radius, x, y + radius);
+            grad.addColorStop(0, '#ff007f'); // Hot pink
+            grad.addColorStop(1, '#f7941d'); // Orange
+            
+            ctx.fillStyle = grad;
+            ctx.shadowColor = '#ff007f';
+            ctx.shadowBlur = 20;
+            
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            // Slices (retro grid horizontal lines in background color #18122b)
+            ctx.save();
+            ctx.fillStyle = '#18122b';
+            const sliceHeight = 2.5;
+            for (let i = y + 2; i < y + radius; i += 7) {
+                const relativePos = (i - y) / radius; // 0 to 1
+                const h = sliceHeight * (1 + relativePos * 1.5);
+                ctx.fillRect(x - radius - 5, i, radius * 2 + 10, h);
+            }
+            ctx.restore();
         }
 
         function loopDino() {
             if (!dinoGameRunning) return;
             
-            dinoCtx.clearRect(0, 0, dinoCanvas.width, dinoCanvas.height);
+            dinoCtx.save();
+            // Screen shake effect on crash
+            if (shakeTimer > 0) {
+                const dx = (Math.random() - 0.5) * 8;
+                const dy = (Math.random() - 0.5) * 8;
+                dinoCtx.translate(dx, dy);
+                shakeTimer--;
+            }
             
-            // 1. Draw Horizon Line (at 100px Y)
-            dinoCtx.strokeStyle = '#2d3846';
-            dinoCtx.lineWidth = 2;
+            // 1. Draw Synthwave sky gradient
+            const skyGrad = dinoCtx.createLinearGradient(0, 0, 0, dinoCanvas.height);
+            skyGrad.addColorStop(0, '#0c0a1a');
+            skyGrad.addColorStop(1, '#18122b');
+            dinoCtx.fillStyle = skyGrad;
+            dinoCtx.fillRect(0, 0, dinoCanvas.width, dinoCanvas.height);
+            
+            // 2. Draw Stars
+            dinoCtx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            stars.forEach(star => {
+                star.x -= star.speed;
+                if (star.x < -10) {
+                    star.x = dinoCanvas.width + Math.random() * 50;
+                    star.y = Math.random() * 80;
+                }
+                dinoCtx.fillRect(star.x, star.y, star.size, star.size);
+            });
+            
+            // 3. Draw Synthwave Sun
+            drawSynthwaveSun(dinoCtx, dinoCanvas.width * 0.75, groundY - 45, 35);
+            
+            // 4. Draw Parallax Mountains
+            const mountainOffset = (score * 0.8) % 300;
+            dinoCtx.fillStyle = 'rgba(139, 92, 246, 0.06)'; // Deep violet mountains
+            dinoCtx.strokeStyle = 'rgba(139, 92, 246, 0.12)';
+            dinoCtx.lineWidth = 1.5;
             dinoCtx.beginPath();
-            dinoCtx.moveTo(0, 100);
-            dinoCtx.lineTo(500, 100);
+            dinoCtx.moveTo(0, groundY);
+            for (let i = -1; i < dinoCanvas.width / 150 + 2; i++) {
+                const mx = i * 150 - mountainOffset;
+                dinoCtx.lineTo(mx + 75, groundY - 35);
+                dinoCtx.lineTo(mx + 150, groundY);
+            }
+            dinoCtx.fill();
             dinoCtx.stroke();
             
-            // 2. Physics & Dino Logic
+            // 5. Draw Synthwave Converging Grid Lines
+            dinoCtx.strokeStyle = 'rgba(139, 92, 246, 0.15)';
+            dinoCtx.lineWidth = 1;
+            const numLines = 16;
+            for (let i = 0; i <= numLines; i++) {
+                const xTop = (dinoCanvas.width / numLines) * i;
+                const xBottom = ((dinoCanvas.width * 1.3) / numLines) * i - (dinoCanvas.width * 0.15);
+                dinoCtx.beginPath();
+                dinoCtx.moveTo(xTop, groundY);
+                dinoCtx.lineTo(xBottom, dinoCanvas.height);
+                dinoCtx.stroke();
+            }
+            
+            // Draw scrolling slanted lines moving left (perspective grid)
+            gridOffset = (gridOffset + gameSpeed) % 40;
+            dinoCtx.strokeStyle = 'rgba(247, 148, 29, 0.1)'; // orange hints
+            dinoCtx.lineWidth = 1.5;
+            dinoCtx.beginPath();
+            for (let x = -gridOffset; x < dinoCanvas.width + 100; x += 40) {
+                dinoCtx.moveTo(x, groundY);
+                dinoCtx.lineTo(x - 15, dinoCanvas.height);
+            }
+            dinoCtx.stroke();
+            
+            // 6. Draw Horizon Line (neon purple glowing)
+            dinoCtx.shadowColor = '#8b5cf6';
+            dinoCtx.shadowBlur = 8;
+            dinoCtx.strokeStyle = '#a78bfa';
+            dinoCtx.lineWidth = 3;
+            dinoCtx.beginPath();
+            dinoCtx.moveTo(0, groundY);
+            dinoCtx.lineTo(dinoCanvas.width, groundY);
+            dinoCtx.stroke();
+            dinoCtx.shadowBlur = 0; // reset shadow
+            
+            // 7. Physics & Dino Logic
             dinoVelocityY += gravity;
             dinoY += dinoVelocityY;
-            if (dinoY >= 84) {
-                dinoY = 84;
+            if (dinoY >= dinoBaseY) {
+                dinoY = dinoBaseY;
                 dinoVelocityY = 0;
                 isJumping = false;
             }
             
             dinoFrame++;
             
-            // 3. Draw Dino
+            // Spawn run sparks
+            if (!isJumping && dinoFrame % 5 === 0) {
+                particlesList.push({
+                    x: 44,
+                    y: groundY - 4,
+                    vx: -gameSpeed * 0.25 - Math.random() * 2,
+                    vy: -Math.random() * 1.5,
+                    color: '#39ff14',
+                    life: 1.0,
+                    size: Math.random() * 2.5 + 1
+                });
+            }
+            
+            // Update & Draw particles
+            for (let i = particlesList.length - 1; i >= 0; i--) {
+                const p = particlesList[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.05;
+                if (p.life <= 0) {
+                    particlesList.splice(i, 1);
+                    continue;
+                }
+                dinoCtx.save();
+                dinoCtx.globalAlpha = p.life;
+                dinoCtx.fillStyle = p.color;
+                dinoCtx.shadowColor = p.color;
+                dinoCtx.shadowBlur = 4;
+                dinoCtx.fillRect(p.x, p.y, p.size, p.size);
+                dinoCtx.restore();
+            }
+            
+            // 8. Draw Dino
             drawDino(dinoCtx, 40, dinoY);
             
-            // 4. Obstacles Spawn
+            // 9. Obstacles Spawn
             obstacleTimer++;
-            if (obstacleTimer > 100 + Math.random() * 50) {
+            const spawnThreshold = 250 + Math.random() * 200;
+            if (obstacleTimer * gameSpeed > spawnThreshold) {
                 const height = 15 + Math.random() * 20;
                 const width = 10 + Math.random() * 8;
-                obstacles.push(new Cactus(500, width, height));
+                obstacles.push(new Cactus(dinoCanvas.width, width, height));
                 obstacleTimer = 0;
             }
             
-            // 5. Update & Draw Obstacles
+            // 10. Update & Draw Obstacles
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 const obs = obstacles[i];
                 obs.update();
                 obs.draw(dinoCtx);
                 
                 // Collision Detection
-                if (checkCollision(40, dinoY, 20, 20, obs.x, obs.y, obs.width, obs.height)) {
+                const obsY = groundY - obs.height;
+                if (checkCollision(40, dinoY, 20, 20, obs.x, obsY, obs.width, obs.height)) {
+                    dinoCtx.restore(); // restore transform matrix from shake
                     gameOverDino();
                     return;
                 }
@@ -2551,7 +2956,9 @@
                 }
             }
             
-            // 6. Score & Difficulty
+            dinoCtx.restore(); // restore transform matrix
+            
+            // 11. Score & Difficulty
             score += 0.15;
             const currentScore = Math.floor(score);
             document.getElementById('dinoScore').textContent = String(currentScore).padStart(5, '0');
@@ -2561,13 +2968,16 @@
                 playDinoChime();
             }
             
-            gameSpeed = 5 + Math.floor(currentScore / 200);
+            gameSpeed = 3.5 + (currentScore * 0.01);
             
             dinoId = requestAnimationFrame(loopDino);
         }
 
         function drawDino(ctx, x, y) {
-            ctx.fillStyle = '#2ecc71'; // Green Dino
+            ctx.save();
+            ctx.shadowColor = '#39ff14';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#39ff14'; // Neon Green Dino
             
             // Draw body
             ctx.fillRect(x + 4, y, 12, 16);
@@ -2575,10 +2985,13 @@
             ctx.fillRect(x + 10, y - 6, 8, 8);
             // Draw eye
             ctx.fillStyle = '#11161d';
+            ctx.shadowBlur = 0;
             ctx.fillRect(x + 12, y - 4, 2, 2);
             
             // Dino leg animation (wiggling)
             ctx.fillStyle = '#27ae60';
+            ctx.shadowColor = '#27ae60';
+            ctx.shadowBlur = 8;
             if (isJumping) {
                 ctx.fillRect(x + 4, y + 16, 3, 4);
                 ctx.fillRect(x + 11, y + 16, 3, 4);
@@ -2587,6 +3000,7 @@
                 ctx.fillRect(x + 4, y + 16, 3, walkCycle === 0 ? 4 : 2);
                 ctx.fillRect(x + 11, y + 16, 3, walkCycle === 1 ? 4 : 2);
             }
+            ctx.restore();
         }
 
         function checkCollision(rx, ry, rw, rh, ox, oy, ow, oh) {
@@ -2598,7 +3012,17 @@
 
         function gameOverDino() {
             dinoGameRunning = false;
+            shakeTimer = 10; // Trigger screen shake
             AudioHaptic.playClunk(); // Game over sound!
+            
+            // Draw the final frame with shake before displaying overlay
+            dinoCtx.save();
+            const dx = (Math.random() - 0.5) * 8;
+            const dy = (Math.random() - 0.5) * 8;
+            dinoCtx.translate(dx, dy);
+            
+            // Draw game over state
+            dinoCtx.restore();
             
             const currentScore = Math.floor(score);
             if (currentScore > dinoHighScore) {
@@ -2801,6 +3225,7 @@
                 canvas.height = canvas.offsetHeight;
             }
             resize();
+            window.removeEventListener('resize', resize);
             window.addEventListener('resize', resize);
 
             const chars = "GCPAES-GCM0x1ADATASTORESWEEPENCRYPT10110COPYSCHEMA".split('');
@@ -2828,7 +3253,11 @@
                     drops[i]++;
                 }
             }
-            setInterval(draw, 50);
+            
+            if (matrixIntervalId) {
+                clearInterval(matrixIntervalId);
+            }
+            matrixIntervalId = setInterval(draw, 50);
         }
 
         // ==========================================

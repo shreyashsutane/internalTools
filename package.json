@@ -1,0 +1,14 @@
+{
+  "name": "gcp-tools-portal",
+  "version": "1.0.0",
+  "description": "GCP Tools Portal with TypeScript & esbuild bundling",
+  "private": true,
+  "scripts": {
+    "build": "esbuild datastore-copier/src/app.ts --bundle --minify --sourcemap --outfile=datastore-copier/js/app.js",
+    "watch": "esbuild datastore-copier/src/app.ts --bundle --sourcemap --outfile=datastore-copier/js/app.js --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.3.3"
+  }
+}

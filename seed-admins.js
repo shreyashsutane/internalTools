@@ -6,7 +6,7 @@
 const { execSync } = require('child_process');
 const https = require('https');
 
-const API_KEY = 'AIzaSyA2VAyhU903tZB_CQFs-_KSz9gwLDJyLt8';
+const API_KEY = 'AIzaSyA2X_2uA01LhkYzD2JrhVpCtMZteyxdYKc';
 const PROJECT_ID = 'gcp-tools-portal';
 const DEFAULT_EMAIL = 'shreyashs14102002@gmail.com';
 const DEFAULT_PASS = 'Vai@12345';

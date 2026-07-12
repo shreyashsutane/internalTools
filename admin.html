@@ -451,6 +451,14 @@
             background-color: rgba(247, 148, 29, 0.05) !important;
             transform: scale(1.002);
         }
+        .btn-toggle-log i {
+            transition: transform 0.2s;
+            display: inline-block;
+        }
+        .expand-row:hover {
+            background-color: transparent !important;
+            transform: none !important;
+        }
     </style>
 </head>
 <body>
@@ -542,6 +550,7 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            <th style="width:40px; text-align:center"></th>
                             <th style="width:160px">Timestamp</th>
                             <th style="width:240px">User (Gmail)</th>
                             <th style="width:160px">Operation</th>
@@ -552,7 +561,7 @@
                     </thead>
                     <tbody id="logs-table-body">
                         <tr>
-                            <td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)">No log data loaded.</td>
+                            <td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)">No log data loaded.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -642,7 +651,7 @@
 
             try {
                 // 1. Firebase Auth Sign-in
-                const authRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyA2VAyhU903tZB_CQFs-_KSz9gwLDJyLt8`, {
+                const authRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyA2X_2uA01LhkYzD2JrhVpCtMZteyxdYKc`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password: pass, returnSecureToken: true })
@@ -703,8 +712,7 @@
         // Load logs from Firestore
         async function refreshLogs() {
             const tbody = document.getElementById("logs-table-body");
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Loading audit logs from Firestore...</td></tr>`;
-
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Loading audit logs from Firestore...</td></tr>`;
             const allLogs = [];
             const usersSet = new Set();
             let successCount = 0;
@@ -743,7 +751,7 @@
                 }
             } catch(e) {
                 toast(e.message, "err");
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--danger)"><strong>Failed to load logs:</strong> ${escapeHtml(e.message)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--danger)"><strong>Failed to load logs:</strong> ${escapeHtml(e.message)}</td></tr>`;
                 return;
             }
 
@@ -762,7 +770,7 @@
         function renderLogsTable(logs) {
             const tbody = document.getElementById("logs-table-body");
             if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color:var(--muted)">No audit logs recorded in Firestore yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)">No audit logs recorded in Firestore yet.</td></tr>`;
                 return;
             }
 
@@ -773,7 +781,12 @@
                     : '<span class="badge badge-failed">Failed</span>';
                 
                 return `
-                    <tr>
+                    <tr class="log-row" data-log-id="${log.id}" style="cursor:pointer">
+                        <td style="text-align:center">
+                            <button class="btn-toggle-log" style="background:none; border:none; padding:0; cursor:pointer; outline:none; color:var(--muted)">
+                                <i class="bi bi-chevron-right" style="transition: transform 0.2s; display:inline-block"></i>
+                            </button>
+                        </td>
                         <td class="mono" style="color:var(--muted)">${dateStr}</td>
                         <td style="font-weight:600">${escapeHtml(log.user)}</td>
                         <td><span class="badge badge-op">${escapeHtml(log.operation)}</span></td>
@@ -788,6 +801,193 @@
                     </tr>
                 `;
             }).join('');
+
+            tbody.querySelectorAll('tr.log-row').forEach(tr => {
+                tr.onclick = (e) => {
+                    if (e.target.closest('.btn-sec') || e.target.closest('button:not(.btn-toggle-log)')) return;
+                    const logId = tr.dataset.logId;
+                    toggleLogExpand(tr, logId);
+                };
+            });
+        }
+
+        function toggleLogExpand(tr, logId) {
+            const existingNext = tr.nextElementSibling;
+            if (existingNext && existingNext.classList.contains('expand-row')) {
+                existingNext.remove();
+                const icon = tr.querySelector('.btn-toggle-log i');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+                return;
+            }
+
+            const log = cachedLogs.find(x => x.id === logId);
+            if (!log) return;
+
+            const expTr = document.createElement('tr');
+            expTr.className = 'expand-row';
+            expTr.style.background = 'rgba(13, 20, 30, 0.4)';
+
+            const statusClass = log.status === 'SUCCESS' ? '#22c55e' : (log.status === 'PARTIAL' ? '#f59e0b' : '#ef4444');
+            const statusBg = log.status === 'SUCCESS' ? 'rgba(34,197,94,0.08)' : (log.status === 'PARTIAL' ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)');
+
+            let stateDetailsHtml = '';
+            if (log.prevState) {
+                let state;
+                try {
+                    state = typeof log.prevState === 'string' ? JSON.parse(log.prevState) : log.prevState;
+                } catch(e) {
+                    console.error("Failed to parse prevState", e);
+                }
+
+                if (state && typeof state === 'object') {
+                    stateDetailsHtml += `
+                        <div style="margin-top: 20px; border-top: 1px solid var(--brd2); padding-top: 15px;">
+                            <div style="font-weight: 600; font-size: 11px; margin-bottom: 12px; color: var(--accent); display: flex; align-items: center; gap: 6px;">
+                                <i class="bi bi-arrow-left-right"></i> Backup State Changes (Revert Data)
+                            </div>
+                    `;
+
+                    if (state.type === 'BQ_SCHEMA_SYNC') {
+                        const rows = (state.backupData || []).map(item => {
+                            const prevStr = item.prevSchema ? JSON.stringify(item.prevSchema, null, 2) : '—';
+                            const newStr = item.newSchema ? JSON.stringify(item.newSchema, null, 2) : '—';
+                            return `
+                                <div style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
+                                    <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Table: ${escapeHtml(item.tablePath)} (${item.action})</div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                                        <div>
+                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS SCHEMA:</div>
+                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">NEW SCHEMA:</div>
+                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        stateDetailsHtml += `<div>${rows}</div>`;
+                    } else if (state.type === 'QUERY_SYNC') {
+                        const rows = (state.backupData || []).map(item => {
+                            const prevStr = item.prevQuery ? JSON.stringify(item.prevQuery, null, 2) : '—';
+                            const newStr = item.newQuery ? JSON.stringify(item.newQuery, null, 2) : '—';
+                            return `
+                                <div style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
+                                    <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Query: ${escapeHtml(item.displayName || item.name)} (${item.action})</div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                                        <div>
+                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS CONFIG:</div>
+                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">NEW CONFIG:</div>
+                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        stateDetailsHtml += `<div>${rows}</div>`;
+                    } else if (state.type === 'DATASTORE_COPY') {
+                        const rows = (state.backupData || []).map(item => {
+                            const prevStr = item.prevEntity ? JSON.stringify(item.prevEntity.properties || item.prevEntity, null, 2) : '—';
+                            const newStr = item.newEntity ? JSON.stringify(item.newEntity.properties || item.newEntity, null, 2) : '—';
+                            return `
+                                <div style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
+                                    <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Entity Key: ${escapeHtml(item.keyStr)} (${item.action})</div>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                                        <div>
+                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS STATE:</div>
+                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">NEW STATE:</div>
+                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        stateDetailsHtml += `<div>${rows}</div>`;
+                    } else if (state.type === 'DATASTORE_EDIT') {
+                        const prevStr = state.prevEntity ? JSON.stringify(state.prevEntity.properties || state.prevEntity, null, 2) : '—';
+                        const newStr = state.newEntity ? JSON.stringify(state.newEntity.properties || state.newEntity, null, 2) : '—';
+                        stateDetailsHtml += `
+                            <div style="margin-bottom: 15px; padding-bottom: 10px;">
+                                <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Entity Key: ${escapeHtml(state.keyStr)}</div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                                    <div>
+                                        <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS STATE:</div>
+                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">NEW STATE:</div>
+                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    stateDetailsHtml += `</div>`;
+                }
+            }
+
+            expTr.innerHTML = `
+                <td colspan="7" style="padding: 15px 20px; background: rgba(13, 20, 30, 0.4);">
+                    <div style="padding: 20px; border-radius: 8px; border: 1px solid var(--brd2); background: rgba(13, 20, 30, 0.95); font-size: 12px; text-align: left; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8)">
+                        <div style="font-weight: 600; font-size: 13px; margin-bottom: 15px; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                            <i class="bi bi-info-circle"></i> Detailed Operations Log Metadata
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--brd2); padding-bottom: 15px;">
+                            <div>
+                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Log ID</div>
+                                <div class="mono" style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px; word-break: break-all;">${logId}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Timestamp</div>
+                                <div style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px;">${new Date(log.timestamp).toLocaleString()}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Operator (User)</div>
+                                <div style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px; overflow-x: auto;">${escapeHtml(log.user || '—')}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+                                <div style="padding-top: 2px;"><span class="badge" style="background:${statusBg}; color:${statusClass}; font-size: 10px; padding: 2px 6px; border-radius: 4px;">${log.status}</span></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Operation Type</div>
+                                <div><span class="badge badge-op" style="padding: 2px 6px; border-radius: 4px;">${escapeHtml(log.operation)}</span></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Source Project</div>
+                                <div class="mono" style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px;">${escapeHtml(log.srcProject || '—')}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Target Project</div>
+                                <div class="mono" style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px;">${escapeHtml(log.tgtProject || '—')}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Revertibility</div>
+                                <div style="padding-top: 2px;">${log.prevState ? '<span style="color:#22c55e; font-weight:600; display:flex; align-items:center; gap:4px; font-size:11px;"><i class="bi bi-check-circle-fill"></i> Revertible</span>' : '<span style="color:var(--muted); display:flex; align-items:center; gap:4px; font-size:11px;"><i class="bi bi-x-circle-fill"></i> Not Revertible</span>'}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Description Details</div>
+                            <div style="padding: 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--fg); border: 1px solid var(--brd2); background: rgba(0,0,0,0.3); white-space: pre-wrap; line-height: 1.4;">${escapeHtml(log.details || '—')}</div>
+                        </div>
+                        
+                        ${stateDetailsHtml}
+                    </div>
+                </td>
+            `;
+
+            tr.after(expTr);
+            const icon = tr.querySelector('.btn-toggle-log i');
+            if (icon) icon.style.transform = 'rotate(90deg)';
         }
 
         function filterLogs() {
@@ -916,7 +1116,7 @@
 
             try {
                 // 1. Register in Firebase Auth (signUp)
-                const signupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyA2VAyhU903tZB_CQFs-_KSz9gwLDJyLt8`, {
+                const signupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyA2X_2uA01LhkYzD2JrhVpCtMZteyxdYKc`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, returnSecureToken: false })

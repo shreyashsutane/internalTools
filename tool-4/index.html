@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCP Datastore Bulk Value Replacer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh; padding: 20px; color: #e0e0e0;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; color: #00d4ff; margin-bottom: 10px; font-size: 2rem; text-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
+        .subtitle { text-align: center; color: #8892b0; margin-bottom: 30px; font-size: 0.95rem; }
+        .card {
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
+            padding: 24px; margin-bottom: 20px; transition: all 0.3s ease;
+        }
+        .card:hover { border-color: rgba(0, 212, 255, 0.3); box-shadow: 0 8px 32px rgba(0, 212, 255, 0.1); }
+        .card-title { color: #00d4ff; font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .card-title .icon { font-size: 1.3rem; }
+        .form-group { margin-bottom: 16px; position: relative; }
+        label { display: block; margin-bottom: 6px; color: #ccd6f6; font-size: 0.9rem; font-weight: 500; }
+        input[type="text"], input[type="file"], textarea, select {
+            width: 100%; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px; background: rgba(0, 0, 0, 0.3); color: #e0e0e0;
+            font-size: 0.95rem; transition: all 0.3s ease; font-family: inherit;
+        }
+        input[type="text"]:focus, textarea:focus, select:focus { outline: none; border-color: #00d4ff; box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15); }
+        textarea { resize: vertical; min-height: 80px; font-family: 'Courier New', monospace; font-size: 0.85rem; }
+        .hint { font-size: 0.8rem; color: #8892b0; margin-top: 4px; }
+        .btn {
+            padding: 12px 28px; border: none; border-radius: 10px; font-size: 0.95rem;
+            font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #0a192f; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-danger { background: linear-gradient(135deg, #ff4757, #cc0033); color: white; }
+        .btn-danger:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 71, 87, 0.4); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: #ccd6f6; border: 1px solid rgba(255, 255, 255, 0.2); }
+        .btn-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); }
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+        .progress-container { display: none; margin-top: 20px; }
+        .progress-bar { width: 100%; height: 8px; background: rgba(0, 0, 0, 0.3); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #0099cc); border-radius: 4px; transition: width 0.3s ease; width: 0%; }
+        .progress-text { text-align: center; margin-top: 8px; font-size: 0.9rem; color: #ccd6f6; }
+        .log-container {
+            background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px; padding: 16px; margin-top: 20px; max-height: 400px;
+            overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.85rem; display: none;
+        }
+        .log-entry { padding: 4px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .log-success { color: #4ade80; } .log-error { color: #f87171; }
+        .log-info { color: #60a5fa; } .log-warn { color: #fbbf24; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+        .stat-box { background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 16px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .stat-value { font-size: 1.8rem; font-weight: 700; color: #00d4ff; }
+        .stat-label { font-size: 0.8rem; color: #8892b0; margin-top: 4px; }
+        .mapping-preview {
+            background: rgba(0, 0, 0, 0.3); border-radius: 10px; padding: 12px; margin-top: 12px;
+            max-height: 200px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.8rem; display: none;
+        }
+        .mapping-row { display: flex; justify-content: space-between; padding: 4px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .mapping-row:last-child { border-bottom: none; }
+        .mapping-old { color: #f87171; } .mapping-arrow { color: #8892b0; } .mapping-new { color: #4ade80; }
+        .toggle-advanced { color: #00d4ff; cursor: pointer; font-size: 0.9rem; margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; }
+        .advanced-options { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: #00d4ff; }
+        .alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; display: none; align-items: center; gap: 10px; }
+        .alert-error { background: rgba(248, 113, 113, 0.15); border: 1px solid rgba(248, 113, 113, 0.3); color: #f87171; }
+        .alert-success { background: rgba(74, 222, 128, 0.15); border: 1px solid rgba(74, 222, 128, 0.3); color: #4ade80; }
+        .alert-warning { background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); color: #fbbf24; }
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, 0.3); border-top-color: #00d4ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .searchable-select { position: relative; }
+        .select-trigger {
+            width: 100%; padding: 12px 40px 12px 14px; border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px; background: rgba(0, 0, 0, 0.3); color: #e0e0e0;
+            font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; min-height: 44px;
+            transition: all 0.3s ease; user-select: none; position: relative;
+        }
+        .select-trigger:hover { border-color: rgba(0, 212, 255, 0.4); }
+        .select-trigger.active { border-color: #00d4ff; box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15); }
+        .select-trigger .placeholder { color: #8892b0; }
+        .select-trigger .value { color: #e0e0e0; }
+        .trigger-chevron { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: #8892b0; pointer-events: none; font-size: 0.7rem; transition: transform 0.2s; }
+        .trigger-chevron.open { transform: translateY(-50%) rotate(180deg); }
+        .field-status { position: absolute; right: 32px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; pointer-events: none; }
+        .portal-dropdown {
+            position: fixed; z-index: 99999; background: #1e1e3f;
+            border: 1px solid rgba(0, 212, 255, 0.4); border-radius: 12px; max-height: 320px; overflow: hidden;
+            display: none; flex-direction: column; box-shadow: 0 15px 40px rgba(0,0,0,0.7); min-width: 220px;
+        }
+        .portal-dropdown.active { display: flex; }
+        .portal-dropdown .dropdown-search { padding: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); background: #1e1e3f; flex-shrink: 0; }
+        .portal-dropdown .dropdown-search input { width: 100%; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; background: rgba(0, 0, 0, 0.4); color: #e0e0e0; font-size: 0.9rem; outline: none; }
+        .portal-dropdown .dropdown-search input:focus { border-color: #00d4ff; }
+        .portal-dropdown .dropdown-items { overflow-y: auto; flex: 1; padding: 4px; }
+        .portal-dropdown .dropdown-item { padding: 10px 14px; cursor: pointer; transition: all 0.15s; border-radius: 8px; margin: 2px 4px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 2px; }
+        .portal-dropdown .dropdown-item:hover { background: rgba(0, 212, 255, 0.15); color: #00d4ff; }
+        .portal-dropdown .dropdown-item .subtext { font-size: 0.75rem; color: #8892b0; }
+        .portal-dropdown .dropdown-empty, .portal-dropdown .dropdown-loading, .portal-dropdown .dropdown-error { padding: 24px; text-align: center; font-size: 0.85rem; }
+        .portal-dropdown .dropdown-empty { color: #8892b0; }
+        .portal-dropdown .dropdown-loading { color: #00d4ff; }
+        .portal-dropdown .dropdown-error { color: #f87171; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 212, 255, 0.3); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<!-- GCP TOOLS PORTAL HEADER NAV -->
+<div style="background: #111827; border-bottom: 1px solid #1f2937; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; font-family: system-ui, -apple-system, sans-serif;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <a href="../index.html" style="display: inline-flex; align-items: center; gap: 8px; color: #9ca3af; text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; background: #1f2937; border-radius: 6px; border: 1px solid #374151; transition: all 0.2s;">
+            <span>←</span> Back to Dashboard
+        </a>
+        <span style="color: #374151;">|</span>
+        <span style="color: #f3f4f6; font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px;">
+            <span>🔀</span> Datastore Bulk Value Replacer
+        </span>
+    </div>
+    <div>
+        <a href="../docs/index.html#section-datastore-bulk-replacer" style="color: #60a5fa; text-decoration: none; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+            <span>📖</span> Documentation
+        </a>
+    </div>
+</div>
+
+    <div class="container">
+        <h1>🔧 GCP Datastore Bulk Value Replacer</h1>
+        <p class="subtitle">Replace column values in Google Cloud Datastore entities using CSV mappings</p>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">🔐</span> Authentication</div>
+            <div class="form-group">
+                <label for="accessToken">GCP Access Token</label>
+                <textarea id="accessToken" placeholder="Paste your GCP OAuth2 access token here..." onblur="onTokenBlur()"></textarea>
+                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                    <input type="text" readonly id="tokenCmd" value="gcloud auth print-access-token" style="flex:1; font-family:'Courier New',monospace; font-size:0.8rem; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:8px 12px; color:#00d4ff;">
+                    <button class="btn btn-secondary" style="padding:8px 16px; font-size:0.85rem;" onclick="copyTokenCommand()">📋 Copy Command</button>
+                </div>
+                <p class="hint">Get token via the command above. Tokens expire in ~1 hour.</p>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="fetchProjects()"><span>🔄</span> Fetch Projects</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📁</span> Project & Database</div>
+            <div class="form-group searchable-select" id="projectSelectContainer">
+                <label>Project ID</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <div style="flex:1; position:relative;">
+                        <div class="select-trigger" id="projectTrigger" onclick="toggleDropdown('project')">
+                            <span class="placeholder" id="projectTriggerText">Select project from dropdown...</span>
+                            <span class="trigger-chevron" id="projectChevron">▼</span>
+                        </div>
+                    </div>
+                    <span style="color:#8892b0; font-size:0.85rem; flex-shrink:0;">or</span>
+                    <input type="text" id="projectManualInput" placeholder="Type project ID manually" style="flex:1; margin:0;" oninput="onManualProjectInput(this.value)">
+                </div>
+                <span class="field-status" id="projectStatus"></span>
+                <input type="hidden" id="projectIdHidden">
+            </div>
+
+            <div class="form-group searchable-select" id="databaseSelectContainer">
+                <label>Database ID</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <div style="flex:1; position:relative;">
+                        <div class="select-trigger" id="databaseTrigger" onclick="toggleDropdown('database')">
+                            <span class="placeholder" id="databaseTriggerText">Select database ID...</span>
+                            <span class="trigger-chevron" id="databaseChevron">▼</span>
+                        </div>
+                    </div>
+                    <span style="color:#8892b0; font-size:0.85rem; flex-shrink:0;">or</span>
+                    <input type="text" id="databaseManualInput" value="(default)" placeholder="(default)" style="flex:1; margin:0;" oninput="onManualDatabaseInput(this.value)">
+                </div>
+                <span class="field-status" id="databaseStatus"></span>
+                <input type="hidden" id="databaseIdHidden">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Entity Configuration</div>
+            <div class="form-group searchable-select" id="kindSelectContainer">
+                <label>Kind Name</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <div style="flex:1; position:relative;">
+                        <div class="select-trigger" id="kindTrigger" onclick="toggleDropdown('kind')">
+                            <span class="placeholder" id="kindTriggerText">Select kind from dropdown...</span>
+                            <span class="trigger-chevron" id="kindChevron">▼</span>
+                        </div>
+                    </div>
+                    <span style="color:#8892b0; font-size:0.85rem; flex-shrink:0;">or</span>
+                    <input type="text" id="kindManualInput" placeholder="Type kind name manually" style="flex:1; margin:0;" oninput="onManualKindInput(this.value)" onblur="onManualKindBlur(this.value)">
+                </div>
+                <span class="field-status" id="kindStatus"></span>
+                <input type="hidden" id="kindNameHidden">
+            </div>
+
+            <div class="form-group searchable-select" id="columnSelectContainer">
+                <label>Column / Property Name</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <div style="flex:1; position:relative;">
+                        <div class="select-trigger" id="columnTrigger" onclick="toggleDropdown('column')">
+                            <span class="placeholder" id="columnTriggerText">Select property from dropdown...</span>
+                            <span class="trigger-chevron" id="columnChevron">▼</span>
+                        </div>
+                    </div>
+                    <span style="color:#8892b0; font-size:0.85rem; flex-shrink:0;">or</span>
+                    <input type="text" id="columnManualInput" placeholder="Type property name manually" style="flex:1; margin:0;" oninput="onManualColumnInput(this.value)">
+                </div>
+                <span class="field-status" id="columnStatus"></span>
+                <input type="hidden" id="columnNameHidden">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📄</span> Value Mapping (CSV)</div>
+            <div class="form-group">
+                <label for="csvFile">Upload CSV File</label>
+                <input type="file" id="csvFile" accept=".csv,.txt">
+                <p class="hint">CSV must have headers: OLD, NEW. First row should be the header.</p>
+            </div>
+            <div class="form-group">
+                <label>Or paste CSV content directly:</label>
+                <textarea id="csvText" placeholder="OLD,NEW&#10;old_value1,new_value1&#10;old_value2,new_value2"></textarea>
+            </div>
+            <div class="mapping-preview" id="mappingPreview"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">⚙️</span> Advanced Settings</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 15px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="batchSize" style="font-size: 0.95rem; font-weight: 600; color: #e0e0e0;">⚡ Batch Processing Size</label>
+                    <input type="text" id="batchSize" value="500" placeholder="500" style="padding: 12px; font-size: 1rem; margin-top: 6px;">
+                    <p class="hint" style="margin-top: 6px;">Entities queried per round-trip (Default: 500)</p>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="delayMs" style="font-size: 0.95rem; font-weight: 600; color: #e0e0e0;">⏱️ Delay Between Batches (ms)</label>
+                    <input type="text" id="delayMs" value="0" placeholder="0" style="padding: 12px; font-size: 1rem; margin-top: 6px;">
+                    <p class="hint" style="margin-top: 6px;">Pause between API requests in ms (0 for max speed)</p>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div class="checkbox-group" style="padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); align-items: center;">
+                    <input type="checkbox" id="strictMatch" checked style="width: 20px; height: 20px; cursor: pointer;">
+                    <label for="strictMatch" style="margin: 0; font-size: 1.05rem; font-weight: 600; cursor: pointer; color: #00d4ff;">🎯 Strict Match (Case-sensitive, exact match only)</label>
+                </div>
+                <div class="checkbox-group" style="padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); align-items: center;">
+                    <input type="checkbox" id="dryRun" checked style="width: 20px; height: 20px; cursor: pointer;">
+                    <label for="dryRun" style="margin: 0; font-size: 1.05rem; font-weight: 600; cursor: pointer; color: #e0e0e0;">🛡️ Dry Run Mode (Preview matches without modifying Datastore)</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-error" id="errorAlert"></div>
+        <div class="alert alert-success" id="successAlert"></div>
+        <div class="alert alert-warning" id="warningAlert"></div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" id="previewBtn" onclick="previewMapping()"><span>👁️</span> Preview Mapping</button>
+            <button class="btn btn-primary" id="validateBtn" onclick="validateConnection()"><span>🔗</span> Validate Connection</button>
+            <button class="btn btn-danger" id="runBtn" onclick="runReplacement()"><span id="runBtnIcon">🚀</span> <span id="runBtnText">Run Replacement</span></button>
+            <button class="btn btn-secondary" onclick="clearAll()"><span>🗑️</span> Clear All</button>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="progress-text" id="progressText">Initializing...</div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid" style="display:none;">
+            <div class="stat-box"><div class="stat-value" id="statTotal">0</div><div class="stat-label">Total Entities</div></div>
+            <div class="stat-box"><div class="stat-value" id="statMatched">0</div><div class="stat-label">Matched</div></div>
+            <div class="stat-box"><div class="stat-value" id="statUpdated">0</div><div class="stat-label">Updated</div></div>
+            <div class="stat-box"><div class="stat-value" id="statSkipped">0</div><div class="stat-label">Skipped</div></div>
+            <div class="stat-box"><div class="stat-value" id="statErrors">0</div><div class="stat-label">Errors</div></div>
+        </div>
+
+        <div class="log-container" id="logContainer"></div>
+    </div>
+
+    <!-- Portals -->
+    <div class="portal-dropdown" id="projectDropdown"><div class="dropdown-search"><input type="text" id="projectSearchInput" placeholder="Search projects..." oninput="filterDropdownItems('project', this.value)" onclick="event.stopPropagation()"></div><div class="dropdown-items" id="projectDropdownItems"><div class="dropdown-empty">Paste token and click Fetch Projects</div></div></div>
+    <div class="portal-dropdown" id="databaseDropdown"><div class="dropdown-search"><input type="text" id="databaseSearchInput" placeholder="Search databases..." oninput="filterDropdownItems('database', this.value)" onclick="event.stopPropagation()"></div><div class="dropdown-items" id="databaseDropdownItems"><div class="dropdown-empty">Select a project first</div></div></div>
+    <div class="portal-dropdown" id="kindDropdown"><div class="dropdown-search"><input type="text" id="kindSearchInput" placeholder="Search kinds..." oninput="filterDropdownItems('kind', this.value)" onclick="event.stopPropagation()"></div><div class="dropdown-items" id="kindDropdownItems"><div class="dropdown-empty">Select a database first</div></div></div>
+    <div class="portal-dropdown" id="columnDropdown"><div class="dropdown-search"><input type="text" id="columnSearchInput" placeholder="Search properties..." oninput="filterDropdownItems('column', this.value)" onclick="event.stopPropagation()"></div><div class="dropdown-items" id="columnDropdownItems"><div class="dropdown-empty">Select a kind first</div></div></div>
+
+    <script>
+        let valueMapping = new Map();
+        let isRunning = false;
+        let shouldStop = false;
+        let projectsData = [];
+        let databasesData = [];
+        let kindsData = [];
+        let columnsData = [];
+        let openDropdownType = null;
+
+        function sanitizeDatabaseId(dbId) {
+            return (dbId === '(default)' || !dbId) ? '' : dbId;
+        }
+
+        function copyTokenCommand() {
+            const input = document.getElementById('tokenCmd');
+            if (!input) return;
+            try {
+                input.focus(); input.select(); input.setSelectionRange(0, 99999);
+                document.execCommand('copy'); log('Copied token command to clipboard!', 'success');
+            } catch(e) { window.prompt('Copy token command:', input.value); }
+        }
+
+        function positionPortalDropdown(type) {
+            const trigger = document.getElementById(type + 'Trigger');
+            const panel   = document.getElementById(type + 'Dropdown');
+            if (!trigger || !panel) return;
+            const rect = trigger.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const panelMaxH = 320; const gap = 6;
+            const spaceBelow = viewportHeight - rect.bottom - gap;
+            const spaceAbove = rect.top - gap;
+            const openUpward = spaceBelow < panelMaxH && spaceAbove > spaceBelow;
+            panel.style.width  = rect.width + 'px'; panel.style.left = rect.left + 'px';
+            if (openUpward) {
+                panel.style.top = ''; panel.style.bottom = (viewportHeight - rect.top + gap) + 'px'; panel.style.maxHeight = Math.min(panelMaxH, spaceAbove) + 'px';
+            } else {
+                panel.style.bottom = ''; panel.style.top = (rect.bottom + gap) + 'px'; panel.style.maxHeight = Math.min(panelMaxH, spaceBelow) + 'px';
+            }
+        }
+
+        function repositionOpenDropdown() { if (openDropdownType) positionPortalDropdown(openDropdownType); }
+        window.addEventListener('scroll', repositionOpenDropdown, true);
+        window.addEventListener('resize', repositionOpenDropdown);
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.searchable-select') && !e.target.closest('.portal-dropdown')) closeAllDropdowns();
+        });
+
+        function closeAllDropdowns() {
+            document.querySelectorAll('.portal-dropdown').forEach(d => d.classList.remove('active'));
+            document.querySelectorAll('.select-trigger').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.trigger-chevron').forEach(c => c.classList.remove('open'));
+            openDropdownType = null;
+        }
+
+        function toggleDropdown(type) {
+            const panel = document.getElementById(type + 'Dropdown');
+            const trigger = document.getElementById(type + 'Trigger');
+            const chevron = document.getElementById(type + 'Chevron');
+            if (openDropdownType === type) { closeAllDropdowns(); return; }
+            closeAllDropdowns(); positionPortalDropdown(type);
+            panel.classList.add('active'); trigger.classList.add('active'); chevron.classList.add('open');
+            openDropdownType = type;
+            setTimeout(() => { const si = document.getElementById(type + 'SearchInput'); if (si) { si.focus(); si.select(); } }, 50);
+        }
+
+        function filterDropdownItems(type, query) {
+            const container = document.getElementById(type + 'DropdownItems');
+            let data = type === 'project' ? projectsData : type === 'database' ? databasesData : type === 'kind' ? kindsData : columnsData;
+            const q = (query || '').toLowerCase().trim();
+            const filtered = q ? data.filter(item => (item.name || item.id || item.projectId || item.kind_name || item.property_name || item).toLowerCase().includes(q)) : data;
+            renderDropdownItems(type, container, filtered);
+        }
+
+        function renderDropdownItems(type, container, items) {
+            if (items.length === 0) { container.innerHTML = '<div class="dropdown-empty">No items found</div>'; return; }
+            container.innerHTML = '';
+            items.forEach((item) => {
+                const div = document.createElement('div'); div.className = 'dropdown-item';
+                let mainText = '', subText = '';
+                if (type === 'project') { mainText = item.projectId || item.name || 'unknown'; subText = item.name && item.name !== item.projectId ? item.name : (item.projectNumber ? 'Project #' + item.projectNumber : ''); }
+                else if (type === 'database') { mainText = item.name ? item.name.split('/').pop() : item; subText = item.type || ''; }
+                else if (type === 'kind') { mainText = item.kind_name || item; subText = item.count ? `Entities: ${item.count}` : ''; }
+                else if (type === 'column') { mainText = item.property_name || item; subText = item.property_type || ''; }
+                div.innerHTML = `<div>${escapeHtml(mainText)}</div>${subText ? `<div class="subtext">${escapeHtml(subText)}</div>` : ''}`;
+                div.onclick = (e) => { e.stopPropagation(); selectItem(type, item, mainText); };
+                container.appendChild(div);
+            });
+        }
+
+        function selectItem(type, item, displayText) {
+            const triggerTextEl = document.getElementById(type + 'TriggerText');
+            triggerTextEl.className = 'value'; triggerTextEl.textContent = displayText;
+            closeAllDropdowns();
+            const searchInput = document.getElementById(type + 'SearchInput'); if (searchInput) searchInput.value = '';
+
+            if (type === 'project') {
+                document.getElementById('projectIdHidden').value = displayText;
+                document.getElementById('projectManualInput').value = displayText;
+                document.getElementById('databaseStatus').innerHTML = '<span class="spinner"></span>';
+                resetDropdown('database'); resetDropdown('kind'); resetDropdown('column');
+                fetchDatabases(displayText);
+            } else if (type === 'database') {
+                let cleanDbId = item && item.name ? item.name.split('/').pop() : displayText;
+                cleanDbId = sanitizeDatabaseId(cleanDbId);
+                resetDropdown('kind'); resetDropdown('column');
+                document.getElementById('databaseIdHidden').value = cleanDbId;
+                document.getElementById('databaseManualInput').value = cleanDbId || '(default)';
+                document.getElementById('kindStatus').innerHTML = '<span class="spinner"></span>';
+                log(`Database selected: "${cleanDbId || '(default)'}"`, 'info');
+                fetchKinds(cleanDbId);
+            } else if (type === 'kind') {
+                document.getElementById('kindNameHidden').value = displayText;
+                document.getElementById('kindManualInput').value = displayText;
+                resetDropdown('column'); document.getElementById('columnManualInput').value = '';
+                document.getElementById('columnStatus').innerHTML = '<span class="spinner"></span>';
+                fetchColumns(displayText);
+            } else if (type === 'column') {
+                document.getElementById('columnNameHidden').value = displayText;
+                document.getElementById('columnManualInput').value = displayText;
+            }
+        }
+
+        function resetDropdown(type) {
+            const p = { project: 'Select project...', database: 'Select database...', kind: 'Select kind...', column: 'Select property...' };
+            const e = { project: 'Paste token and click Fetch Projects', database: 'Select a project first', kind: 'Select a database first', column: 'Select a kind first' };
+            const h = { project: 'projectIdHidden', database: 'databaseIdHidden', kind: 'kindNameHidden', column: 'columnNameHidden' };
+            const tt = document.getElementById(type + 'TriggerText'); if (tt) { tt.className = 'placeholder'; tt.textContent = p[type]; }
+            const hd = document.getElementById(h[type]); if (hd) hd.value = '';
+            const st = document.getElementById(type + 'Status'); if (st) st.textContent = '';
+            const it = document.getElementById(type + 'DropdownItems'); if (it) it.innerHTML = `<div class="dropdown-empty">${e[type]}</div>`;
+        }
+
+        function setDropdownLoading(type, message) { document.getElementById(type + 'DropdownItems').innerHTML = `<div class="dropdown-loading"><span class="spinner"></span>${message}</div>`; }
+        function setDropdownError(type, message) { document.getElementById(type + 'DropdownItems').innerHTML = `<div class="dropdown-error">❌ ${message}</div>`; }
+
+        function getToken() { 
+            let val = document.getElementById('accessToken').value || '';
+            return val.replace(/[^\x20-\x7E]/g, '').trim(); 
+        }
+        function getHeaders() { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
+        async function onTokenBlur() { if (getToken().length > 20) await fetchProjects(); }
+
+        function onManualProjectInput(val) { document.getElementById('projectIdHidden').value = val; }
+        function onManualDatabaseInput(val) { document.getElementById('databaseIdHidden').value = sanitizeDatabaseId(val); }
+        function onManualKindInput(val) { document.getElementById('kindNameHidden').value = val; }
+        function onManualKindBlur(val) { if(val) document.getElementById('kindTriggerText').textContent = val; }
+        function onManualColumnInput(val) { document.getElementById('columnNameHidden').value = val; }
+
+        async function fetchProjects() {
+            const token = getToken(); if (!token) { showAlert('errorAlert', 'Please paste your access token first.'); return; }
+            hideAlerts(); setDropdownLoading('project', 'Loading projects...');
+            document.getElementById('projectStatus').innerHTML = '<span class="spinner"></span>';
+            log('Fetching accessible projects...', 'info');
+            try {
+                const response = await fetch('https://cloudresourcemanager.googleapis.com/v1/projects?pageSize=500', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!response.ok) throw new Error(`${response.status}: ${await response.text()}`);
+                const data = await response.json();
+                projectsData = (data.projects || []).sort((a, b) => (a.projectId||'').localeCompare(b.projectId||''));
+                renderDropdownItems('project', document.getElementById('projectDropdownItems'), projectsData);
+                document.getElementById('projectStatus').textContent = `✅ ${projectsData.length}`;
+                log(`Found ${projectsData.length} accessible projects.`, 'success');
+            } catch (e) {
+                setDropdownError('project', `Failed: ${e.message}`); document.getElementById('projectStatus').textContent = '❌';
+                log(`Could not list projects automatically (${e.message}). You can type your Project ID manually.`, 'warn');
+            }
+        }
+
+        async function fetchDatabases(projectId) {
+            const token = getToken(); if (!token || !projectId) return;
+            
+            // Instantly populate (default) database so UI never hangs
+            databasesData = [{ name: '(default)', type: 'DATASTORE_MODE' }];
+            renderDropdownItems('database', document.getElementById('databaseDropdownItems'), databasesData);
+            document.getElementById('databaseStatus').textContent = '✅ 1';
+            log(`Database scope ready: "(default)"`, 'info');
+
+            // Background discovery with 2s timeout
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+                const response = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases`, { 
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                if (response.ok) { 
+                    const data = await response.json(); 
+                    if (data.databases?.length) {
+                        databasesData = data.databases;
+                        renderDropdownItems('database', document.getElementById('databaseDropdownItems'), databasesData);
+                        document.getElementById('databaseStatus').textContent = `✅ ${databasesData.length}`;
+                        log(`Found ${databasesData.length} database(s).`, 'success');
+                    }
+                }
+            } catch (e) {
+                // Keep instant (default) database if background check times out or fails
+            }
+        }
+
+        function buildRunQueryUrl(projectId, databaseId) {
+            databaseId = sanitizeDatabaseId(databaseId);
+            const base = `https://datastore.googleapis.com/v1/projects/${projectId}:runQuery`;
+            if (!databaseId) return base;
+            return `${base}?databaseId=${databaseId}`;
+        }
+
+        function buildCommitUrl(projectId, databaseId) {
+            databaseId = sanitizeDatabaseId(databaseId);
+            const base = `https://datastore.googleapis.com/v1/projects/${projectId}:commit`;
+            if (!databaseId) return base;
+            return `${base}?databaseId=${databaseId}`;
+        }
+
+        async function apiPost(url, body, retries = 3) {
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    const res = await fetch(url, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+                    const text = await res.text();
+                    if (!res.ok) {
+                        if ((res.status >= 500 || res.status === 429) && attempt < retries) {
+                            await new Promise(r => setTimeout(r, 1000 * attempt));
+                            continue;
+                        }
+                        throw new Error(`HTTP ${res.status}: ${text}`);
+                    }
+                    return JSON.parse(text);
+                } catch (err) {
+                    if (attempt >= retries) throw err;
+                    await new Promise(r => setTimeout(r, 1000 * attempt));
+                }
+            }
+        }
+
+        async function fetchKinds(databaseId) {
+            const token = getToken(); 
+            const projectId = document.getElementById('projectIdHidden').value.trim() || document.getElementById('projectManualInput').value.trim();
+            document.getElementById('logContainer').style.display = 'block';
+            if (!token || !projectId) { setDropdownError('kind', 'Missing token or project ID'); return; }
+            setDropdownLoading('kind', 'Loading kinds...'); kindsData = []; columnsData = [];
+            const url = buildRunQueryUrl(projectId, databaseId);
+            log(`Fetching kinds for project "${projectId}"...`, 'info');
+
+            try {
+                const data = await apiPost(url, { query: { kind: [{ name: '__kind__' }], limit: 500 } });
+                const names = (data.batch?.entityResults || []).map(r => { const p = r.entity?.key?.path || []; return p[p.length - 1]?.name || p[p.length - 1]?.id || ''; }).filter(n => n && !n.startsWith('__'));
+                if (names.length > 0) { kindsData = names.sort().map(n => ({ kind_name: n })); renderDropdownItems('kind', document.getElementById('kindDropdownItems'), kindsData); document.getElementById('kindStatus').textContent = `✅ ${kindsData.length}`; log(`✅ Discovered ${kindsData.length} kinds`, 'success'); return; }
+            } catch (e) { log(`Metadata query failed: ${e.message}`, 'warn'); }
+
+            setDropdownError('kind', 'Could not fetch kinds.'); document.getElementById('kindStatus').textContent = '❌';
+            log('Notice: Auto kind discovery unavailable. Type kind name manually.', 'warn');
+        }
+
+        async function fetchColumns(kindName) {
+            const token = getToken(); 
+            const projectId = document.getElementById('projectIdHidden').value.trim() || document.getElementById('projectManualInput').value.trim();
+            const databaseId = sanitizeDatabaseId(document.getElementById('databaseIdHidden').value.trim() || document.getElementById('databaseManualInput').value.trim());
+
+            document.getElementById('logContainer').style.display = 'block';
+            if (!token || !projectId || !kindName) { setDropdownError('column', 'Missing required details'); return; }
+            setDropdownLoading('column', 'Loading properties...'); columnsData = [];
+            const url = buildRunQueryUrl(projectId, databaseId);
+
+            try {
+                const data = await apiPost(url, { query: { kind: [{ name: kindName }], limit: 15 } });
+                const seen = new Set();
+                (data.batch?.entityResults || []).forEach(r => { Object.entries(r.entity?.properties || {}).forEach(([k, v]) => { if (!k.startsWith('__') && !seen.has(k)) { seen.add(k); const typeKey = Object.keys(v).find(t => t !== 'excludeFromIndexes') || 'stringValue'; columnsData.push({ property_name: k, property_type: typeKey.replace('Value', '') }); } }); });
+                if (columnsData.length > 0) { columnsData.sort((a, b) => a.property_name.localeCompare(b.property_name)); renderDropdownItems('column', document.getElementById('columnDropdownItems'), columnsData); document.getElementById('columnStatus').textContent = `✅ ${columnsData.length}`; log(`✅ Sampled ${columnsData.length} properties`, 'success'); return; }
+            } catch (e) { log(`Sampling failed: ${e.message}`, 'warn'); }
+
+            setDropdownError('column', 'No properties sampled.'); document.getElementById('columnStatus').textContent = '❌';
+        }
+
+        function validateAndParseCSV(text) {
+            if (!text || !text.trim()) {
+                return { success: false, error: 'CSV content is empty.' };
+            }
+            const lines = text.trim().split(/\r\n|\n/).filter(l => l.trim().length > 0);
+            if (lines.length === 0) {
+                return { success: false, error: 'CSV file contains no readable lines.' };
+            }
+
+            const rawHeader = lines[0];
+            const headerParts = rawHeader.split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toUpperCase());
+            const oldIdx = headerParts.indexOf('OLD');
+            const newIdx = headerParts.indexOf('NEW');
+
+            if (oldIdx === -1 || newIdx === -1) {
+                return { 
+                    success: false, 
+                    error: `Malformed CSV Header: Missing required "OLD" and "NEW" columns. Found headers: [${headerParts.join(', ')}]. First line must be header (e.g. OLD,NEW).` 
+                };
+            }
+
+            if (lines.length === 1) {
+                return { success: false, error: 'Malformed CSV: Header row found, but no data rows were provided.' };
+            }
+
+            const mapping = new Map();
+            const malformedLines = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                const lineNum = i + 1;
+                const quoteCount = (line.match(/"/g) || []).length;
+                if (quoteCount % 2 !== 0) {
+                    return { success: false, error: `Malformed CSV on Line ${lineNum}: Unclosed syntax quote (") detected.` };
+                }
+
+                const parts = line.split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
+                if (parts.length < Math.max(oldIdx, newIdx) + 1) {
+                    malformedLines.push(`Line ${lineNum} (Found ${parts.length} column(s), expected at least 2)`);
+                    continue;
+                }
+
+                const oldVal = parts[oldIdx];
+                const newVal = parts[newIdx];
+                if (oldVal !== undefined && newVal !== undefined) {
+                    mapping.set(oldVal, newVal);
+                }
+            }
+
+            if (malformedLines.length > 0 && mapping.size === 0) {
+                return { success: false, error: `Malformed CSV Data: Details: ${malformedLines.slice(0, 3).join('; ')}` };
+            }
+
+            if (mapping.size === 0) {
+                return { success: false, error: 'Malformed CSV: Could not extract any valid OLD -> NEW mapping rows.' };
+            }
+
+            return { success: true, mapping: mapping, count: mapping.size, warnings: malformedLines };
+        }
+
+        function renderMappingPreview(mapping) {
+            const preview = document.getElementById('mappingPreview');
+            preview.style.display = 'block';
+            let html = '';
+            mapping.forEach((newVal, oldVal) => {
+                html += `<div class="mapping-row"><span class="mapping-old">${escapeHtml(oldVal)}</span><span class="mapping-arrow">→</span><span class="mapping-new">${escapeHtml(newVal)}</span></div>`;
+            });
+            preview.innerHTML = html;
+        }
+
+        function checkAndShowCSVStatus(text) {
+            if (!text || !text.trim()) {
+                hideAlerts();
+                document.getElementById('mappingPreview').style.display = 'none';
+                return;
+            }
+            const res = validateAndParseCSV(text);
+            if (!res.success) {
+                valueMapping.clear();
+                document.getElementById('mappingPreview').style.display = 'none';
+                showAlert('errorAlert', `❌ Malformed CSV File: ${res.error}`);
+                log(`Malformed CSV Error: ${res.error}`, 'error');
+            } else {
+                valueMapping = res.mapping;
+                hideAlerts();
+                let msg = `✅ Valid CSV: Successfully parsed ${res.count} mapping rules.`;
+                if (res.warnings && res.warnings.length > 0) {
+                    msg += ` (Skipped ${res.warnings.length} malformed line(s)).`;
+                }
+                showAlert('successAlert', msg);
+                log(msg, 'success');
+                renderMappingPreview(res.mapping);
+            }
+        }
+
+        function previewMapping() {
+            let csvText = document.getElementById('csvText').value.trim();
+            const file = document.getElementById('csvFile').files[0];
+            if (file && !csvText) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    document.getElementById('csvText').value = e.target.result;
+                    checkAndShowCSVStatus(e.target.result);
+                };
+                reader.readAsText(file);
+                return;
+            }
+            checkAndShowCSVStatus(csvText);
+        }
+
+        function escapeHtml(text) { const d = document.createElement('div'); d.appendChild(document.createTextNode(text)); return d.innerHTML; }
+        function showAlert(id, message) { const el = document.getElementById(id); el.innerHTML = message; el.style.display = 'flex'; }
+        function hideAlerts() { document.querySelectorAll('.alert').forEach(el => el.style.display = 'none'); }
+        function log(message, type = 'info') { const c = document.getElementById('logContainer'); c.style.display = 'block'; const e = document.createElement('div'); e.className = `log-entry log-${type}`; e.textContent = `[${new Date().toLocaleTimeString()}] ${message}`; c.appendChild(e); c.scrollTop = c.scrollHeight; }
+
+        async function validateConnection() {
+            const projectId = document.getElementById('projectIdHidden').value || document.getElementById('projectManualInput').value.trim();
+            const databaseId = sanitizeDatabaseId(document.getElementById('databaseIdHidden').value || document.getElementById('databaseManualInput').value.trim());
+            const kindName = document.getElementById('kindNameHidden').value || document.getElementById('kindManualInput').value.trim();
+            if (!projectId) { showAlert('errorAlert', 'Please enter or select a Project ID.'); return; }
+            if (!kindName) { showAlert('errorAlert', 'Please enter or select a Kind Name.'); return; }
+            showAlert('warningAlert', 'Validating connection...');
+            try {
+                await apiPost(buildRunQueryUrl(projectId, databaseId), { query: { kind: [{ name: kindName }], limit: 1 } });
+                hideAlerts(); showAlert('successAlert', '✅ Connection validated successfully!');
+            } catch (e) { hideAlerts(); showAlert('errorAlert', `❌ Validation failed: ${e.message}`); }
+        }
+
+        async function runReplacement() {
+            if (isRunning) { shouldStop = true; document.getElementById('runBtnText').textContent = 'Stopping...'; return; }
+            const projectId = document.getElementById('projectIdHidden').value || document.getElementById('projectManualInput').value.trim();
+            const databaseId = sanitizeDatabaseId(document.getElementById('databaseIdHidden').value || document.getElementById('databaseManualInput').value.trim());
+            const kindName = document.getElementById('kindNameHidden').value || document.getElementById('kindManualInput').value.trim();
+            const columnName = document.getElementById('columnNameHidden').value || document.getElementById('columnManualInput').value.trim();
+            const isDryRun = document.getElementById('dryRun').checked;
+            const isStrict = document.getElementById('strictMatch').checked;
+            const userBatchSize = parseInt(document.getElementById('batchSize')?.value, 10) || 500;
+            const delayMs = parseInt(document.getElementById('delayMs')?.value, 10) || 0;
+
+            if (!projectId || !kindName || !columnName) { showAlert('errorAlert', 'Please ensure Project, Kind, and Column are specified.'); return; }
+            if (valueMapping.size === 0) { showAlert('errorAlert', 'Please upload/parse a CSV mapping first.'); return; }
+
+            isRunning = true; shouldStop = false;
+            document.getElementById('runBtnIcon').textContent = '⏹️'; document.getElementById('runBtnText').textContent = 'Stop';
+            document.getElementById('previewBtn').disabled = true; document.getElementById('validateBtn').disabled = true;
+            document.getElementById('progressContainer').style.display = 'block'; document.getElementById('statsGrid').style.display = 'grid';
+            let stats = { total: 0, matched: 0, updated: 0, skipped: 0, errors: 0 }, cursor = undefined;
+            log(`🚀 TURBO Engine Active: Starting ${isDryRun ? 'DRY RUN' : 'LIVE REPLACEMENT'} on Kind "${kindName}" (Batch Size: ${userBatchSize})...`, 'warn');
+            
+            const startTime = Date.now();
+            try {
+                do {
+                    if (shouldStop) break;
+                    const body = { 
+                        query: { 
+                            kind: [{ name: kindName }], 
+                            limit: userBatchSize 
+                        } 
+                    }; 
+                    if (cursor) body.query.startCursor = cursor;
+                    
+                    const data = await apiPost(buildRunQueryUrl(projectId, databaseId), body);
+                    const mutations = [];
+                    const results = data.batch?.entityResults || [];
+                    if (results.length === 0) {
+                        log('No additional entities returned. Loop completed.', 'info');
+                        break;
+                    }
+
+                    for (const res of results) {
+                        if (shouldStop) break; stats.total++;
+                        const entity = res.entity; if (!entity || !entity.properties || !entity.properties[columnName]) { stats.skipped++; continue; }
+                        const prop = entity.properties[columnName];
+                        const val = prop.stringValue || prop.integerValue || prop.booleanValue || (prop.arrayValue ? JSON.stringify(prop.arrayValue.values) : '');
+                        let newVal = null;
+                        if (isStrict) { if (valueMapping.has(val)) newVal = valueMapping.get(val); }
+                        else { for (const [oldV, newV] of valueMapping.entries()) { if (String(val).includes(oldV)) { newVal = String(val).replace(oldV, newV); break; } } }
+                        
+                        if (newVal !== null) {
+                            stats.matched++;
+                            if (!isDryRun) { 
+                                try { 
+                                    entity.properties[columnName] = { stringValue: String(newVal), excludeFromIndexes: !!prop.excludeFromIndexes }; 
+                                    mutations.push({ update: entity });
+                                } catch (err) { stats.errors++; } 
+                            } else { 
+                                stats.updated++; 
+                            }
+                        } else { stats.skipped++; }
+                    }
+
+                    // Execute live commit mutations in optimal high-speed chunks (max 400 per payload to stay under GCP API limits)
+                    if (mutations.length > 0 && !isDryRun) {
+                        const commitUrl = buildCommitUrl(projectId, databaseId);
+                        const CHUNK_SIZE = 400;
+                        for (let c = 0; c < mutations.length; c += CHUNK_SIZE) {
+                            const chunk = mutations.slice(c, c + CHUNK_SIZE);
+                            try {
+                                await apiPost(commitUrl, { mode: 'NON_TRANSACTIONAL', mutations: chunk });
+                                stats.updated += chunk.length;
+                                log(`⚡ Committed chunk of ${chunk.length} mutations to GCP Datastore.`, 'success');
+                            } catch(commitErr) {
+                                stats.errors += chunk.length;
+                                log(`❌ Commit error: ${commitErr.message}`, 'error');
+                            }
+                        }
+                    }
+
+                    cursor = (data.batch?.moreResults !== 'NO_MORE_RESULTS' && data.batch?.endCursor) ? data.batch?.endCursor : null;
+                    
+                    const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
+                    document.getElementById('progressFill').style.width = (cursor ? Math.min(95, Math.max(10, (stats.total / (stats.total + 100)) * 100)) : 100) + '%';
+                    document.getElementById('progressText').textContent = `Speed: ${(stats.total / (elapsedSec || 1)).toFixed(0)} ent/s | Processed ${stats.total} entities (${stats.updated} ${isDryRun?'matched':'updated'})...`;
+
+                    // Update live stat counters in real time
+                    document.getElementById('statTotal').textContent = stats.total;
+                    document.getElementById('statMatched').textContent = stats.matched;
+                    document.getElementById('statUpdated').textContent = stats.updated;
+                    document.getElementById('statSkipped').textContent = stats.skipped;
+                    document.getElementById('statErrors').textContent = stats.errors;
+
+                    if (delayMs > 0 && cursor) {
+                        await new Promise(r => setTimeout(r, delayMs));
+                    }
+                } while (cursor && !shouldStop);
+
+                const totalSec = ((Date.now() - startTime) / 1000).toFixed(1);
+                document.getElementById('progressFill').style.width = '100%';
+                document.getElementById('progressText').textContent = shouldStop ? 'Stopped by user.' : `Completed in ${totalSec}s!`;
+                log(`🎉 TURBO Complete! Total: ${stats.total} entities in ${totalSec}s (${(stats.total / (totalSec || 1)).toFixed(0)} ent/s). Matched: ${stats.matched}, ${isDryRun?'Preview Matches':'Updated'}: ${stats.updated}`, 'success');
+                showAlert('successAlert', shouldStop ? 'Process stopped.' : `Process completed in ${totalSec} seconds!`);
+            } catch (e) { log(`Fatal error: ${e.message}`, 'error'); showAlert('errorAlert', `Process failed: ${e.message}`); }
+            finally {
+                isRunning = false; shouldStop = false;
+                document.getElementById('runBtnIcon').textContent = '🚀'; document.getElementById('runBtnText').textContent = 'Run Replacement';
+                document.getElementById('previewBtn').disabled = false; document.getElementById('validateBtn').disabled = false;
+                document.getElementById('statTotal').textContent = stats.total; document.getElementById('statMatched').textContent = stats.matched;
+                document.getElementById('statUpdated').textContent = stats.updated; document.getElementById('statSkipped').textContent = stats.skipped;
+                document.getElementById('statErrors').textContent = stats.errors;
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('accessToken').value = '';
+            document.getElementById('csvText').value = '';
+            document.getElementById('csvFile').value = '';
+            document.getElementById('projectManualInput').value = '';
+            document.getElementById('databaseManualInput').value = '(default)';
+            document.getElementById('kindManualInput').value = '';
+            document.getElementById('columnManualInput').value = '';
+            document.getElementById('mappingPreview').style.display = 'none';
+            document.getElementById('mappingPreview').innerHTML = '';
+            document.getElementById('logContainer').innerHTML = '';
+            document.getElementById('logContainer').style.display = 'none';
+            document.getElementById('statsGrid').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'none';
+            resetDropdown('project'); resetDropdown('database'); resetDropdown('kind'); resetDropdown('column');
+            valueMapping.clear();
+            hideAlerts();
+            log('Cleared all fields and reset application state.', 'info');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const csvFileInput = document.getElementById('csvFile');
+            const csvTextInput = document.getElementById('csvText');
+            if (csvFileInput) {
+                csvFileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const text = evt.target.result;
+                        document.getElementById('csvText').value = text;
+                        checkAndShowCSVStatus(text);
+                    };
+                    reader.readAsText(file);
+                });
+            }
+            if (csvTextInput) {
+                csvTextInput.addEventListener('input', function(e) {
+                    checkAndShowCSVStatus(e.target.value);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

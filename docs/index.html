@@ -1,807 +1,1227 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCP Infrastructure Manager - Documentation</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <meta name="description" content="Technical documentation manual for GCP Tools Portal, featuring GCP Infrastructure Manager architecture, code walkthroughs, and animated flowcharts.">
+    <title>GCP Tools Portal - Technical Manual & Documentation</title>
+    
+    <!-- Google Fonts & Icon sets -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Mermaid.js for flowcharts -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    
     <style>
         :root {
-            --bg-body: #f8f9fa;
-            --bg-card: #ffffff;
-            --bg-sidebar: #ffffff;
-            --text-main: #212529;
-            --text-muted: #6c757d;
-            --border-color: #dee2e6;
-            --brand-orange: #f7941d;
-            --brand-orange-dark: #e85d04;
-            --shadow: 0 4px 12px rgba(0,0,0,0.08);
-            --shadow-hover: 0 8px 24px rgba(0,0,0,0.15);
-            --code-bg: #f1f3f5;
-            --code-text: #d63384;
-            --accent-dim: rgba(247, 148, 29, 0.1);
+            --bg-body: #05070c;
+            --bg-card: rgba(15, 23, 42, 0.6);
+            --bg-card-hover: rgba(30, 41, 59, 0.8);
+            --bg-code: #020617;
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-teal: #00d4ff;
+            --accent-purple: #c084fc;
+            --accent-green: #10b981;
+            --accent-amber: #fbbf24;
+            --accent-red: #ff453a;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-title: 'Space Grotesk', sans-serif;
+            --font-code: 'Fira Code', monospace;
         }
-        [data-theme="dark"] {
-            --bg-body: #121212;
-            --bg-card: #1e1e1e;
-            --bg-sidebar: #181818;
-            --text-main: #e0e0e0;
-            --text-muted: #a0a0a0;
-            --border-color: #333333;
-            --shadow: 0 4px 12px rgba(0,0,0,0.3);
-            --shadow-hover: 0 8px 24px rgba(0,0,0,0.5);
-            --code-bg: #2d2d2d;
-            --code-text: #f87171;
-            --accent-dim: rgba(247, 148, 29, 0.05);
+
+        /* Ambient glowing circles */
+        .ambient-glow {
+            position: fixed;
+            width: 50vw;
+            height: 50vw;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.15;
+            filter: blur(120px);
         }
+        #glow-1 {
+            top: -10%;
+            left: -10%;
+            background: radial-gradient(circle, var(--accent-teal) 0%, transparent 70%);
+            animation: floatGlow 25s ease-in-out infinite alternate;
+        }
+        #glow-2 {
+            bottom: -10%;
+            right: -10%;
+            background: radial-gradient(circle, var(--accent-purple) 0%, transparent 70%);
+            animation: floatGlow 30s ease-in-out infinite alternate-reverse;
+        }
+        @keyframes floatGlow {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(8%, 10%) scale(1.15); }
+        }
+
+        html { scroll-behavior: smooth; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
+            font-family: var(--font-main);
             background-color: var(--bg-body);
             color: var(--text-main);
-            min-height: 100vh;
-            transition: background-color 0.3s, color 0.3s;
-            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 40px 20px;
+            overflow-x: hidden;
         }
 
-        h1, h2, h3, h4, h5, h6 {
-            color: var(--text-main) !important;
-        }
+        .container { max-width: 1200px; margin: 0 auto; }
 
-        .text-muted {
-            color: var(--text-muted) !important;
-        }
-
-        [data-theme="dark"] .table {
-            color: var(--text-main) !important;
-            border-color: var(--border-color) !important;
-        }
-        [data-theme="dark"] .table-light {
-            background-color: #2d2d2d !important;
-            color: var(--text-main) !important;
-        }
-        [data-theme="dark"] .table-light th {
-            color: var(--text-main) !important;
-            background-color: #2d2d2d !important;
-        }
-        [data-theme="dark"] td, [data-theme="dark"] th {
-            color: var(--text-main) !important;
-            background-color: var(--bg-card) !important;
-            border-color: var(--border-color) !important;
-        }
-        [data-theme="dark"] .table-striped>tbody>tr:nth-of-type(odd)>* {
-            --bs-table-color-type: var(--text-main) !important;
-            --bs-table-bg-type: #242c37 !important;
-        }
-
-        /* Header */
-        .header-bar {
-            background: var(--bg-card);
-            box-shadow: var(--shadow);
-            padding: 0.8rem 0;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .logo-img {
-            height: 40px;
-            width: auto;
-        }
-        .header-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--text-main);
-            margin: 0;
-        }
-        .theme-toggle {
-            background: none;
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            border-radius: 50%;
-            width: 38px;
-            height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 1.1rem;
-            transition: all 0.2s;
-        }
-        .theme-toggle:hover {
-            background: var(--brand-orange);
-            color: white;
-            border-color: var(--brand-orange);
-        }
-
-        /* Layout */
-        .doc-container {
-            max-width: 1300px;
-            margin: 0 auto;
-            display: flex;
-        }
-        .sidebar {
-            width: 280px;
-            position: sticky;
-            top: 75px;
-            height: calc(100vh - 90px);
-            overflow-y: auto;
-            border-right: 1px solid var(--border-color);
-            padding: 2rem 1rem 2rem 0;
-        }
-        .content-area {
-            flex: 1;
-            padding: 2rem 0 4rem 3rem;
-            max-width: calc(100% - 280px);
-        }
-
-        /* Nav links */
-        .nav-doc {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .nav-doc-item {
-            margin-bottom: 0.5rem;
-        }
-        .nav-doc-link {
-            display: flex;
-            align-items: center;
-            padding: 0.6rem 1rem;
-            color: var(--text-main);
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 500;
-            transition: all 0.2s;
-            font-size: 0.95rem;
-        }
-        .nav-doc-link:hover {
-            background: var(--accent-dim);
-            color: var(--brand-orange);
-        }
-        .nav-doc-link.active {
-            background: var(--brand-orange);
-            color: white !important;
-        }
-        .nav-doc-link i {
-            margin-right: 0.75rem;
-            font-size: 1.1rem;
-        }
-
-        /* Sections */
-        .doc-section {
-            margin-bottom: 4rem;
-            scroll-margin-top: 100px;
-        }
-        .doc-section-title {
-            font-size: 2rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 0.5rem;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .doc-section-title i {
-            color: var(--brand-orange);
-        }
-
-        /* Visual Cards */
-        .info-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: var(--shadow);
-        }
-        .step-num {
-            width: 32px;
-            height: 32px;
-            background: var(--brand-orange);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin-right: 1rem;
-            flex-shrink: 0;
-        }
-
-        /* Code highlight */
-        pre {
-            background: var(--code-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1rem;
+        /* Premium Header */
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--border);
             position: relative;
-            margin: 1rem 0;
         }
-        code {
-            color: var(--code-text);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+
+        .badge {
+            display: inline-block;
+            padding: 6px 18px;
+            border-radius: 9999px;
+            background: rgba(0, 212, 255, 0.08);
+            color: var(--accent-teal);
+            border: 1px solid rgba(0, 212, 255, 0.25);
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
         }
-        pre code {
-            color: var(--text-main);
-            display: block;
-            overflow-x: auto;
+
+        h1 {
+            font-family: var(--font-title);
+            font-size: 3.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent-teal) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
         }
-        .copy-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: var(--bg-body);
-            border: 1px solid var(--border-color);
+
+        .typing-container {
+            display: inline-block;
+            border-right: 2px solid var(--accent-teal);
+            white-space: nowrap;
+            animation: blinkCursor 0.75s step-end infinite;
+            font-size: 1.2rem;
             color: var(--text-muted);
-            border-radius: 4px;
-            padding: 2px 8px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.2s;
         }
-        .copy-btn:hover {
-            background: var(--brand-orange);
-            color: white;
-            border-color: var(--brand-orange);
+        @keyframes blinkCursor {
+            from, to { border-color: transparent; }
+            50% { border-color: var(--accent-teal); }
         }
 
-        /* Badge Diff Styles */
-        .badge-diff {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            font-weight: bold;
-            padding: 3px 8px;
-            border-radius: 4px;
+        /* Top navigation tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 50px;
+            flex-wrap: wrap;
+            position: sticky;
+            top: 20px;
+            z-index: 1000;
+            background: rgba(10, 15, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
         }
-        .badge-add { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
-        .badge-rem { background: rgba(248, 113, 113, 0.15); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.3); }
-        .badge-mod { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
 
-        /* API Table */
-        .api-table th {
+        .tab-btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
             color: var(--text-muted);
             font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
         }
-        .method-badge {
-            font-weight: bold;
-            padding: 2px 6px;
+        .tab-btn:hover {
+            border-color: var(--accent-teal);
+            color: #fff;
+            background: rgba(0, 212, 255, 0.05);
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.15) 0%, rgba(192, 132, 252, 0.1) 100%);
+            border-color: var(--accent-teal);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
+        }
+
+        .section-content {
+            display: none;
+            animation: fadeInUp 0.4s ease-out;
+        }
+        .section-content.active {
+            display: block;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Glass Cards */
+        .glass-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 36px;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            margin-bottom: 30px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: border-color 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(0, 212, 255, 0.18);
+        }
+
+        h2 {
+            font-family: var(--font-title);
+            font-size: 2rem;
+            margin-bottom: 24px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-family: var(--font-title);
+            font-size: 1.4rem;
+            margin: 32px 0 16px;
+            color: var(--accent-teal);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        p { margin-bottom: 20px; color: var(--text-muted); font-size: 1.02rem; }
+
+        code {
+            font-family: var(--font-code);
+            background: rgba(0,0,0,0.4);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: var(--accent-purple);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Animated Mermaid Flowcharts classes */
+        .mermaid {
+            background: rgba(2, 6, 23, 0.6);
+            padding: 24px;
+            border-radius: 16px;
+            margin: 24px 0;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        /* Glowing Flowlines Animation */
+        .mermaid svg .edgePath .path {
+            stroke: var(--accent-teal) !important;
+            stroke-width: 2.5px !important;
+            stroke-dasharray: 8, 8 !important;
+            animation: flowLine 25s linear infinite !important;
+            filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.4));
+        }
+        .mermaid svg .edgePath .arrowheadPath {
+            fill: var(--accent-teal) !important;
+        }
+        .mermaid svg .node rect, 
+        .mermaid svg .node circle, 
+        .mermaid svg .node polygon,
+        .mermaid svg .node path {
+            fill: #0c1220 !important;
+            stroke: var(--accent-teal) !important;
+            stroke-width: 2px !important;
+            filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.15));
+            transition: all 0.3s ease;
+        }
+        .mermaid svg .node:hover rect, 
+        .mermaid svg .node:hover circle, 
+        .mermaid svg .node:hover polygon,
+        .mermaid svg .node:hover path {
+            stroke: var(--accent-purple) !important;
+            filter: drop-shadow(0 0 12px rgba(192, 132, 252, 0.65)) !important;
+        }
+        .mermaid svg .labelText {
+            fill: #fff !important;
+            font-family: var(--font-main) !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+        }
+        @keyframes flowLine {
+            from { stroke-dashoffset: 800; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        /* Vertical Tabs sub-layout for Block Walkthroughs */
+        .walkthrough-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin-top: 30px;
+        }
+        @media(min-width: 992px) {
+            .walkthrough-layout {
+                flex-direction: row;
+            }
+        }
+        
+        .walkthrough-sidebar {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: row;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        @media(min-width: 992px) {
+            .walkthrough-sidebar {
+                width: 260px;
+                flex-direction: column;
+                overflow-x: visible;
+                border-bottom: none;
+                border-right: 1px solid var(--border);
+                padding-bottom: 0;
+                padding-right: 16px;
+            }
+        }
+
+        .subtab-btn {
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .subtab-btn:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.03);
+        }
+        .subtab-btn.active {
+            color: var(--accent-teal);
+            background: rgba(0, 212, 255, 0.05);
+            border-color: rgba(0, 212, 255, 0.15);
+            font-weight: 600;
+        }
+
+        .walkthrough-content {
+            flex: 1;
+            min-width: 0; /* Prevents overflow inside flex container */
+        }
+
+        .subtab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .subtab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Code highlight window layout */
+        .code-window {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin: 20px 0;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .code-header {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-dots {
+            display: flex;
+            gap: 6px;
+        }
+        .code-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .code-dot-red { background: #ff5f56; }
+        .code-dot-yellow { background: #ffbd2e; }
+        .code-dot-green { background: #27c93f; }
+        .code-title {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: var(--font-code);
+        }
+        .code-container {
+            max-height: 480px;
+            overflow-y: auto;
+            padding: 20px;
+            font-family: var(--font-code);
+            font-size: 0.88rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+            background: #030712;
+        }
+        .code-container pre {
+            margin: 0;
+        }
+
+        /* Alert Callouts */
+        .alert-box {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: flex;
+            gap: 14px;
+            border-left: 4px solid transparent;
+        }
+        .alert-box-info {
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            border-left-color: var(--accent-teal);
+            color: #e2e8f0;
+        }
+        .alert-box-info i { color: var(--accent-teal); }
+        .alert-box-warn {
+            background: rgba(251, 191, 36, 0.05);
+            border: 1px solid rgba(251, 191, 36, 0.15);
+            border-left-color: var(--accent-amber);
+            color: #e2e8f0;
+        }
+        .alert-box-warn i { color: var(--accent-amber); }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95rem;
+            background: rgba(0,0,0,0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--accent-teal);
+            font-weight: 600;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge-method {
+            display: inline-block;
+            padding: 2px 8px;
             border-radius: 4px;
             font-size: 0.75rem;
-            display: inline-block;
-            width: 65px;
-            text-align: center;
+            font-weight: 700;
+            text-transform: uppercase;
         }
-        .method-get { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
-        .method-post { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-        .method-patch { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+        .badge-post { background: rgba(0, 212, 255, 0.15); color: var(--accent-teal); border: 1px solid rgba(0,212,255,0.3); }
+        .badge-get { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.3); }
 
-        @media (max-width: 991px) {
-            .sidebar { display: none; }
-            .content-area { padding-left: 0; max-width: 100%; }
+        /* Back to Portal Header Button */
+        .btn-portal-back {
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .btn-portal-back:hover {
+            color: #fff;
+            border-color: var(--accent-teal);
+            background: rgba(0,212,255,0.05);
         }
     </style>
-<base target="_self">
 </head>
 <body>
+    <div class="ambient-glow" id="glow-1"></div>
+    <div class="ambient-glow" id="glow-2"></div>
 
-    <!-- Header -->
-    <header class="header-bar">
-        <div class="container-fluid px-4" style="max-width: 1300px;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    
-                    <span class="header-title">Documentation</span>
+    <div class="container">
+        <header>
+            <a href="../index.html" class="btn-portal-back" id="btn-back-dashboard">
+                <i class="fa-solid fa-arrow-left"></i> Dashboard
+            </a>
+            <span class="badge">Technical Reference Manual</span>
+            <h1>GCP Portal Engineering Manual</h1>
+            <div style="height: 30px;">
+                <div class="typing-container" id="type-subtitle">Loading technical guide index...</div>
+            </div>
+        </header>
+
+        <!-- Dynamic Portal Navigation Tabs -->
+        <nav class="nav-tabs" role="tablist">
+            <button class="tab-btn active" id="tab-copier" onclick="switchMainTab('copier')">
+                <i class="fa-solid fa-arrows-spin"></i> GCP Infra Manager
+            </button>
+            <button class="tab-btn" id="tab-replacer" onclick="switchMainTab('replacer')">
+                <i class="fa-solid fa-shuffle"></i> Datastore Bulk Replacer
+            </button>
+            <button class="tab-btn" id="tab-sweep" onclick="switchMainTab('sweep')">
+                <i class="fa-solid fa-broom"></i> Sweep Secrets Scanner
+            </button>
+            <button class="tab-btn" id="tab-crypto" onclick="switchMainTab('crypto')">
+                <i class="fa-solid fa-key"></i> Crypto AES Vault
+            </button>
+        </nav>
+
+        <!-- ========================================== -->
+        <!-- TAB 1: GCP INFRASTRUCTURE MANAGER -->
+        <!-- ========================================== -->
+        <section class="section-content active" id="sec-copier">
+            <div class="glass-card">
+                <h2><i class="fa-solid fa-layer-group" style="color:var(--accent-teal)"></i> 1. Architectural System Design</h2>
+                <p>The GCP Infrastructure Manager (Datastore Copier) is engineered as an enterprise-grade modular system using TypeScript. It enforces a strict **Clean Architecture (MVVM/Service-Layer)** separation of concerns, decoupling structural logic from rendering routines.</p>
+                
+                <div class="alert-box alert-box-info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div>
+                        <strong>Modern Clean Code Goals:</strong> The codebase is structured with centralized configurations, strict type-safe DOM bindings, reactive subscriber state loops, dependency-injected gateways, and a secure Firestore logs HTTP proxy middleware.
+                    </div>
                 </div>
-                <div class="d-flex align-items-center gap-3">
-                    <a href="../" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1">
-                        <i class="bi bi-arrow-left"></i> Portal Home
-                    </a>
-                    <a href="GCP_Infra_Manager_Documentation.pdf" target="_blank" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1">
-                        <i class="bi bi-file-earmark-pdf-fill"></i> PDF Docs
-                    </a>
-                    <button class="theme-toggle" id="themeToggle" title="Toggle Dark Mode">🌙</button>
+
+                <h3><i class="fa-solid fa-network-wired"></i> Dynamic Operation Flowchart</h3>
+                <p>The following live animated diagram visualizes the interactive modules communication loop and data relay vectors across the browser client, Node.js proxy, and official GCP REST APIs:</p>
+                
+                <div class="mermaid">
+                graph TD
+                    classDef config fill:#0d233a,stroke:#3b82f6,stroke-width:2px,color:#fff;
+                    classDef core fill:#0b2e24,stroke:#10b981,stroke-width:2px,color:#fff;
+                    classDef state fill:#361f4c,stroke:#a855f7,stroke-width:2px,color:#fff;
+                    classDef ui fill:#4c1f1f,stroke:#f43f5e,stroke-width:2px,color:#fff;
+                    classDef server fill:#27272a,stroke:#71717a,stroke-width:2px,color:#fff;
+                    classDef ext fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
+
+                    CONFIG["config.ts (App Config Settings)"]:::config
+                    UTILS["utils.ts (Safe DOM & ErrorBoundary)"]:::core
+                    STATE["state.ts (Pub/Sub Observer State)"]:::state
+                    API["api.ts (DI REST client wrapper)"]:::core
+                    DIFF["diff.ts (JSON Diff & Serializer)"]:::core
+                    AUDIT["audit.ts (Firestore Logs Relayer)"]:::core
+                    UI["ui.ts (Dropdowns, Modals, Views)"]:::ui
+                    APP["app.ts (System Entrypoint Orchestrator)"]:::ui
+                    PROXY["server.js (Audit Log Proxy Middleware)"]:::server
+                    GCP["GCP Cloud APIs (BigQuery / Datastore)"]:::ext
+                    FIRE["GCP Firestore (Audit Collection)"]:::ext
+
+                    APP -->|Boot & Bind event hooks| UTILS
+                    APP -->|Inject authorization credentials| API
+                    STATE -->|Notify observer updates| UI
+                    APP -->|Coordinate events| UI
+                    UI -->|Call REST services| API
+                    UI -->|Format differences & serialize| DIFF
+                    API -->|POST logs securely| PROXY
+                    API -->|Direct HTTPS calls| GCP
+                    PROXY -->|Token verification & insert logs| FIRE
+                    AUDIT -->|Relay log events| PROXY
+                    UTILS -->|Catch & propagate boundary errors| AUDIT
+                    CONFIG -->|Inject static parameters| API
                 </div>
             </div>
-        </div>
-    </header>
 
-    <!-- Main Container -->
-    <div class="container-fluid px-4">
-        <div class="doc-container">
-            
-            <!-- Sidebar Navigation -->
-            <aside class="sidebar">
-                <ul class="nav-doc">
-                    <li class="nav-doc-item">
-                        <a href="#section-overview" class="nav-doc-link active" onclick="activateLink(this)">
-                            <i class="bi bi-book"></i> Overview
-                        </a>
-                    </li>
-                    <li class="nav-doc-item">
-                        <a href="#section-auth" class="nav-doc-link" onclick="activateLink(this)">
-                            <i class="bi bi-shield-lock"></i> Authentication
-                        </a>
-                    </li>
-                    <li class="nav-doc-item">
-                        <a href="#section-bq" class="nav-doc-link" onclick="activateLink(this)">
-                            <i class="bi bi-table"></i> BigQuery Sync
-                        </a>
-                    </li>
-                    <li class="nav-doc-item">
-                        <a href="#section-queries" class="nav-doc-link" onclick="activateLink(this)">
-                            <i class="bi bi-clock-history"></i> Scheduled Queries
-                        </a>
-                    </li>
-                    <li class="nav-doc-item">
-                        <a href="#section-datastore" class="nav-doc-link" onclick="activateLink(this)">
-                            <i class="bi bi-database-fill-gear"></i> Datastore Transfer
-                        </a>
-                    </li>
-                    <li class="nav-doc-item">
-                        <a href="#section-sweep" class="nav-doc-link" onclick="activateLink(this)">
-                            <i class="bi bi-shield-shaded"></i> Sweep Scanner
-                        </a>
-                    </li>
-                    <li class="nav-doc-item">
-                        <a href="#section-api" class="nav-doc-link" onclick="activateLink(this)">
-                            <i class="bi bi-hdd-network"></i> API Reference
-                        </a>
-                    </li>
+            <div class="glass-card">
+                <h2><i class="fa-solid fa-shield-halved" style="color:var(--accent-purple)"></i> 2. Secure Auditing & Credential Shielding</h2>
+                <p>Direct browser connections to GCP databases pose security risks. To mitigate token hijacking and credential interception, Firestore operations are strictly proxied. Under the hood, log requests targeting Google Firestore are routed to the server middleware endpoint <code>/api/audit_logs</code>.</p>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action / Target</th>
+                            <th>Relative Client URL</th>
+                            <th>GCP Server Destination Endpoint</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge-method badge-post">POST</span> Dispatch log</td>
+                            <td><code>/api/audit_logs/documents</code></td>
+                            <td><code>https://firestore.googleapis.com/v1/projects/.../documents/audit_logs</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-method badge-post">POST</span> Retrieve history</td>
+                            <td><code>/api/audit_logs/runQuery</code></td>
+                            <td><code>https://firestore.googleapis.com/v1/projects/...:runQuery</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="glass-card">
+                <h2><i class="fa-solid fa-gears" style="color:var(--accent-teal)"></i> 2.5 Core Operations Architecture & Execution Pipelines</h2>
+                <p>The GCP Infrastructure Manager runs 4 distinct pipeline execution channels. Below is the block-wise engineering specification for each workflow along with dynamic animated flowchart mappings:</p>
+
+                <h3>📊 A. BigQuery Table Schema Diff Pipeline</h3>
+                <p>Ensures structural consistency before copying dataset items. The pipeline requests table listings for both source and target configurations, indexing fields by their path identifier. It runs deep-equal comparisons across all fields (checking parameters like name, data-type, and mode tags) to pinpoint mismatch anomalies.</p>
+                
+                <div class="mermaid">
+                graph TD
+                    classDef default fill:#0c1220,stroke:#00d4ff,stroke-width:2,color:#fff;
+                    classDef flow fill:#1e1b4b,stroke:#6366f1,stroke-width:2,color:#fff;
+
+                    BQ1[Select Source & Target BQ Projects] --> BQ2[Fetch Datasets list for both Projects]
+                    BQ2 --> BQ3[Fetch Tables schema in selected Datasets]
+                    BQ3 --> BQ4[Build Source & Target Field Map key: dataset.table]
+                    BQ4 --> BQ5[Compare Fields metadata: Name, Type, Mode]
+                    BQ5 --> BQ6{Fields Match?}
+                    BQ6 -->|Yes| BQ7[Mark table status: Identical]
+                    BQ6 -->|No / Missing| BQ8[Generate color-coded schema differences grid]
+                </div>
+
+                <h3 style="margin-top:40px; color:var(--accent-purple)">📊 B. Scheduled Query Migration Pipeline</h3>
+                <p>Transfers BigQuery Transfer Configurations seamlessly. The client pulls active scheduled query definitions from the GCP Transfer Config Service, extracts core metadata variables (execution schedule, SQL script, and target tables), and provides a warning confirmation modal before committing the creation transaction to the target project namespace.</p>
+
+                <div class="mermaid">
+                graph TD
+                    classDef default fill:#0c1220,stroke:#00d4ff,stroke-width:2,color:#fff;
+
+                    Q1[Fetch Scheduled Queries list via Transfer Configs API] --> Q2[Parse query metadata: displayName, params, state]
+                    Q2 --> Q3[Render Scheduled Queries difference grid]
+                    Q3 --> Q4[User clicks Copy query]
+                    Q4 --> Q5[Build copy warning model popup]
+                    Q5 --> Q6[POST create request to Target Project API]
+                    Q6 --> Q7[Write operational transaction log in audit history]
+                </div>
+
+                <h3 style="margin-top:40px; color:var(--accent-green)">📊 C. Datastore Paginated Entity Fetch & Overwrite Pipeline</h3>
+                <p>Pulls entities sequentially to prevent browser memory exhaust. The system fetches records in sequential blocks of 50 using Google Datastore's cursor pagination. Fetched entities are normalized into standard JSON strings (stripping Google wrapper envelopes like <code>mapValue</code>), compared keys-by-keys, and highlighted according to mismatch statuses.</p>
+
+                <div class="mermaid">
+                graph TD
+                    classDef default fill:#0c1220,stroke:#00d4ff,stroke-width:2,color:#fff;
+
+                    DS1[Initialize Cursor pagination: cursor = null] --> DS2[Fetch 50 entities via runQuery REST API]
+                    DS2 --> DS3[Extract next page endCursor token]
+                    DS3 --> DS4[Process entities: Convert Datastore mapValue/arrayValue to clean JSON]
+                    DS4 --> DS5[Compare Source entity JSON with Target entity JSON]
+                    DS5 --> DS6{Different or Missing properties?}
+                    DS6 -->|Yes| DS7[Add entity row to diff grid & color differences]
+                    DS6 -->|No| DS8[Mark row: Identical]
+                    DS7 --> DS9{More pages && !Cancelled?}
+                    DS8 --> DS9
+                    DS9 -->|Yes| DS10[Update cursor & fetch next batch]
+                    DS10 --> DS2
+                    DS9 -->|No| DS11[Complete scan & draw statistics panel]
+                </div>
+
+                <h3 style="margin-top:40px; color:var(--accent-amber)">📊 D. Strict JSON Editor Validation & Automatic Minification Pipeline</h3>
+                <p>Ensures syntax validity and storage compaction. When a user modifies nested property blocks, the system runs strict <code>JSON.parse</code> evaluations. If syntax check fails, save buttons are locked and detailed validation warnings are shown. On successful submission, JSON keys are minified back to single line representations automatically.</p>
+
+                <div class="mermaid">
+                graph TD
+                    classDef default fill:#0c1220,stroke:#00d4ff,stroke-width:2,color:#fff;
+
+                    JE1[User opens inline JSON Editor Modal] --> JE2[Extract raw JSON value from hidden textarea]
+                    JE2 --> JE3[Render side-by-side editing textareas]
+                    JE3 --> JE4[Detect keypress input in Editor window]
+                    JE4 --> JE5[Run JSON.parse syntax check on input text]
+                    JE5 --> JE6{Valid JSON syntax?}
+                    JE6 -->|Yes| JE7[Enable Save Button & render visual diff panel]
+                    JE6 -->|No| JE8[Disable Save Button & display detailed SyntaxError notice]
+                    JE7 --> JE9[User clicks Apply Changes]
+                    JE9 --> JE10[Minify JSON string: strip all tabs, spaces, newlines]
+                    JE10 --> JE11[Commit minified string payload to Google Datastore REST API]
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h2><i class="fa-solid fa-code" style="color:var(--accent-green)"></i> 3. Block-by-Block Codebase Anatomy</h2>
+                <p>Select a module to view its architecture details, Clean Code rationale, and specific technical code blocks:</p>
+                
+                <div class="walkthrough-layout">
+                    <div class="walkthrough-sidebar" role="tablist">
+                        <button class="subtab-btn active" id="sbtn-config" onclick="switchSubTab('config')"><i class="fa-solid fa-gear"></i> config.ts</button>
+                        <button class="subtab-btn" id="sbtn-utils" onclick="switchSubTab('utils')"><i class="fa-solid fa-shield-cat"></i> utils.ts</button>
+                        <button class="subtab-btn" id="sbtn-state" onclick="switchSubTab('state')"><i class="fa-solid fa-wave-square"></i> state.ts</button>
+                        <button class="subtab-btn" id="sbtn-api" onclick="switchSubTab('api')"><i class="fa-solid fa-globe"></i> api.ts</button>
+                        <button class="subtab-btn" id="sbtn-diff" onclick="switchSubTab('diff')"><i class="fa-solid fa-code-compare"></i> diff.ts</button>
+                        <button class="subtab-btn" id="sbtn-audit" onclick="switchSubTab('audit')"><i class="fa-solid fa-receipt"></i> audit.ts</button>
+                        <button class="subtab-btn" id="sbtn-ui" onclick="switchSubTab('ui')"><i class="fa-solid fa-desktop"></i> ui.ts & app.ts</button>
+                        <button class="subtab-btn" id="sbtn-server" onclick="switchSubTab('server')"><i class="fa-solid fa-server"></i> server.js</button>
+                    </div>
+
+                    <div class="walkthrough-content">
+                        <!-- subtab: config -->
+                        <div class="subtab-content active" id="ssec-config">
+                            <h3>Module: `config.ts` (Central Configuration)</h3>
+                            <p>To eliminate magic strings, raw API URLs, and hardcoded database targets, all configuration settings are consolidated inside `config.ts` using clean export constants.</p>
+                            
+                            <h4>Key Architectural Highlights:</h4>
+                            <ul>
+                                <li><strong>REST URL Generics:</strong> Uses dynamically computed functions (such as <code>DATASTORE_RUN_QUERY_URL</code>) that receive project and database ID tags, formats target paths, and handles database name mappings.</li>
+                                <li><strong>Proxy Redirection Paths:</strong> Exposes the client-side proxy route <code>/api/audit_logs</code>. This intercepts audit transactions on the node backend to attach secret keys, preventing token exposures.</li>
+                            </ul>
+                            
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">config.ts</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>export const CONFIG = {
+    DATASTORE_RUN_QUERY_URL: (pid: string, db?: string) => 
+        `https://datastore.googleapis.com/v1/projects/${pid}:runQuery` + (db ? `?databaseId=${db}` : ''),
+    DATASTORE_LOOKUP_URL: (pid: string, db?: string) => 
+        `https://datastore.googleapis.com/v1/projects/${pid}:lookup` + (db ? `?databaseId=${db}` : ''),
+    DATASTORE_COMMIT_URL: (pid: string, db?: string) => 
+        `https://datastore.googleapis.com/v1/projects/${pid}:commit` + (db ? `?databaseId=${db}` : ''),
+    AUDIT_LOG_URL: "/api/audit_logs/documents",
+    AUDIT_QUERY_URL: "/api/audit_logs/runQuery"
+};</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: utils -->
+                        <div class="subtab-content" id="ssec-utils">
+                            <h3>Module: `utils.ts` (Type-Safe Element Helpers & Centralized ErrorBoundary)</h3>
+                            <p>Maintains runtime sanity through compiler type-safety checks and houses the application's central <code>ErrorBoundary</code> mechanism.</p>
+                            
+                            <h4>Detailed Operations Walkthrough:</h4>
+                            <ul>
+                                <li><strong>DOM Casting Guard Rails:</strong> Elements are retrieved via <code>getInput</code> or <code>getButton</code> helpers. If elements are absent, an immediate error with stack context is thrown, preventing undefined reference crashes later.</li>
+                                <li><strong>ErrorBoundary Exception Relay:</strong> The <code>ErrorBoundary.handle</code> function captures stack traces, formats error labels, launches customized toast notification cards, and automatically dispatches audit records to <code>/api/audit_logs/documents</code> to track failures inside Firestore.</li>
+                            </ul>
+                            
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">utils.ts</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>export const Utils = {
+    getInput: (id: string): HTMLInputElement => {
+        const el = document.getElementById(id);
+        if (!el) throw new Error(`Input element #${id} not found`);
+        return el as HTMLInputElement;
+    },
+    getButton: (id: string): HTMLButtonElement => {
+        const el = document.getElementById(id);
+        if (!el) throw new Error(`Button element #${id} not found`);
+        return el as HTMLButtonElement;
+    },
+    toast: (msg: string, type: 'info' | 'err') => {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const card = document.createElement('div');
+        card.className = `toast-card toast-${type}`;
+        card.innerHTML = `<i class="fa-solid ${type === 'err' ? 'fa-circle-xmark' : 'fa-circle-check'}"></i> <span>${msg}</span>`;
+        container.appendChild(card);
+        setTimeout(() => card.remove(), 4000);
+    }
+};
+
+export const ErrorBoundary = {
+    handle: async (error: Error, context: string): Promise<void> => {
+        console.error(`[${context}] Trace:`, error);
+        Utils.toast(error.message, 'err');
+        try {
+            const { AuditLog } = await import('./audit');
+            await AuditLog.addLog(`EXCEPT_${context.toUpperCase()}`, "—", "—", error.message, "FAILED");
+        } catch(e) {}
+    }
+};</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: state -->
+                        <div class="subtab-content" id="ssec-state">
+                            <h3>Module: `state.ts` (Reactive state observer)</h3>
+                            <p>Decouples logic executions from interface layout updates by implementing the Publisher-Subscriber observer pattern.</p>
+                            
+                            <h4>Detailed Operations Walkthrough:</h4>
+                            <ul>
+                                <li><strong>Global State Store:</strong> Maintains unified properties for active connection configuration parameters, lists of BigQuery tables, selected Datastore entities, and GCP bearer authentication keys.</li>
+                                <li><strong>Pub/Sub Observer Event Loop:</strong> Component elements register view repainters via <code>State.subscribe(callback)</code>. When operations modify data fields, a single call to <code>State.notify()</code> updates all observers.</li>
+                            </ul>
+                            
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">state.ts</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>type Listener = (state: any) => void;
+const subscribers = new Set<Listener>();
+
+export const State = {
+    token: '',
+    authEmail: '',
+    bq: { src: '', tgt: '', srcDs: '', tgtDs: '', tables: [] },
+    ds: { src: '', tgt: '', kind: '', entities: [] },
+    
+    subscribe: (fn: Listener) => { subscribers.add(fn); },
+    notify: () => { subscribers.forEach(fn => fn(State)); }
+};</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: api -->
+                        <div class="subtab-content" id="ssec-api">
+                            <h3>Module: `api.ts` (Dependency Injection REST Client)</h3>
+                            <p>Encapsulates all communications targeting Google Cloud Services via direct REST connections.</p>
+                            
+                            <h4>Detailed Operations Walkthrough:</h4>
+                            <ul>
+                                <li><strong>Dynamic Bearer Auth Injection:</strong> Avoids static global credential declarations. Authorization variables are programmatically assigned via <code>Api.setToken(token)</code> on successful authentication, dynamically appending standard <code>Bearer</code> values to outgoing headers.</li>
+                                <li><strong>Datastore URL Mapping:</strong> Checks query configurations dynamically. If database ID selections are empty or set to <code>(default)</code>, it maps references to root parameters automatically to prevent REST routing faults.</li>
+                            </ul>
+                            
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">api.ts</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>let activeToken = '';
+
+export const Api = {
+    setToken: (token: string) => { activeToken = token; },
+    
+    fetch: async (url: string, opts: RequestInit = {}) => {
+        opts.headers = {
+            ...opts.headers,
+            'Authorization': `Bearer ${activeToken}`,
+            'Content-Type': 'application/json'
+        };
+        const res = await fetch(url, opts);
+        if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+        return res.json();
+    },
+    
+    runDatastoreQuery: async (pid: string, body: any, databaseId?: string) => {
+        const db = (databaseId === '(default)' || !databaseId) ? '' : databaseId;
+        const url = CONFIG.DATASTORE_RUN_QUERY_URL(pid, db);
+        return Api.fetch(url, { method: 'POST', body: JSON.stringify(body) });
+    }
+};</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: diff -->
+                        <div class="subtab-content" id="ssec-diff">
+                            <h3>Module: `diff.ts` (JSON Diffing Engine & Serializer)</h3>
+                            <p>Processes entity difference comparisons and formats local payloads before executing datastore commits.</p>
+                            
+                            <h4>Detailed Operations Walkthrough:</h4>
+                            <ul>
+                                <li><strong>Nested Datastore Normalization:</strong> Recursively normalizes complex, wrapped Google Datastore elements (like <code>mapValue</code>, <code>arrayValue</code>, and <code>entityValue</code>) into clean, standard JSON formats for direct visual comparison.</li>
+                                <li><strong>Performance-Centric Collapsing:</strong> Identical large inner arrays or object blocks are summarized (e.g. <code>"[Array of 500 items] (identical)"</code>) to prevent visual DOM rendering bottlenecks in the browser.</li>
+                                <li><strong>Automatic Minification Filter:</strong> Sanitizes JSON text inputs by stripping tabs, carriage returns, and spaces before posting payloads to storage, conserving GCP capacity bytes.</li>
+                            </ul>
+                            
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">diff.ts</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>export const minifyJsonString = (str: string): string => {
+    try {
+        const parsed = JSON.parse(str);
+        return JSON.stringify(parsed); // Minified string (no spaces/newlines)
+    } catch (e) {
+        return str; // Return as-is if normal string
+    }
+};
+
+export const collapseIdenticalNested = (obj: any): any => {
+    if (Array.isArray(obj)) {
+        return `[Array of ${obj.length} items] (identical)`;
+    } else if (obj && typeof obj === 'object') {
+        return `{Object of ${Object.keys(obj).length} keys} (identical)`;
+    }
+    return obj;
+};</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: audit -->
+                        <div class="subtab-content" id="ssec-audit">
+                            <h3>Module: `audit.ts` (Firestore Logs Client)</h3>
+                            <p>Records administrator operations and routes them to the backend server logging service.</p>
+                            
+                            <h4>Detailed Operations Walkthrough:</h4>
+                            <ul>
+                                <li><strong>Structured Log Payload:</strong> Logs contain detailed transaction schemas, tracking properties like timestamp, operation identifiers, source project namespaces, target targets, operational state descriptions, and execution status labels.</li>
+                                <li><strong>Proxy Middleware Delivery:</strong> Sends queries relative to the client endpoint <code>/api/audit_logs/documents</code> to leverage server-side proxy route protection.</li>
+                            </ul>
+                            
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">audit.ts</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>import { CONFIG } from './config';
+import { Api } from './api';
+
+export const AuditLog = {
+    addLog: async (op: string, src: string, tgt: string, details: string, status: string) => {
+        const body = {
+            fields: {
+                timestamp: { stringValue: new Date().toISOString() },
+                operation: { stringValue: op },
+                source: { stringValue: src },
+                target: { stringValue: tgt },
+                details: { stringValue: details },
+                status: { stringValue: status }
+            }
+        };
+        return Api.fetch(CONFIG.AUDIT_LOG_URL, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+    }
+};</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: ui -->
+                        <div class="subtab-content" id="ssec-ui">
+                            <h3>Modules: `ui.ts` & `app.ts` (View Presenter & Controller)</h3>
+                            <p>Handles the user interface layout, listens to DOM inputs, displays comparison matrices, and handles overlay popups.</p>
+                            
+                            <h4>Detailed Operations Walkthrough:</h4>
+                            <ul>
+                                <li><strong>Volatile Access Tokens Cache:</strong> Looks up local storage tags at start. Injects credentials securely into <code>Api.setToken</code> if cached tokens exist.</li>
+                                <li><strong>Dynamic Event Handlers:</strong> Maps select inputs to change events, controls the JSON editor modals, renders inline difference previews, and triggers alerts before database modifications.</li>
+                            </ul>
+                            
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">app.ts</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>import { State } from './state';
+import { Api } from './api';
+import { UI } from './ui';
+
+window.onload = () => {
+    const savedToken = localStorage.getItem('access_token');
+    if (savedToken) {
+        State.token = savedToken;
+        Api.setToken(savedToken); // Programmatic injection
+    }
+    
+    // Bind state repainters
+    State.subscribe(() => {
+        UI.initDropdowns();
+    });
+    
+    App.init();
+};</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: server -->
+                        <div class="subtab-content" id="ssec-server">
+                            <h3>Module: `server.js` (Logs Security Proxy Server)</h3>
+                            <p>Runs a server middleware proxy to shield connection endpoints and protect database tokens.</p>
+                            
+                            <h4>Detailed Operations Walkthrough:</h4>
+                            <ul>
+                                <li><strong>Secure File Serving:</strong> Employs <code>path.normalize</code> bounds mapping to block directory traversal attempts, reading file types securely.</li>
+                                <li><strong>Audit Logs Reverse Proxy:</strong> Catches HTTP log calls on <code>/api/audit_logs</code>. Decodes client-side Bearer authorization headers, verifies GCP permission tokens, and proxies queries directly to Firestore REST targets.</li>
+                            </ul>
+                            
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">server.js</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>const http = require('http');
+const https = require('https');
+
+const server = http.createServer((req, res) => {
+    let reqUrl = req.url.split('?')[0];
+    
+    if (reqUrl.startsWith('/api/audit_logs')) {
+        let targetUrl = reqUrl === '/api/audit_logs/runQuery'
+            ? 'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery'
+            : 'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs';
+        
+        let bodyData = '';
+        req.on('data', chunk => { bodyData += chunk; });
+        req.on('end', () => {
+            const parsedUrl = new URL(targetUrl);
+            const proxyReq = https.request({
+                hostname: parsedUrl.hostname,
+                path: parsedUrl.pathname,
+                method: req.method,
+                headers: {
+                    'Authorization': req.headers['authorization'] || '',
+                    'Content-Type': 'application/json'
+                }
+            }, (proxyRes) => {
+                res.writeHead(proxyRes.statusCode || 200, { 'Content-Type': 'application/json' });
+                proxyRes.pipe(res);
+            });
+            proxyReq.write(bodyData);
+            proxyReq.end();
+        });
+        return;
+    }
+});</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: DATASTORE BULK REPLACER -->
+        <!-- ========================================== -->
+        <section class="section-content" id="sec-replacer">
+            <div class="glass-card">
+                <h2><i class="fa-solid fa-shuffle" style="color:var(--accent-purple)"></i> Bulk Replacement Process Architecture</h2>
+                <p>Designed for high-speed CSV mapping iterations. Iterates over entities in parallel chunks of 500 records per write payload, executing non-transactional commits against Google Cloud Datastore REST endpoints.</p>
+                
+                <h3 style="color:var(--accent-purple)"><i class="fa-solid fa-diagram-project"></i> Paginated Cursor Batch Execution</h3>
+                <div class="mermaid">
+                graph TD
+                    Start[Start Execution Triggered] --> CheckDry{Is Dry Run?}
+                    CheckDry --> LoadBatch[Fetch entities batch: LIMIT 500]
+                    LoadBatch --> MatchRow{Compare Property value}
+                    MatchRow -->|Match Found| BuildMutate[Build entity update mutation]
+                    MatchRow -->|No Match| SkipRow[Keep entity unchanged]
+                    BuildMutate --> CommitQuery{Dry Run?}
+                    SkipRow --> NextCursor
+                    CommitQuery -->|No| POSTREST[POST /projects/databases:commit]
+                    CommitQuery -->|Yes| NextCursor
+                    POSTREST --> NextCursor
+                    NextCursor --> CheckMore{Has End Cursor?}
+                    CheckMore -->|Yes| LoadBatch
+                    CheckMore -->|No| Complete[Task Completed successfully]
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: SWEEP SECRETS SCANNER -->
+        <!-- ========================================== -->
+        <section class="section-content" id="sec-sweep">
+            <div class="glass-card">
+                <h2><i class="fa-solid fa-broom" style="color:var(--accent-green)"></i> Sweep Secrets Detection Engine</h2>
+                <p>Sweep is a client-side scanning utility designed to parse code blocks or trace logs to detect exposed secrets, passwords, private keys, and OAuth parameters before pasting them into generative AI tools.</p>
+                
+                <div class="alert-box alert-box-info">
+                    <i class="fa-solid fa-shield"></i>
+                    <div>
+                        <strong>100% Client-Side Separation:</strong> Scanning, redacting, and clipboard operations occur strictly in-memory inside the browser tab context. No details are transmitted across networks.
+                    </div>
+                </div>
+                
+                <h3><i class="fa-solid fa-magnifying-glass"></i> Secrets Match Detection Patterns</h3>
+                <p>Secrets are scanned using local regex matches. Matches are highlighted, redacted, and stripped from logs:</p>
+                <ul>
+                    <li><strong>Google Client Secrets / API Keys:</strong> Matches `AIzaSy[A-Za-z0-9-_]{35}`.</li>
+                    <li><strong>Standard Private RSA / SSH Keys:</strong> Matches starting headers `-----BEGIN PRIVATE KEY-----`.</li>
+                    <li><strong>Bearer Credentials / JWT Tokens:</strong> Redacts Authorization OAuth headers.</li>
                 </ul>
-            </aside>
+            </div>
+        </section>
 
-            <!-- Content Area -->
-            <main class="content-area">
+        <!-- ========================================== -->
+        <!-- TAB 4: CRYPTO AES VAULT -->
+        <!-- ========================================== -->
+        <section class="section-content" id="sec-crypto">
+            <div class="glass-card">
+                <h2><i class="fa-solid fa-key" style="color:var(--accent-amber)"></i> Client-Side AES-GCM Encryption</h2>
+                <p>Provides highly secure symmetric encryption and decryption operations using standardized **AES-GCM (Galois/Counter Mode)**. Implements PBKDF2 passphrase key derivation functions directly via Web Crypto browser APIs.</p>
+                
+                <h3><i class="fa-solid fa-lock"></i> Encrypt & Decrypt Flow Diagram</h3>
+                <div class="mermaid">
+                graph TD
+                    Passphrase[User inputs Passphrase] --> Salt[Generate 16-byte random Salt]
+                    Salt --> Derive[Derive 256-bit Key via PBKDF2]
+                    Derive --> IV[Generate 12-byte random IV vector]
+                    IV --> Encrypt[Encrypt plain text via AES-GCM 256]
+                    Encrypt --> Package[Output: Salt + IV + Ciphertext in Base64]
+                </div>
+            </div>
+        </section>
 
-                <!-- OVERVIEW -->
-                <section id="section-overview" class="doc-section">
-                    <h2 class="doc-section-title"><i class="bi bi-book"></i> Overview</h2>
-                    <p class="lead">
-                        The <strong>GCP Infrastructure Manager</strong> is a professional browser-based console designed to streamline schema audits, synchronized schema migration, query automation copy operations, and Cloud Datastore data sync between Google Cloud Platform environments.
-                    </p>
-                    <div class="row g-4 mt-2">
-                        <div class="col-md-6">
-                            <div class="info-card h-100">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-table me-2 text-warning"></i> BigQuery Schema Auditing</h5>
-                                <p class="text-muted mb-0">
-                                    Perform side-by-side schema analysis to view differences in datasets across project IDs. Sync changes incrementally or run a full dataset replication.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-card h-100">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-clock me-2 text-warning"></i> Scheduled Query Copier</h5>
-                                <p class="text-muted mb-0">
-                                    Quickly retrieve scheduled queries from target regions and clone their sql parameters, execution routines, and destination tables to target GCP projects.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-card h-100">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-database me-2 text-warning"></i> Datastore Data Sync</h5>
-                                <p class="text-muted mb-0">
-                                    Scan entities using complex property filters, preview modifications in real-time, execute substring find-and-replace alterations, and push bulk data changes.
-                                </p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-card h-100">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-gpu-card me-2 text-warning"></i> Zero Infrastructure</h5>
-                                <p class="text-muted mb-0">
-                                    Runs entirely client-side using native GCP REST API endpoints under your direct IAM token credentials. Secure, lightweight, and extremely transparent.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- AUTHENTICATION -->
-                <section id="section-auth" class="doc-section">
-                    <h2 class="doc-section-title"><i class="bi bi-shield-lock"></i> Authentication</h2>
-                    <p>
-                        GCP Infrastructure Manager requires a valid OAuth 2.0 access token corresponding to a user or service account with the required IAM access roles.
-                    </p>
-                    
-                    <div class="info-card">
-                        <div class="d-flex">
-                            <div class="step-num">1</div>
-                            <div>
-                                <h5 class="fw-bold">Generate Access Token</h5>
-                                <p class="text-muted mb-2">Ensure you have the Google Cloud CLI (`gcloud`) installed, authenticated, and configured. Run the following command in your terminal to print a temporary OAuth2 token:</p>
-                                <pre><code>gcloud auth print-access-token</code><button class="copy-btn" onclick="copyText('gcloud auth print-access-token', this)">Copy</button></pre>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <div class="d-flex">
-                            <div class="step-num">2</div>
-                            <div>
-                                <h5 class="fw-bold">Authenticate Console</h5>
-                                <p class="text-muted mb-0">Paste the generated token into the authentication form in the web app and click **Verify Token**. The app will validate the token against Google OAuth endpoints, retrieve the associated user email, and populate the project dropdown configurations.</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- BIGQUERY SCHEMA SYNC -->
-                <section id="section-bq" class="doc-section">
-                    <h2 class="doc-section-title"><i class="bi bi-table"></i> BigQuery Schema Sync</h2>
-                    <p>
-                        Audit table properties, structural layouts, partition styles, and field attributes.
-                    </p>
-                    
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-primary"></i> BigQuery Schema Sync Process</h5>
-                        <div class="mermaid py-2">
-                        graph TD
-                            Start([Select Source & Target Projects]) --> GetDatasets[Fetch & Select Dataset]
-                            GetDatasets --> Compare[Compare Table Schemas]
-                            Compare --> AnalyzeDiffs{Analyze Diff Logs}
-                            AnalyzeDiffs -->|Missing in Target| CreateTgt[Create Table/Dataset in Target]
-                            AnalyzeDiffs -->|Schema Modified| PatchTgt[Patch Table Schema in Target]
-                            AnalyzeDiffs -->|Identical| Skip[Skip / No Action Required]
-                            CreateTgt --> Done([Sync Complete])
-                            PatchTgt --> Done
-                            Skip --> Done
-                        </div>
-                    </div>
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-layers me-2 text-primary"></i> Under the Hood: Schema Verification Log</h5>
-                        <p class="text-muted">When you run a dataset comparison, differences are classified per field and row using visual badges:</p>
-                        <table class="table table-bordered text-start align-middle mt-3">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Status Badge</th>
-                                    <th>Meaning / Implication</th>
-                                    <th>Resolution Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><span class="badge-diff badge-add"><i class="bi bi-plus-lg me-1"></i> ADDED</span></td>
-                                    <td>The column exists in the Source table but is missing in the Target.</td>
-                                    <td>Sync will **patch** the target schema to insert this column safely without deleting data.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="badge-diff badge-rem"><i class="bi bi-dash-lg me-1"></i> REMOVED</span></td>
-                                    <td>The column exists in the Target table but is missing in the Source.</td>
-                                    <td>No destructive actions are taken. GCP BigQuery does not allow deleting columns via console schema patching.</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="badge-diff badge-mod"><i class="bi bi-pencil me-1"></i> MODIFIED</span></td>
-                                    <td>The column exists in both tables, but attributes (data type or mode) differ.</td>
-                                    <td>Review carefully. Sync will attempt to patch, but incompatible type changes will throw validation warnings.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- SCHEDULED QUERIES -->
-                <section id="section-queries" class="doc-section">
-                    <h2 class="doc-section-title"><i class="bi bi-clock-history"></i> Scheduled Queries</h2>
-                    <p>
-                        Sync scheduled queries across environments or migrate queries to a different cloud region seamlessly.
-                    </p>
-                    
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-primary"></i> Scheduled Query Copy Process</h5>
-                        <div class="mermaid py-2">
-                        graph TD
-                            Start([Select Source & Target Projects]) --> SelectLoc[Select Source & Target Locations]
-                            SelectLoc --> Fetch[Fetch Scheduled Queries]
-                            Fetch --> SelectQ[Select Queries to Copy]
-                            SelectQ --> ReplaceIDs[Replace Source Project IDs with Target IDs]
-                            ReplaceIDs --> CreateConfig[Create Transfer Configurations in Target]
-                            CreateConfig --> Done([Transfer Complete])
-                        </div>
-                    </div>
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3">Cross-Location Handling</h5>
-                        <p class="text-muted mb-0">
-                            The transfer config utilizes the GCP Data Transfer Service API. You can specify a source location (e.g., `us`) and a target location (e.g., `eu`). During copy, project identifiers inside the query parameters and destination tables are modified if they reference the source project ID, replacing them dynamically with target identifiers.
-                        </p>
-                    </div>
-                </section>
-
-                <!-- DATASTORE -->
-                <section id="section-datastore" class="doc-section">
-                    <h2 class="doc-section-title"><i class="bi bi-database-fill-gear"></i> Datastore Entity Transfer</h2>
-                    <p>
-                        Allows granular selection, scanning, and transfer of entity states between project datastores.
-                    </p>
-                    
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-success"></i> Datastore Entity Transfer Process</h5>
-                        <div class="mermaid py-2">
-                        graph TD
-                            Start([Select Source & Target Projects]) --> SelectKind[Select Kind & Apply Filters]
-                            SelectKind --> ScanSrc[Scan Source Entities]
-                            ScanSrc --> BatchLookup[Batch Lookup Target Keys - 100/pkg]
-                            BatchLookup --> CompareProps{Compare Property Values}
-                            CompareProps -->|Identical| Skip[Skip]
-                            CompareProps -->|Diff / Missing| ModCheck{Apply Find & Replace?}
-                            ModCheck -->|Yes| ApplyMod[Apply String Modifications]
-                            ModCheck -->|No| Commit[Create mutations.upsert]
-                            ApplyMod --> Commit
-                            Commit --> BatchWrite[Commit in Controlled Batches]
-                            BatchWrite --> Done([Sync Complete])
-                            Skip --> Done
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-funnel me-2 text-success"></i> Custom Filter Mappings</h5>
-                        <p class="text-muted">Scan the source datastore by adding custom matching parameters. Filters translate directly to datastore structured JSON queries:</p>
-                        <ul>
-                            <li><strong>EQUAL / LESS_THAN / GREATER_THAN:</strong> Query properties against string, integer, or boolean values.</li>
-                            <li><strong>HAS_ANCESTOR:</strong> Limits scans to entities belonging to a specific root entity path key.</li>
-                        </ul>
-                    </div>
-
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-arrow-left-right me-2 text-success"></i> Real-time Property Diff</h5>
-                        <p class="text-muted">
-                            After running an analysis, entities are matched by their key paths. By clicking on a row, you expand the detailed JSON view displaying a property-level diff:
-                        </p>
-                        <div class="p-3 rounded-3" style="background:var(--code-bg); border:1px dashed var(--border-color);">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span class="fw-bold text-success">Source Entity Value</span>
-                                <span class="fw-bold text-danger">Target Entity Value</span>
-                            </div>
-                            <div class="row">
-                                <div class="col-6 text-success border-end border-secondary border-opacity-25">
-                                    <code>"status": "active"</code><br>
-                                    <code>"env": "production"</code>
-                                </div>
-                                <div class="col-6 text-danger text-end">
-                                    <code>"status": "active"</code><br>
-                                    <code>"env": "staging" (DIFF)</code>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-arrow-repeat me-2 text-success"></i> Find & Replace during Copy</h5>
-                        <p class="text-muted mb-0">
-                            You can replace parts of string property values dynamically during migration. For example, replace source domain configurations `https://api.source.com` with target configurations `https://api.target.com`.
-                        </p>
-                    </div>
-                </section>
-
-                <!-- SWEEP SECRET SCANNER -->
-                <section id="section-sweep" class="doc-section">
-                    <h2 class="doc-section-title"><i class="bi bi-shield-shaded"></i> Sweep Secret Scanner</h2>
-                    <p class="lead">
-                        Sweep is a lightweight, 100% client-side security scanner. It runs inside your browser to parse code blocks, configurations, or environment setups for credentials, keys, and connection strings before they are pasted into external interfaces.
-                    </p>
-
-                    <div class="info-card">
-                        <h5 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-2 text-warning"></i> Sweep Redaction Pipeline</h5>
-                        <div class="mermaid py-2">
-                        graph TD
-                            Start([Input Code Text]) --> BuildOffsets[Build Line Offsets]
-                            BuildOffsets --> RegExCheck[Active RegEx Rules Check]
-                            BuildOffsets --> EntropyCheck[Shannon Entropy Calculation]
-                            RegExCheck --> FilterDups{Filter Overlapping/Duplicate Ranges}
-                            EntropyCheck --> FilterDups
-                            FilterDups --> Render[Render Findings & Severity Badges]
-                            Render --> SelectRedact{Toggle Redaction Checklist}
-                            SelectRedact -->|Include| RedactVal[Replace match with REDACTED placeholder]
-                            SelectRedact -->|Exclude| KeepVal[Leave value untouched]
-                            RedactVal --> Copy[Copy Redacted Text to Clipboard]
-                            KeepVal --> Copy
-                        </div>
-                    </div>
-
-                    <div class="row g-4 mt-2">
-                        <div class="col-md-6">
-                            <div class="info-card h-100">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-cpu me-2 text-warning"></i> Optimization &amp; Performance</h5>
-                                <p class="text-muted">
-                                    Sweep is designed to audit files with tens of thousands of lines in real-time without locking the browser UI thread:
-                                </p>
-                                <ul class="text-muted small">
-                                    <li><strong>O(log N) Line Resolution:</strong> Precomputes line offsets once. Finding a match's line number is resolved using a binary search rather than string scanning.</li>
-                                    <li><strong>Debounced Non-Blocking Loop:</strong> Adjusts delay dynamically (up to 600ms for large pastes) so scanning waits for typing to pause.</li>
-                                    <li><strong>Coverage Checker:</strong> Range sorting and prefix-max-end array checks prune overlapping matches instantly.</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-card h-100">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-calculator me-2 text-warning"></i> Shannon Entropy Analysis</h5>
-                                <p class="text-muted">
-                                    Measures character randomness to detect un-patterned credentials (e.g., database passwords or tokens). The Shannon Entropy of a string is calculated as:
-                                </p>
-                                <div class="py-2 px-3 rounded-3 mb-3 text-center" style="background:var(--code-bg); font-size:1.1rem; color:var(--code-text);">
-                                    \[H(X) = -\sum_{i=1}^{n} P(x_i) \log_2 P(x_i)\]
-                                </div>
-                                <p class="text-muted small mb-0">
-                                    Where \(P(x_i)\) represents the probability frequency of character \(x_i\) in the string. If the resulting value exceeds the **4.3 bits/character** threshold, it is flagged as a potential secret. Obvious placeholders, UUID formats, and hash signatures are skipped.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="info-card h-100">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-regex me-2 text-warning"></i> Active Signature Rules</h5>
-                                <p class="text-muted mb-2">High-confidence regular expressions identify known token formats immediately:</p>
-                                <div style="max-height: 200px; overflow-y: auto; background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <ul class="text-muted small mb-0 ps-3">
-                                        <li><strong>AWS:</strong> Access Keys (`AKIA` prefixes) and Secret Access Keys.</li>
-                                        <li><strong>Google &amp; Firebase:</strong> Web API keys (`AIza`), Client Secrets (`GOCSPX`), and private key JSON blocks.</li>
-                                        <li><strong>LLM Providers:</strong> OpenAI (`sk-`) and Anthropic (`sk-ant-`) API tokens.</li>
-                                        <li><strong>GitHub / NPM / Slack / Stripe:</strong> Vendor personal and oauth integration tokens.</li>
-                                        <li><strong>Twilio / Heroku / SendGrid / DO:</strong> Platform API keys and connection SIDs.</li>
-                                        <li><strong>Credentials:</strong> JWT blocks, database URI credentials, and URL Basic Authentication patterns.</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="info-card h-100">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-search me-2 text-warning"></i> Heuristic Audit Logs</h5>
-                                <p class="text-muted mb-2">Informational logs flag suspicious lines that do not confirm a secret but warrant developer audit:</p>
-                                <ul class="text-muted small">
-                                    <li><strong>Named Fields:</strong> Variables like `password = "val"` where the value is too short to trigger entropy rules.</li>
-                                    <li><strong>Private Subnets:</strong> References to local hostnames or private range IP addresses (`10.x.x.x`, `192.168.x.x`, etc.).</li>
-                                    <li><strong>Concatenated Variables:</strong> Credentials constructed dynamically using string joins (`key = val1 + val2`).</li>
-                                    <li><strong>Warning Tags:</strong> Development placeholders containing `TODO`, `FIXME`, or `HACK` near variables.</li>
-                                </ul>
-                            </div>
-                        </div>
-                        
-                        <div class="col-12">
-                            <div class="info-card">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-scissors me-2 text-warning"></i> Redaction &amp; Clipboard Logic</h5>
-                                <p class="text-muted mb-0">
-                                    Sweep performs precise in-place string replacements instead of simple line-deletions. It isolates quoted subsegments, connection credentials, and authorization headers, inserting a specific placeholder (e.g. `AWS_ACCESS_KEY_ID_REDACTED`). This ensures the structure of the file remains completely valid, allowing it to be compiled or copy-pasted directly into configuration files.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- API REFERENCE -->
-                <section id="section-api" class="doc-section">
-                    <h2 class="doc-section-title"><i class="bi bi-hdd-network"></i> API Reference</h2>
-                    <p>
-                        A summary of GCP REST APIs invoked by the console during operation modes.
-                    </p>
-                    
-                    <div class="info-card p-0 overflow-hidden">
-                        <table class="table table-striped api-table mb-0 text-start align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>API Service</th>
-                                    <th>HTTP Method</th>
-                                    <th>API Endpoint</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>OAuth2 Userinfo</td>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/oauth2/v3/userinfo</code></td>
-                                </tr>
-                                <tr>
-                                    <td>Resource Manager</td>
-                                    <td><span class="method-badge method-get">GET</span></td>
-                                    <td><code>/v1/projects</code></td>
-                                </tr>
-                                <tr>
-                                    <td>BigQuery Datasets</td>
-                                    <td><span class="method-badge method-get">GET</span> / <span class="method-badge method-post">POST</span></td>
-                                    <td><code>/bigquery/v2/projects/{projectId}/datasets</code></td>
-                                </tr>
-                                <tr>
-                                    <td>BigQuery Tables</td>
-                                    <td><span class="method-badge method-post">POST</span> / <span class="method-badge method-patch">PATCH</span></td>
-                                    <td><code>/bigquery/v2/projects/{projectId}/datasets/{datasetId}/tables/{tableId}</code></td>
-                                </tr>
-                                <tr>
-                                    <td>Scheduled Queries</td>
-                                    <td><span class="method-badge method-get">GET</span> / <span class="method-badge method-post">POST</span></td>
-                                    <td><code>/v1/projects/{projectId}/locations/{locationId}/transferConfigs</code></td>
-                                </tr>
-                                <tr>
-                                    <td>Datastore Operations</td>
-                                    <td><span class="method-badge method-post">POST</span></td>
-                                    <td><code>/v1/projects/{projectId}:(runQuery|lookup|commit)</code></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-            </main>
-
-        </div>
+        <footer style="text-align:center; padding:30px 0; color:var(--text-muted); font-size:0.9rem; border-top:1px solid var(--border)">
+            GCP Tools Portal &copy; 2026. All documentation manuals compiled and verified successfully.
+        </footer>
     </div>
 
+    <!-- UI Controllers & Tabs Switchers -->
     <script>
-        // Theme Toggle
-        const themeToggle = document.getElementById('themeToggle');
-        const htmlElement = document.documentElement;
-        
-        function applyTheme(theme) {
-            htmlElement.setAttribute('data-theme', theme);
-            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-            localStorage.setItem('theme', theme);
-        }
-        
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            applyTheme(savedTheme);
-        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            applyTheme('dark');
-        }
-
-        themeToggle.addEventListener('click', () => {
-            const currentTheme = htmlElement.getAttribute('data-theme');
-            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
-            location.reload();
-        });
-
-        // Copy Code Text Helper
-        function copyText(text, btn) {
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = btn.textContent;
-                btn.textContent = "Copied!";
-                btn.classList.add("bg-success", "text-white");
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.classList.remove("bg-success", "text-white");
-                }, 2000);
+        // Main tabs switcher controller
+        function switchMainTab(targetId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
             });
-        }
-
-        // Active Navigation Highlight
-        function activateLink(element) {
-            document.querySelectorAll('.nav-doc-link').forEach(link => link.classList.remove('active'));
-            element.classList.add('active');
-        }
-
-        // Auto Highlight on Scroll
-        window.addEventListener('scroll', () => {
-            const sections = document.querySelectorAll('.doc-section');
-            const navLinks = document.querySelectorAll('.nav-doc-link');
-            let currentId = '';
-
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop - 120;
-                if (window.scrollY >= sectionTop) {
-                    currentId = section.getAttribute('id');
-                }
+            document.querySelectorAll('.section-content').forEach(sec => {
+                sec.classList.remove('active');
             });
-
-            if (currentId) {
-                navLinks.forEach(link => {
-                    link.classList.remove('active');
-                    if (link.getAttribute('href') === '#' + currentId) {
-                        link.classList.add('active');
-                    }
-                });
+            
+            const activeBtn = document.getElementById('tab-' + targetId);
+            const activeSec = document.getElementById('sec-' + targetId);
+            if (activeBtn && activeSec) {
+                activeBtn.classList.add('active');
+                activeSec.classList.add('active');
+                
+                // Update URL hash for bookmarking links
+                window.location.hash = 'section-' + targetId;
             }
-        });
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script>
-        const currentMermaidTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default';
+        }
+
+        // Subtabs (Blocks Walkthrough) switcher controller
+        function switchSubTab(subId) {
+            document.querySelectorAll('.subtab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.subtab-content').forEach(sec => {
+                sec.classList.remove('active');
+            });
+            
+            const activeBtn = document.getElementById('sbtn-' + subId);
+            const activeSec = document.getElementById('ssec-' + subId);
+            if (activeBtn && activeSec) {
+                activeBtn.classList.add('active');
+                activeSec.classList.add('active');
+            }
+        }
+
+        // Handle direct bookmark hashes on load
+        window.onload = () => {
+            const hash = window.location.hash;
+            if (hash.includes('section-datastore-bulk-replacer') || hash.includes('replacer')) {
+                switchMainTab('replacer');
+            } else if (hash.includes('section-sweep') || hash.includes('sweep')) {
+                switchMainTab('sweep');
+            } else if (hash.includes('section-crypto-vault') || hash.includes('crypto')) {
+                switchMainTab('crypto');
+            } else {
+                switchMainTab('copier');
+                const nav = document.querySelector('.nav-tabs');
+                if (nav) nav.style.display = 'none';
+            }
+            
+            // Subtitle Typing effect animation
+            const subtitleEl = document.getElementById('type-subtitle');
+            const fullText = "Full technical manual, REST API mappings, and Clean Architecture block explanations.";
+            let index = 0;
+            subtitleEl.textContent = "";
+            
+            function typeNextChar() {
+                if (index < fullText.length) {
+                    subtitleEl.textContent += fullText.charAt(index);
+                    index++;
+                    setTimeout(typeNextChar, 35);
+                } else {
+                    subtitleEl.style.borderRight = "none";
+                }
+            }
+            typeNextChar();
+        };
+
+        // Initialize Mermaid diagrams
         mermaid.initialize({
             startOnLoad: true,
-            theme: currentMermaidTheme,
-            securityLevel: 'loose',
-            flowchart: { useMaxWidth: true, htmlLabels: true }
+            theme: 'dark',
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+            securityLevel: 'loose'
         });
     </script>
 </body>

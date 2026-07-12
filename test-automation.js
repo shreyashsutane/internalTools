@@ -38,20 +38,47 @@ async function main() {
 
     const token = getAccessToken();
 
-    // Launch browser in headful mode
+    // Launch browser in headless mode
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         slowMo: 60,
         defaultViewport: null,
         args: ['--start-maximized', '--no-sandbox']
     });
 
+    let page = null;
     try {
-        const [page] = await browser.pages();
+        const pages = await browser.pages();
+        page = pages[0];
         
         // Pipe browser console logs and errors to terminal
         page.on('console', msg => console.log(`🖥️ PAGE LOG: ${msg.text()}`));
         page.on('pageerror', err => console.error(`🚨 PAGE ERROR: ${err.stack}`));
+        
+        // Listen for toast messages in real-time
+        await page.exposeFunction('onToastAdded', (text, type) => {
+            console.log(`🍞 TOAST NOTIFICATION (${type.toUpperCase()}): ${text}`);
+        });
+        await page.evaluateOnNewDocument(() => {
+            window.addEventListener('DOMContentLoaded', () => {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach(m => {
+                        m.addedNodes.forEach(node => {
+                            if (node.classList && node.classList.contains('toast')) {
+                                const type = Array.from(node.classList)
+                                    .find(c => c.startsWith('toast-'))
+                                    ?.replace('toast-', '') || 'info';
+                                window.onToastAdded(node.innerText, type);
+                            }
+                        });
+                    });
+                });
+                const wrap = document.getElementById('toast-wrap');
+                if (wrap) {
+                    observer.observe(wrap, { childList: true });
+                }
+            });
+        });
         
         // Inject virtual cursor stylesheet and helper script
         await page.evaluateOnNewDocument(() => {
@@ -210,12 +237,13 @@ async function main() {
         // Click Copy Selected and verify sync triggers
         await clickElement('#bq-table-body-rows tr:nth-child(1) td:nth-child(1) .chk'); // Check different table row
         await clickElement('#btn-bq-copy-s2t', 50);
+        await page.waitForSelector('#btn-bq-confirm-copy', { visible: true });
+        await clickElement('#btn-bq-confirm-copy');
         
-        // Wait for loader to appear and then disappear
-        await page.waitForSelector('#sec-loading', { visible: true });
-        console.log('⏳ BigQuery schema sync started...');
-        await page.waitForSelector('#sec-loading', { hidden: true, timeout: 20000 });
-        console.log('✅ BigQuery schema sync completed.');
+        // Wait for results to become visible (indicates comparison is fully completed)
+        console.log('⏳ BigQuery schema sync and comparison started...');
+        await page.waitForSelector('#res-bq', { visible: true, timeout: 75000 });
+        console.log('✅ BigQuery schema sync and comparison completed.');
         await delay(500);
 
         // =====================================================================
@@ -252,16 +280,16 @@ async function main() {
             // Select query and click Copy
             await clickElement('#q-table-body-rows tr:nth-child(1) td:nth-child(1) .chk');
             await clickElement('#btn-q-copy', 50);
+            await page.waitForSelector('#btn-q-confirm-copy', { visible: true });
+            await clickElement('#btn-q-confirm-copy');
             
-            // Wait for loader to appear and disappear
-            await page.waitForSelector('#sec-loading', { visible: true });
-            console.log('⏳ Scheduled query copying started...');
-            await page.waitForSelector('#sec-loading', { hidden: true, timeout: 20000 });
-            console.log('✅ Scheduled query copy completed.');
+            // Wait for results to become visible (indicates copy and fetch completed)
+            console.log('⏳ Scheduled query copying and fetching started...');
+            await page.waitForSelector('#res-query', { visible: true, timeout: 75000 });
+            console.log('✅ Scheduled query copying and fetching completed.');
         } else {
             console.log('⏭️ Skipping Scheduled Query copy test (no queries found).');
         }
-        await delay(500);
 
         // =====================================================================
         // TEST CASE 4: Datastore Entities Comparison & Property Diff Expansion
@@ -378,6 +406,12 @@ async function main() {
 
     } catch (err) {
         console.error('\n🔴 Test suite failed:', err.stack);
+        try {
+            await page.screenshot({ path: '/Users/shreyashsutane/.gemini/antigravity/brain/67419ec2-e355-469a-a150-1132bfb3aac3/test_failure.png' });
+            console.log('📸 Saved failure screenshot to artifacts.');
+        } catch (e) {
+            console.error('Failed to take screenshot:', e);
+        }
         try {
             const toastText = await page.evaluate(() => {
                 const toast = document.querySelector('.toast-err');
