@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - Operations Logs</title>
+    <script src="firebase-config.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -651,7 +652,8 @@
 
             try {
                 // 1. Firebase Auth Sign-in
-                const authRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyA2X_2uA01LhkYzD2JrhVpCtMZteyxdYKc`, {
+                const key = window.FIREBASE_CONFIG?.apiKey || 'YOUR_FIREBASE_API_KEY';
+                const authRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${key}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password: pass, returnSecureToken: true })
@@ -1116,7 +1118,8 @@
 
             try {
                 // 1. Register in Firebase Auth (signUp)
-                const signupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyA2X_2uA01LhkYzD2JrhVpCtMZteyxdYKc`, {
+                const key = window.FIREBASE_CONFIG?.apiKey || 'YOUR_FIREBASE_API_KEY';
+                const signupRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${key}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, returnSecureToken: false })

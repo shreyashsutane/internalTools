@@ -6,7 +6,19 @@
 const { execSync } = require('child_process');
 const https = require('https');
 
-const API_KEY = 'AIzaSyA2X_2uA01LhkYzD2JrhVpCtMZteyxdYKc';
+let API_KEY = process.env.FIREBASE_API_KEY || 'YOUR_FIREBASE_API_KEY';
+try {
+    const fs = require('fs');
+    if (fs.existsSync('./firebase-config.js')) {
+        const content = fs.readFileSync('./firebase-config.js', 'utf8');
+        const match = content.match(/apiKey:\s*["']([^"']+)["']/);
+        if (match && match[1]) {
+            API_KEY = match[1];
+        }
+    }
+} catch (e) {
+    // Ignore
+}
 const PROJECT_ID = 'gcp-tools-portal';
 const DEFAULT_EMAIL = 'shreyashs14102002@gmail.com';
 const DEFAULT_PASS = 'Vai@12345';

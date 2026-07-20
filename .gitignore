@@ -3,3 +3,4 @@ node_modules/
 *.log
 .tempmediaStorage/
 .DS_Store
+firebase-config.js
