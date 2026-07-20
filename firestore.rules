@@ -5,7 +5,7 @@ service cloud.firestore {
       allow read, write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
     match /audit_logs/{document} {
-      allow read, write: if true;
+      allow read, write: if request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
     match /feedback/{document} {
       allow create: if true;

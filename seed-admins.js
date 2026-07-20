@@ -20,9 +20,15 @@ try {
     // Ignore
 }
 const PROJECT_ID = 'gcp-tools-portal';
-const DEFAULT_EMAIL = 'shreyashs14102002@gmail.com';
-const DEFAULT_PASS = 'Vai@12345';
-const DEFAULT_USER = 'Shreyash';
+const DEFAULT_EMAIL = process.env.ADMIN_EMAIL || 'shreyashs14102002@gmail.com';
+const DEFAULT_PASS = process.env.ADMIN_PASSWORD;
+const DEFAULT_USER = process.env.ADMIN_USERNAME || 'Shreyash';
+
+if (!DEFAULT_PASS) {
+    console.error("❌ Error: Please set the ADMIN_PASSWORD environment variable to seed the admin user.");
+    console.log("Example: ADMIN_PASSWORD=your_secure_password node seed-admins.js");
+    process.exit(1);
+}
 
 // Helper to get active GCP access token (for Firestore owner access)
 function getGcpAccessToken() {
