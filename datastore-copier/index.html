@@ -414,6 +414,22 @@
             <p class="text-xs mb-2 mt-4 text-zinc-400">From <strong class="src-pid-strong"></strong> to <strong class="tgt-pid-strong"></strong></p>
             <p class="text-sm mb-4 font-semibold"><span class="selected-cnt-span"></span> entities selected.</p>
             <div class="mb-4 flex items-center gap-2"><div class="chk on chk-apply-replace"></div><span class="text-xs">Apply Find & Replace modifications</span></div>
+            <div class="replace-inputs-wrap mb-4 flex flex-col gap-3" style="display: flex;">
+                <div>
+                    <label class="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Property Field (e.g., role, *, or nested field)</label>
+                    <input type="text" class="inp inp-field-val w-full text-xs" style="padding: 6px 10px;" />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Find Substring</label>
+                        <input type="text" class="inp inp-find-val w-full text-xs" style="padding: 6px 10px;" />
+                    </div>
+                    <div>
+                        <label class="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Replace Substring</label>
+                        <input type="text" class="inp inp-replace-val w-full text-xs" style="padding: 6px 10px;" />
+                    </div>
+                </div>
+            </div>
             <div class="flex justify-end gap-2"><button class="btn btn-s btn-cancel">Cancel</button><button class="btn btn-p btn-confirm">Confirm Copy</button></div>
         </div>
     </template>

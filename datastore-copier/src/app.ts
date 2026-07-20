@@ -1662,8 +1662,34 @@ export const App = {
         UI.openModal(fragment);
 
         const chkReplace = Utils.$('modal-root')!.querySelector('.chk-apply-replace') as HTMLElement;
+        const replaceInputsWrap = Utils.$('modal-root')!.querySelector('.replace-inputs-wrap') as HTMLElement;
+        
+        const modalFieldEl = Utils.$('modal-root')!.querySelector('.inp-field-val') as HTMLInputElement | null;
+        const modalTargetEl = Utils.$('modal-root')!.querySelector('.inp-find-val') as HTMLInputElement | null;
+        const modalReplaceEl = Utils.$('modal-root')!.querySelector('.inp-replace-val') as HTMLInputElement | null;
+        
+        if (modalFieldEl) {
+            modalFieldEl.value = (Utils.$('ds-mod-field') as HTMLInputElement).value;
+        }
+        if (modalTargetEl) {
+            modalTargetEl.value = (Utils.$('ds-mod-target') as HTMLInputElement).value;
+        }
+        if (modalReplaceEl) {
+            modalReplaceEl.value = (Utils.$('ds-mod-replace') as HTMLInputElement).value;
+        }
+        
+        const updateVisibility = () => {
+            const on = chkReplace.classList.contains('on');
+            if (replaceInputsWrap) {
+                replaceInputsWrap.style.display = on ? 'flex' : 'none';
+            }
+        };
+        
+        updateVisibility();
+        
         chkReplace.onclick = () => {
             chkReplace.classList.toggle('on');
+            updateVisibility();
         };
 
         Utils.$('modal-root')!.querySelector('.btn-cancel')!.onclick = () => UI.closeModal();
@@ -1672,10 +1698,15 @@ export const App = {
         };
     },
     executeDsCopy: async (): Promise<void> => {
-        const applyMod = Utils.$('modal-root')?.querySelector('.chk-apply-replace')?.classList.contains('on');
-        const modField = (Utils.$('ds-mod-field') as HTMLInputElement).value.trim();
-        const modTarget = (Utils.$('ds-mod-target') as HTMLInputElement).value;
-        const modReplace = (Utils.$('ds-mod-replace') as HTMLInputElement).value;
+        const modalRoot = Utils.$('modal-root');
+        const applyMod = modalRoot?.querySelector('.chk-apply-replace')?.classList.contains('on');
+        const modalFieldEl = modalRoot?.querySelector('.inp-field-val') as HTMLInputElement | null;
+        const modalTargetEl = modalRoot?.querySelector('.inp-find-val') as HTMLInputElement | null;
+        const modalReplaceEl = modalRoot?.querySelector('.inp-replace-val') as HTMLInputElement | null;
+        
+        const modField = modalFieldEl ? modalFieldEl.value.trim() : (Utils.$('ds-mod-field') as HTMLInputElement).value.trim();
+        const modTarget = modalTargetEl ? modalTargetEl.value : (Utils.$('ds-mod-target') as HTMLInputElement).value;
+        const modReplace = modalReplaceEl ? modalReplaceEl.value : (Utils.$('ds-mod-replace') as HTMLInputElement).value;
         
         UI.closeModal(); 
         
