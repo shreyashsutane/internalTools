@@ -970,6 +970,7 @@ export const AuditLog = {
                             <ul>
                                 <li><strong>Volatile Access Tokens Cache:</strong> Looks up local storage tags at start. Injects credentials securely into <code>Api.setToken</code> if cached tokens exist.</li>
                                 <li><strong>Dynamic Event Handlers:</strong> Maps select inputs to change events, controls the JSON editor modals, renders inline difference previews, and triggers alerts before database modifications.</li>
+                                <li><strong>Popup Find &amp; Replace Customizations:</strong> When initiating batch copy operations, the "Copy Datastore Entities" popup dynamically renders Property Field, Find Substring, and Replace Substring inputs pre-populated with active main page values. Users can directly modify these inputs inside the popup, allowing custom target overrides right before committing. If the Property Field is empty or `*`, replacements occur recursively across all properties of the copied entity.</li>
                             </ul>
                             
                             <div class="code-window">
