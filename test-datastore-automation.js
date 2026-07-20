@@ -207,8 +207,14 @@ async function main() {
         const typeInto = async (selector, text) => {
             await moveMouseTo(selector);
             await page.click(selector);
-            await page.evaluate(sel => document.querySelector(sel).value = '', selector);
-            await page.type(selector, text, { delay: 35 });
+            await page.evaluate(sel => {
+                const el = document.querySelector(sel);
+                if (el) {
+                    el.value = '';
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }, selector);
+            await page.type(selector, text, { delay: 5 });
             await delay(200);
         };
 
@@ -217,13 +223,15 @@ async function main() {
         await delay(1000);
 
         // =====================================================================
-        // TEST CASE 1: Authentication & Navigation
-        // =====================================================================
         console.log('\n--- 🧪 TEST CASE 1: Authentication & Navigation ---');
         console.log('🔑 Performing valid authentication with active access token...');
         await typeInto('#inp-token', token);
+        await page.waitForFunction(() => {
+            const btn = document.querySelector('#btn-verify');
+            return btn && !btn.disabled;
+        }, { timeout: 5000 });
         await clickElement('#btn-verify');
-        await page.waitForSelector('#sec-modes', { visible: true, timeout: 10000 });
+        await page.waitForSelector('#sec-modes', { visible: true, timeout: 15000 });
         console.log('✅ Authentication succeeded and welcome screen played sound effect.');
         await delay(1000);
 

@@ -159,8 +159,14 @@ async function main() {
         const typeInto = async (selector, text) => {
             await moveMouseTo(selector);
             await page.click(selector);
-            await page.evaluate(sel => document.querySelector(sel).value = '', selector);
-            await page.type(selector, text, { delay: 45 });
+            await page.evaluate(sel => {
+                const el = document.querySelector(sel);
+                if (el) {
+                    el.value = '';
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }, selector);
+            await page.type(selector, text, { delay: 5 });
             await delay(300);
         };
 
@@ -237,8 +243,8 @@ async function main() {
         // Click Copy Selected and verify sync triggers
         await clickElement('#bq-table-body-rows tr:nth-child(1) td:nth-child(1) .chk'); // Check different table row
         await clickElement('#btn-bq-copy-s2t', 50);
-        await page.waitForSelector('#btn-bq-confirm-copy', { visible: true });
-        await clickElement('#btn-bq-confirm-copy');
+        await page.waitForSelector('#modal-root .btn-confirm', { visible: true });
+        await clickElement('#modal-root .btn-confirm');
         
         // Wait for results to become visible (indicates comparison is fully completed)
         console.log('⏳ BigQuery schema sync and comparison started...');
@@ -280,8 +286,8 @@ async function main() {
             // Select query and click Copy
             await clickElement('#q-table-body-rows tr:nth-child(1) td:nth-child(1) .chk');
             await clickElement('#btn-q-copy', 50);
-            await page.waitForSelector('#btn-q-confirm-copy', { visible: true });
-            await clickElement('#btn-q-confirm-copy');
+            await page.waitForSelector('#modal-root .btn-confirm', { visible: true });
+            await clickElement('#modal-root .btn-confirm');
             
             // Wait for results to become visible (indicates copy and fetch completed)
             console.log('⏳ Scheduled query copying and fetching started...');

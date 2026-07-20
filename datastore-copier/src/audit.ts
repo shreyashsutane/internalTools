@@ -28,11 +28,36 @@ export const AuditLog = {
         }
         return result;
     },
+    fetchWithFallback: async (endpoint: 'runQuery' | 'documents', options: RequestInit): Promise<any> => {
+        const proxyUrl = endpoint === 'runQuery' 
+            ? `${CONFIG.FIRESTORE_AUDIT_LOG_URL}/runQuery`
+            : CONFIG.FIRESTORE_AUDIT_LOG_URL;
+        
+        try {
+            const res = await fetch(proxyUrl, options);
+            if (res.ok) {
+                return await res.json();
+            }
+            console.warn(`Proxy request to ${proxyUrl} returned status ${res.status}. Falling back to direct Firestore REST API.`);
+        } catch (err) {
+            console.warn(`Proxy request to ${proxyUrl} failed. Falling back to direct Firestore REST API:`, err);
+        }
+
+        const directUrl = endpoint === 'runQuery'
+            ? `https://firestore.googleapis.com/v1/projects/${CONFIG.FIRESTORE_PROJECT_ID}/databases/${CONFIG.FIRESTORE_DATABASE_ID}/documents:runQuery`
+            : `https://firestore.googleapis.com/v1/projects/${CONFIG.FIRESTORE_PROJECT_ID}/databases/${CONFIG.FIRESTORE_DATABASE_ID}/documents/${CONFIG.AUDIT_LOG_COLLECTION}`;
+        
+        const res = await fetch(directUrl, options);
+        if (!res.ok) {
+            throw new Error(`Firestore REST API Error: ${res.status} - ${await res.text()}`);
+        }
+        return await res.json();
+    },
     readLogs: async (): Promise<any[]> => {
         try {
             if (!State.token) return [];
             const email = State.authEmail || 'anonymous';
-            const res = await fetch(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/runQuery`, {
+            const data = await AuditLog.fetchWithFallback('runQuery', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${State.token}`,
@@ -51,8 +76,6 @@ export const AuditLog = {
                     }
                 })
             });
-            if (!res.ok) throw new Error(await res.text());
-            const data = await res.json();
             const decryptedList: any[] = [];
             for (const item of data) {
                 if (item.document) {
@@ -86,7 +109,7 @@ export const AuditLog = {
             if (prevState) {
                 body.fields.prevState = { stringValue: JSON.stringify(prevState) };
             }
-            const res = await fetch(CONFIG.FIRESTORE_AUDIT_LOG_URL, {
+            await AuditLog.fetchWithFallback('documents', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${State.token}`,
@@ -94,7 +117,6 @@ export const AuditLog = {
                 },
                 body: JSON.stringify(body)
             });
-            if (!res.ok) throw new Error(await res.text());
             await AuditLog.renderLogs();
         } catch(e) {
             console.error("Failed to add audit log:", e);
