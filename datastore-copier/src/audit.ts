@@ -2,6 +2,9 @@ import { State } from './state';
 import { Utils } from './utils';
 import { Api } from './api';
 import { CONFIG } from './config';
+import { executeDatastoreRevert, executeScheduledQueryRevert } from './revert';
+
+const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
 
 export const AuditLog = {
     parseFirestoreDoc: (doc: any): any => {
@@ -29,10 +32,10 @@ export const AuditLog = {
         return result;
     },
     fetchWithFallback: async (endpoint: 'runQuery' | 'documents', options: RequestInit): Promise<any> => {
-        const proxyUrl = endpoint === 'runQuery' 
+        const proxyUrl = endpoint === 'runQuery'
             ? `${CONFIG.FIRESTORE_AUDIT_LOG_URL}/runQuery`
             : CONFIG.FIRESTORE_AUDIT_LOG_URL;
-        
+
         try {
             const res = await fetch(proxyUrl, options);
             if (res.ok) {
@@ -46,7 +49,7 @@ export const AuditLog = {
         const directUrl = endpoint === 'runQuery'
             ? `https://firestore.googleapis.com/v1/projects/${CONFIG.FIRESTORE_PROJECT_ID}/databases/${CONFIG.FIRESTORE_DATABASE_ID}/documents:runQuery`
             : `https://firestore.googleapis.com/v1/projects/${CONFIG.FIRESTORE_PROJECT_ID}/databases/${CONFIG.FIRESTORE_DATABASE_ID}/documents/${CONFIG.AUDIT_LOG_COLLECTION}`;
-        
+
         const res = await fetch(directUrl, options);
         if (!res.ok) {
             throw new Error(`Firestore REST API Error: ${res.status} - ${await res.text()}`);
@@ -91,9 +94,18 @@ export const AuditLog = {
             return [];
         }
     },
-    addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null): Promise<void> => {
+    getPrevStateSize: (prevState: any): number => {
+        return prevState ? new TextEncoder().encode(JSON.stringify(prevState)).byteLength : 0;
+    },
+    canPersistPrevState: (prevState: any): boolean => {
+        return AuditLog.getPrevStateSize(prevState) <= MAX_AUDIT_PREV_STATE_BYTES;
+    },
+    addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null): Promise<boolean> => {
         try {
-            if (!State.token) return;
+            if (!State.token) return false;
+            if (prevState && !AuditLog.canPersistPrevState(prevState)) {
+                throw new Error(`Audit backup exceeds the safe ${Math.floor(MAX_AUDIT_PREV_STATE_BYTES / 1000)} KB limit.`);
+            }
             const email = State.authEmail || 'anonymous';
             const body: any = {
                 fields: {
@@ -118,8 +130,10 @@ export const AuditLog = {
                 body: JSON.stringify(body)
             });
             await AuditLog.renderLogs();
+            return true;
         } catch(e) {
             console.error("Failed to add audit log:", e);
+            return false;
         }
     },
     exportLogs: async (): Promise<void> => {
@@ -151,12 +165,21 @@ export const AuditLog = {
             Utils.toast("No backup state available to revert this action.", "warn");
             return;
         }
-        
+        let requestedState = log.prevState;
+        if (typeof requestedState === 'string') {
+            try { requestedState = JSON.parse(requestedState); } catch {
+                Utils.toast("Backup state is invalid and cannot be reverted.", "err");
+                return;
+            }
+        }
+        if (requestedState?.type === 'BQ_SCHEMA_SYNC') {
+            Utils.toast("BigQuery Schema Comparator is read-only. Historical schema changes cannot be applied or reverted here.", "warn");
+            return;
+        }
+
         const { UI } = await import('./ui');
         const { App } = await import('./app');
 
-        const tmpl = Utils.$('template-ds-save-confirm') as HTMLTemplateElement; // We can repurpose or define standard template
-        // Let's create a custom modal structure for Revert
         UI.openModal(`
             <div class="p-5 text-left">
                 <h3 class="font-semibold mb-4 text-base">Revert Operation</h3>
@@ -179,87 +202,54 @@ export const AuditLog = {
             Utils.$('load-title')!.textContent = "Reverting Changes...";
             Utils.$('load-msg')!.textContent = "Restoring previous state...";
             try {
-                const state = log.prevState;
-                if (state.type === 'BQ_SCHEMA_SYNC') {
-                    let restored = 0, deleted = 0;
-                    for (const item of state.backupData) {
-                        const [dataset, table] = item.tablePath.split('.');
-                        if (item.action === 'create') {
-                            await Api.deleteTable(log.tgtProject, dataset, table);
-                            deleted++;
-                        } else if (item.action === 'patch' && item.prevSchema) {
-                            await Api.patchTable(log.tgtProject, dataset, table, item.prevSchema);
-                            restored++;
-                        }
+                const state = requestedState;
+                if (state.type === 'QUERY_SYNC') {
+                    const result = await executeScheduledQueryRevert(
+                        Api,
+                        log.tgtProject,
+                        state.backupData
+                    );
+                    const status = result.failed === 0
+                        ? 'SUCCESS'
+                        : (result.restored + result.deleted > 0 ? 'PARTIAL' : 'FAILED');
+                    Utils.toast(
+                        `Scheduled-query revert complete. Restored: ${result.restored}, Deleted: ${result.deleted}, Failed: ${result.failed}`,
+                        result.failed > 0 ? 'warn' : 'ok'
+                    );
+                    const logged = await AuditLog.addLog(
+                        'QUERY_REVERT',
+                        '—',
+                        log.tgtProject,
+                        `Reverted scheduled-query sync from log ${logId}. Restored: ${result.restored}; deleted: ${result.deleted}; failed: ${result.failed}.`,
+                        status
+                    );
+                    if (!logged) Utils.toast('Revert completed, but its audit result could not be persisted.', 'warn');
+                    if (result.errors.length > 0) {
+                        console.error('Scheduled-query revert item failures:', result.errors);
                     }
-                    Utils.toast(`Reverted BQ schema sync. Restored: ${restored}, Deleted: ${deleted}`, "ok");
-                    await AuditLog.addLog("BQ_SCHEMA_REVERT", "—", log.tgtProject, `Reverted sync of ${state.backupData.length} tables from log ${logId}.`, "SUCCESS");
-                    if (State.mode === 'bq' && State.bq.src) await App.runBqCompare();
-                } else if (state.type === 'QUERY_SYNC') {
-                    let deleted = 0, restored = 0;
-                    for (const item of state.backupData) {
-                        if (item.action === 'create' || !item.action) {
-                            await Api.deleteQuery(item.name);
-                            deleted++;
-                        } else if (item.action === 'update' && item.prevQuery) {
-                            await Api.deleteQuery(item.name);
-                            const parts = item.name.split('/');
-                            const loc = parts[3] || 'us';
-                            await Api.createQuery(log.tgtProject, loc, item.prevQuery);
-                            restored++;
-                        }
-                    }
-                    Utils.toast(`Reverted scheduled query sync. Restored: ${restored}, Deleted: ${deleted}`, "ok");
-                    await AuditLog.addLog("QUERY_REVERT", "—", log.tgtProject, `Reverted sync of ${state.backupData.length} scheduled queries from log ${logId}.`, "SUCCESS");
                     if (State.mode === 'query' && State.query.src) await App.runQueryFetch();
-                } else if (state.type === 'DATASTORE_COPY') {
-                    const mutations: any[] = [];
-                    let upsertCount = 0, deleteCount = 0;
-                    for (const item of state.backupData) {
-                        if (item.action === 'delete') {
-                            const keyCopy = JSON.parse(JSON.stringify(item.prevEntity.key));
-                            const db = (state.tgtDb === '(default)' || !state.tgtDb) ? '' : state.tgtDb;
-                            const partitionId: any = { projectId: log.tgtProject };
-                            if (db) partitionId.databaseId = db;
-                            keyCopy.partitionId = partitionId;
-                            mutations.push({ delete: keyCopy });
-                            deleteCount++;
-                        } else if (item.action === 'upsert' && item.prevEntity) {
-                            const entityCopy = JSON.parse(JSON.stringify(item.prevEntity));
-                            const db = (state.tgtDb === '(default)' || !state.tgtDb) ? '' : state.tgtDb;
-                            const partitionId: any = { projectId: log.tgtProject };
-                            if (db) partitionId.databaseId = db;
-                            entityCopy.key.partitionId = partitionId;
-                            mutations.push({ upsert: entityCopy });
-                            upsertCount++;
-                        }
-                    }
-                    if (mutations.length > 0) {
-                        await Api.commitDatastore(log.tgtProject, mutations, state.tgtDb);
-                    }
-                    Utils.toast(`Reverted Datastore changes. Restored: ${upsertCount}, Deleted: ${deleteCount}`, "ok");
-                    await AuditLog.addLog("DATASTORE_REVERT", "—", log.tgtProject, `Reverted changes for ${state.backupData.length} entities of kind ${state.kind} from log ${logId}.`, "SUCCESS");
-                    if (State.mode === 'ds' && State.ds.src) await App.runDsAnalyze();
-                } else if (state.type === 'DATASTORE_EDIT') {
-                    const pid = log.tgtProject;
-                    if (state.prevEntity) {
-                        const entityCopy = JSON.parse(JSON.stringify(state.prevEntity));
-                        const db = (state.dbId === '(default)' || !state.dbId) ? '' : state.dbId;
-                        const partitionId: any = { projectId: pid };
-                        if (db) partitionId.databaseId = db;
-                        entityCopy.key.partitionId = partitionId;
-                        await Api.commitDatastore(pid, [{ upsert: entityCopy }], state.dbId);
-                        Utils.toast(`Reverted entity edit. Restored original properties.`, "ok");
-                    } else {
-                        const keyCopy = JSON.parse(JSON.stringify(state.rawKey));
-                        const db = (state.dbId === '(default)' || !state.dbId) ? '' : state.dbId;
-                        const partitionId: any = { projectId: pid };
-                        if (db) partitionId.databaseId = db;
-                        keyCopy.partitionId = partitionId;
-                        await Api.commitDatastore(pid, [{ delete: keyCopy }], state.dbId);
-                        Utils.toast(`Reverted entity edit. Deleted created entity.`, "ok");
-                    }
-                    await AuditLog.addLog("DATASTORE_EDIT_REVERT", "—", pid, `Reverted inline edit of entity ${state.keyStr}.`, "SUCCESS");
+                } else if (state.type === 'DATASTORE_COPY' || state.type === 'DATASTORE_EDIT') {
+                    const result = await executeDatastoreRevert(Api, log.tgtProject, state);
+                    const partial = result.skippedDeletes > 0;
+                    const status = partial ? 'PARTIAL' : 'SUCCESS';
+                    const permissionNote = partial
+                        ? ` Skipped ${result.skippedDeletes} delete(s) because the user lacks delete permission.`
+                        : '';
+                    const subject = state.type === 'DATASTORE_COPY'
+                        ? `${state.backupData?.length || 0} copied entities of kind ${state.kind}`
+                        : `inline edit of entity ${state.keyStr}`;
+                    Utils.toast(
+                        `Datastore revert complete. Restored: ${result.restored}, Deleted: ${result.deleted}.${permissionNote}`,
+                        partial ? 'warn' : 'ok'
+                    );
+                    const logged = await AuditLog.addLog(
+                        state.type === 'DATASTORE_COPY' ? 'DATASTORE_REVERT' : 'DATASTORE_EDIT_REVERT',
+                        '—',
+                        log.tgtProject,
+                        `Reverted ${subject} from log ${logId}. Restored: ${result.restored}; deleted: ${result.deleted}; permission-skipped deletes: ${result.skippedDeletes}.`,
+                        status
+                    );
+                    if (!logged) Utils.toast('Revert completed, but its audit result could not be persisted.', 'warn');
                     if (State.mode === 'ds' && State.ds.src) await App.runDsAnalyze();
                 }
             } catch(err: any) {
@@ -313,14 +303,18 @@ export const AuditLog = {
             fragment.querySelector('.log-details')!.textContent = log.details;
 
             const revertTd = fragment.querySelector('.log-revert-td') as HTMLElement;
-            if (log.prevState) {
+            let previousState = log.prevState;
+            if (typeof previousState === 'string') {
+                try { previousState = JSON.parse(previousState); } catch { previousState = null; }
+            }
+            if (previousState && previousState.type !== 'BQ_SCHEMA_SYNC') {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-s btn-revert-log text-[10px]';
                 btn.style.padding = '2px 6px';
                 btn.style.fontWeight = '600';
                 btn.setAttribute('data-log-id', log.id);
                 btn.innerHTML = `<i class="fa-solid fa-rotate-left"></i> Revert`;
-                
+
                 // Dynamic event handler mapping instead of inline onclick
                 btn.onclick = (e) => {
                     e.stopPropagation();
@@ -459,7 +453,7 @@ export const AuditLog = {
                 </div>
             </td>
         `;
-        
+
         tr.after(expTr);
         const icon = tr.querySelector('.btn-toggle-log i') as HTMLElement | null;
         if (icon) icon.style.transform = 'rotate(90deg)';

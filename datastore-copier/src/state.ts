@@ -37,13 +37,11 @@ export interface StateType {
         tgt: string;
         srcDs: string;
         tgtDs: string;
-        loc: string;
         tables: BqTable[];
         filtered: BqTable[];
         page: number;
         perPage: number;
         search: string;
-        selected: Set<string>;
         datasetsSrc: string[];
         datasetsTgt: string[];
     };
@@ -76,6 +74,10 @@ export interface StateType {
         perPage: number;
         filterStatus: string;
         selected: Set<string>;
+        kinds: string[];
+        properties: string[];
+        databasesSrc: string[];
+        databasesTgt: string[];
     };
     subscribe: (event: string, cb: () => void) => void;
     notify: (event: string) => void;
@@ -94,13 +96,11 @@ export const State: StateType = {
         tgt: '',
         srcDs: '',
         tgtDs: '',
-        loc: 'us',
         tables: [],
         filtered: [],
         page: 1,
         perPage: 50,
         search: '',
-        selected: new Set<string>(),
         datasetsSrc: [],
         datasetsTgt: []
     },
@@ -127,7 +127,11 @@ export const State: StateType = {
         page: 1,
         perPage: 50,
         filterStatus: 'all',
-        selected: new Set<string>()
+        selected: new Set<string>(),
+        kinds: [],
+        properties: [],
+        databasesSrc: [],
+        databasesTgt: []
     },
     subscribe: (event: string, cb: () => void): void => {
         if (!observers.has(event)) {

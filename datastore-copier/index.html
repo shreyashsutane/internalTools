@@ -29,7 +29,7 @@
                 </span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
-                <a href="../docs/index.html#section-infra-manager" target="_blank" class="btn btn-g" style="color: var(--info); font-size: 12px; padding: 6px 12px;">
+                <a href="../docs/index.html#section-infra-manager" target="_blank" rel="noopener noreferrer" class="btn btn-g" style="color: var(--info); font-size: 12px; padding: 6px 12px;">
                     <i class="fa-solid fa-book"></i> Documentation
                 </a>
                 <button id="themeToggle" class="btn btn-s" style="padding: 6px 12px; font-size: 12px;" title="Toggle Dark/Light Mode">
@@ -67,7 +67,7 @@
         <header class="flex items-center justify-between mb-8 anim-up">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:var(--accent-dim)"><i class="fa-solid fa-cloud" style="color:var(--accent);font-size:16px"></i></div>
-                <div><h1 class="text-lg font-bold tracking-tight">GCP Infrastructure Manager</h1><p class="text-xs" style="color:var(--muted)">Schema Migration & Datastore Management</p></div>
+                <div><h1 class="text-lg font-bold tracking-tight">GCP Infrastructure Manager</h1><p class="text-xs" style="color:var(--muted)">Read-only Schema Comparison &amp; Datastore Management</p></div>
             </div>
             <div id="header-right" class="flex items-center gap-3"></div>
         </header>
@@ -84,11 +84,12 @@
                 <div style="margin-bottom: 24px;">
                     <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">PASTE TEMPORARY ACCESS TOKEN</label>
                     <div class="relative">
-                        <input id="inp-token" type="password" class="inp pr-10" placeholder="Paste access token here...">
+                        <input id="inp-token" type="password" class="inp pr-10" placeholder="Paste access token here..." autocomplete="off" autocapitalize="off" spellcheck="false">
                         <button id="btn-toggle-token" type="button">
                             <i class="fa-solid fa-eye-slash"></i>
                         </button>
                     </div>
+                    <p class="text-[11px] mt-2" style="color:var(--muted)">The token is held in memory only, sent only to allowlisted Google API origins, and discarded when this page closes.</p>
                 </div>
                 
                 <button id="btn-verify" class="btn btn-p w-full" disabled><i class="fa-solid fa-key"></i> Verify Token</button>
@@ -99,7 +100,7 @@
             <div class="card max-w-4xl mx-auto text-center">
                 <h2 class="font-semibold text-base mb-6">2. Select Operation Mode</h2>
                 <div class="grid grid-cols-3 gap-4">
-                    <button class="tab-btn on" data-mode="bq"><i class="fa-solid fa-table mr-2"></i>BQ Schema</button>
+                    <button class="tab-btn on" data-mode="bq"><i class="fa-solid fa-table mr-2"></i>BQ Schema Comparator</button>
                     <button class="tab-btn" data-mode="query"><i class="fa-solid fa-clock mr-2"></i>Scheduled Queries</button>
                     <button class="tab-btn" data-mode="ds"><i class="fa-solid fa-database mr-2"></i>Datastore</button>
                 </div>
@@ -109,6 +110,7 @@
         <section id="sec-forms" style="display:none; position: relative; z-index: 50;" class="max-w-5xl mx-auto mt-6 anim-up">
             <!-- BQ FORM -->
             <div id="form-bq" class="card" style="display:none; overflow: visible !important;">
+                <div class="warning-box"><i class="fa-solid fa-shield-halved"></i><div><strong>Read-only mode.</strong> The comparator only lists datasets/tables and reads schema metadata. It cannot create, copy, update, override, or delete BigQuery resources.</div></div>
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="bq-src" class="inp" placeholder="Search..."><div id="dd-bq-src" class="dropdown-menu"></div></div>
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="bq-tgt" class="inp" placeholder="Search..."><div id="dd-bq-tgt" class="dropdown-menu"></div></div>
@@ -117,10 +119,7 @@
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE DATASET</label><input id="bq-src-ds" class="inp" placeholder="All"><div id="dd-bq-src-ds" class="dropdown-menu"></div></div>
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET DATASET</label><input id="bq-tgt-ds" class="inp" placeholder="All"><div id="dd-bq-tgt-ds" class="dropdown-menu"></div></div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">LOCATION</label><input id="bq-loc" class="inp" value="us"></div>
-                    <div class="flex items-end"><button id="btn-bq-compare" class="btn btn-p w-full"><i class="fa-solid fa-code-compare"></i> Compare</button></div>
-                </div>
+                <button id="btn-bq-compare" class="btn btn-p w-full"><i class="fa-solid fa-code-compare"></i> Compare Schemas (Read Only)</button>
             </div>
             <!-- QUERY FORM -->
             <div id="form-query" class="card" style="display:none; overflow: visible !important;">
@@ -184,14 +183,10 @@
         <section id="sec-results" style="display:none" class="mt-6">
             <!-- BQ RESULTS -->
             <div id="res-bq" style="display:none">
-                <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup before overwriting.</strong> <a href="https://cloud.google.com/bigquery/docs/table-snapshots-intro" target="_blank">Create Snapshots</a>.</div></div>
+                <div class="warning-box"><i class="fa-solid fa-lock"></i><div><strong>Comparison only.</strong> No BigQuery write, copy, patch, override, or delete request is available from this view.</div></div>
                 <div id="bq-summary" class="grid grid-cols-5 gap-3 mb-5"></div>
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div class="flex items-center gap-2"><input id="bq-search" class="inp" style="width:200px;font-size:12px;padding:7px 12px" placeholder="Search tables..."><button id="btn-bq-csv" class="btn btn-s" style="font-size:12px"><i class="fa-solid fa-file-csv"></i></button></div>
-                    <div class="flex items-center gap-3">
-                        <button id="btn-bq-copy-s2t" class="btn btn-p has-tooltip" style="font-size:12px" data-tooltip="Copy from Source to Target project" disabled><i class="fa-solid fa-arrow-right"></i> Copy Src → Tgt</button>
-                        <button id="btn-bq-copy-t2s" class="btn btn-p has-tooltip" style="font-size:12px" data-tooltip="Copy from Target to Source project" disabled><i class="fa-solid fa-arrow-left"></i> Copy Tgt → Src</button>
-                    </div>
                 </div>
                 <div id="bq-table-list" class="flex flex-col gap-2"></div>
                 <div id="bq-pagination" class="flex justify-center gap-2 mt-6"></div>
@@ -205,7 +200,7 @@
             </div>
             <!-- DATASTORE RESULTS -->
             <div id="res-ds" style="display:none">
-                <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Review changes carefully.</strong> Modifying Datastore entities is immediate. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank">Create Backup</a>.</div></div>
+                <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Review changes carefully.</strong> Modifying Datastore entities is immediate. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank" rel="noopener noreferrer">Create Backup</a>.</div></div>
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div class="flex gap-2">
                         <button class="btn btn-s" data-filter="all">All <span id="ds-cnt-all" class="mono" style="font-size:10px">0</span></button>
@@ -395,7 +390,7 @@
     <template id="template-ds-copy-modal">
         <div class="p-5 text-left">
             <h3 class="font-semibold mb-4 text-base">Copy Datastore Entities</h3>
-            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup!</strong> This will upsert entities. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank">Create Backup</a></div></div>
+            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup!</strong> This will upsert entities. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank" rel="noopener noreferrer">Create Backup</a></div></div>
             <div class="warning-box layout-warning-audit flex-col">
                 <div class="flex items-start gap-2.5 w-full">
                     <i class="fa-solid fa-shield-halved text-[var(--warn)] mt-0.5"></i>
@@ -415,9 +410,10 @@
             <p class="text-sm mb-4 font-semibold"><span class="selected-cnt-span"></span> entities selected.</p>
             <div class="mb-4 flex items-center gap-2"><div class="chk on chk-apply-replace"></div><span class="text-xs">Apply Find & Replace modifications</span></div>
             <div class="replace-inputs-wrap mb-4 flex flex-col gap-3" style="display: flex;">
-                <div>
+                <div class="dropdown-wrapper">
                     <label class="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Property Field (e.g., role, *, or nested field)</label>
-                    <input type="text" class="inp inp-field-val w-full text-xs" style="padding: 6px 10px;" />
+                    <input type="text" class="inp inp-field-val w-full text-xs" style="padding: 6px 10px;" placeholder="Field to Modify..." />
+                    <div class="dropdown-menu modal-dd-ds-mod"></div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -431,22 +427,6 @@
                 </div>
             </div>
             <div class="flex justify-end gap-2"><button class="btn btn-s btn-cancel">Cancel</button><button class="btn btn-p btn-confirm">Confirm Copy</button></div>
-        </div>
-    </template>
-
-    <template id="template-bq-copy-modal">
-        <div class="p-5 text-left">
-            <h3 class="font-semibold mb-4 text-base">Copy BigQuery Schemas</h3>
-            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup!</strong> Syncing schemas will patch or recreate tables in the destination project. <a href="https://cloud.google.com/bigquery/docs/table-snapshots-intro" target="_blank">Create Snapshots</a>.</div></div>
-            <div class="text-xs mb-3 text-zinc-400">
-                <p class="mb-1"><strong>Source (From):</strong> <span class="from-pid-span"></span></p>
-                <p class="mb-1"><strong>Destination (To):</strong> <span class="to-pid-span"></span></p>
-            </div>
-            <p class="text-sm mb-4 font-semibold"><span class="selected-cnt-span"></span> tables selected.</p>
-            <div class="flex justify-end gap-2">
-                <button class="btn btn-s btn-cancel">Cancel</button>
-                <button class="btn btn-p btn-confirm">Confirm Copy</button>
-            </div>
         </div>
     </template>
 

@@ -12,13 +12,87 @@
     "ignore": [
       "firebase.json",
       "**/.*",
+      ".git/**",
+      ".firebase/**",
+      ".firebaserc",
+      ".gitignore",
+      ".DS_Store",
       "**/node_modules/**",
+      "package.json",
+      "package-lock.json",
+      "tsconfig.json",
+      "tests/**",
+      "test-*.js",
       "server.js",
       "seed-gcp.js",
       "test-automation.js",
       "firestore.rules",
       "MIGRATION.md",
-      "seed-admins.js"
+      "seed-admins.js",
+      "deploy.sh",
+      "generate-pdf.js",
+      "docs/*.md",
+      "datastore-copier/README.md",
+      "datastore-copier/script.js",
+      "datastore-copier/src/**",
+      "datastore-copier/js/*.map"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://formspree.io; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.googleapis.com https://formspree.io; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin"
+          },
+          {
+            "key": "Cross-Origin-Resource-Policy",
+            "value": "same-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "no-referrer"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          }
+        ]
+      },
+      {
+        "source": "/datastore-copier/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          }
+        ]
+      },
+      {
+        "source": "/admin.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          }
+        ]
+      }
     ]
   }
 }

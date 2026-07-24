@@ -4,8 +4,31 @@ import { Api } from './api';
 import { UI } from './ui';
 import { Diff } from './diff';
 import { AuditLog } from './audit';
+import {
+    cloneDatastoreValue,
+    datastoreValueToEditorText,
+    editorTextToDatastoreValue,
+    getDatastoreEditorType,
+    replaceDatastoreField,
+    type DatastoreEditorType
+} from './datastore-utils';
+
+let dsAbortController: AbortController | null = null;
+
+const beginDsOperation = (): AbortController => {
+    dsAbortController?.abort();
+    dsAbortController = new AbortController();
+    return dsAbortController;
+};
+
+const isCancellationError = (error: any): boolean =>
+    error?.name === 'AbortError' || error?.message === 'Process Cancelled';
 
 export const App = {
+    cancelDsOperation: (): void => {
+        State.cancelDs = true;
+        dsAbortController?.abort();
+    },
     parseWelcomeName: (email: string): string => {
         if (!email) return 'User';
         const username = email.split('@')[0] || '';
@@ -25,8 +48,8 @@ export const App = {
             toggleBtn.onclick = () => {
                 const isPassword = tokenInp.type === 'password';
                 tokenInp.type = isPassword ? 'text' : 'password';
-                toggleBtn.innerHTML = isPassword 
-                    ? '<i class="fa-solid fa-eye"></i>' 
+                toggleBtn.innerHTML = isPassword
+                    ? '<i class="fa-solid fa-eye"></i>'
                     : '<i class="fa-solid fa-eye-slash"></i>';
             };
         }
@@ -39,21 +62,15 @@ export const App = {
         }
         const verifyBtn = Utils.$('btn-verify');
         if (verifyBtn) verifyBtn.onclick = App.verify;
-        
+
         document.querySelectorAll('[data-mode]').forEach(b => {
             const btn = b as HTMLElement;
             btn.onclick = () => App.selectMode(btn.dataset.mode || 'bq');
         });
-        
+
         const bqCompareBtn = Utils.$('btn-bq-compare');
         if (bqCompareBtn) bqCompareBtn.onclick = App.runBqCompare;
-        
-        const bqCopyS2TBtn = Utils.$('btn-bq-copy-s2t');
-        if (bqCopyS2TBtn) bqCopyS2TBtn.onclick = () => App.openBqCopyModal('s2t');
-        
-        const bqCopyT2SBtn = Utils.$('btn-bq-copy-t2s');
-        if (bqCopyT2SBtn) bqCopyT2SBtn.onclick = () => App.openBqCopyModal('t2s');
-        
+
         const bqCsvBtn = Utils.$('btn-bq-csv');
         if (bqCsvBtn) {
             bqCsvBtn.onclick = () => {
@@ -66,37 +83,37 @@ export const App = {
                 a.click();
             };
         }
-        
+
         const qFetchBtn = Utils.$('btn-q-fetch');
         if (qFetchBtn) qFetchBtn.onclick = App.runQueryFetch;
-        
+
         const qCopyBtn = Utils.$('btn-q-copy');
         if (qCopyBtn) qCopyBtn.onclick = App.openQueryCopyModal;
-        
+
         const dsAddFilterBtn = Utils.$('btn-ds-add-filter');
         if (dsAddFilterBtn) dsAddFilterBtn.onclick = UI.addDsFilter;
-        
+
         const dsModField = Utils.$('ds-mod-field') as HTMLInputElement | null;
         if (dsModField) dsModField.oninput = (e: any) => { State.ds.modField = e.target.value; };
-        
+
         const dsModTarget = Utils.$('ds-mod-target') as HTMLInputElement | null;
         if (dsModTarget) dsModTarget.oninput = (e: any) => { State.ds.modTarget = e.target.value; };
-        
+
         const dsModReplace = Utils.$('ds-mod-replace') as HTMLInputElement | null;
         if (dsModReplace) dsModReplace.oninput = (e: any) => { State.ds.modReplace = e.target.value; };
-        
+
         const dsAnalyzeBtn = Utils.$('btn-ds-analyze');
         if (dsAnalyzeBtn) dsAnalyzeBtn.onclick = App.runDsAnalyze;
-        
+
         const cancelDsBtn = Utils.$('btn-cancel-ds');
-        if (cancelDsBtn) cancelDsBtn.onclick = () => { State.cancelDs = true; };
-        
+        if (cancelDsBtn) cancelDsBtn.onclick = App.cancelDsOperation;
+
         const dsCsvBtn = Utils.$('btn-ds-csv');
         if (dsCsvBtn) dsCsvBtn.onclick = App.exportDsCsv;
-        
+
         const dsCopyBtn = Utils.$('btn-ds-copy');
         if (dsCopyBtn) dsCopyBtn.onclick = App.openDsCopyModal;
-        
+
         const bqSearchInp = Utils.$('bq-search') as HTMLInputElement | null;
         if (bqSearchInp) {
             bqSearchInp.oninput = (e: any) => {
@@ -138,35 +155,27 @@ export const App = {
         if (chkAllDs) {
             chkAllDs.onclick = () => App.toggleAllDs();
         }
-        
+
         AuditLog.renderLogs();
     },
     verify: async (): Promise<void> => {
         const tokenInp = Utils.$('inp-token') as HTMLInputElement | null;
         const token = tokenInp ? tokenInp.value.trim() : '';
         if (!token) return;
-        
+
         const verifyBtn = Utils.$('btn-verify') as HTMLButtonElement | null;
         if (verifyBtn) {
-            verifyBtn.disabled = true; 
+            verifyBtn.disabled = true;
             verifyBtn.innerHTML = '<span class="spinner"></span> Verifying...';
         }
-        
+
         try {
-            const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${token}`);
-            if (!res.ok) throw new Error("Invalid token"); 
-            const data = await res.json();
-            State.token = token; 
+            const identity = await Api.validateToken(token);
+            State.token = token;
             Api.setToken(token);
-            State.authEmail = data.email || 'User';
-            localStorage.setItem('access_token', token);
-            localStorage.setItem('auth_email', State.authEmail);
-            try { 
-                State.projects = await Api.getProjects(); 
-            } catch(e) { 
-                Utils.toast("Could not fetch projects", "info"); 
-            }
-            
+            State.authEmail = identity.email;
+            State.projects = identity.projects;
+
             const welcomeName = App.parseWelcomeName(State.authEmail);
             try { App.playNetflixTudum(); } catch(audioErr) { console.warn("Audio feedback error:", audioErr); }
             await UI.showWelcomeAnimation(welcomeName);
@@ -174,10 +183,10 @@ export const App = {
             Utils.hide('sec-auth'); Utils.show('sec-modes'); Utils.show('sec-audit-logs'); UI.initDropdowns();
             Utils.$('header-right')!.innerHTML = `<span class="text-xs mono" style="color:var(--muted)">${Utils.escapeHtml(State.authEmail)}</span>`;
             await AuditLog.addLog("AUTHENTICATION", "—", "—", `User verified token successfully. Loaded ${State.projects.length} projects.`, "SUCCESS");
-        } catch(e: any) { 
+        } catch(e: any) {
             if (verifyBtn) {
-                verifyBtn.disabled = false; 
-                verifyBtn.innerHTML = '<i class="fa-solid fa-key"></i> Verify Token'; 
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="fa-solid fa-key"></i> Verify Token';
             }
             const { ErrorBoundary } = await import('./utils');
             await ErrorBoundary.handle(e, 'App.verify');
@@ -194,7 +203,7 @@ export const App = {
         }
     },
     selectMode: (mode: string): void => {
-        State.mode = mode; 
+        State.mode = mode;
         document.querySelectorAll('[data-mode]').forEach(b => {
             const btn = b as HTMLElement;
             btn.classList.toggle('on', btn.dataset.mode === mode);
@@ -203,57 +212,53 @@ export const App = {
         ['bq','query','ds'].forEach(m => { Utils.hide(`form-${m}`); Utils.hide(`res-${m}`); });
         Utils.show(`form-${mode}`);
     },
-    
+
     // --- BQ logic ---
     runBqCompare: async (): Promise<void> => {
-        State.bq.src = (Utils.$('bq-src') as HTMLInputElement).value; 
-        State.bq.tgt = (Utils.$('bq-tgt') as HTMLInputElement).value; 
-        State.bq.srcDs = (Utils.$('bq-src-ds') as HTMLInputElement).value; 
+        State.bq.src = (Utils.$('bq-src') as HTMLInputElement).value;
+        State.bq.tgt = (Utils.$('bq-tgt') as HTMLInputElement).value;
+        State.bq.srcDs = (Utils.$('bq-src-ds') as HTMLInputElement).value;
         State.bq.tgtDs = (Utils.$('bq-tgt-ds') as HTMLInputElement).value;
-        State.bq.loc = (Utils.$('bq-loc') as HTMLSelectElement).value || 'us';
         if (!State.bq.src || !State.bq.tgt) return Utils.toast("Select projects", "err");
-        
-        Utils.$('btn-bq-copy-s2t')!.setAttribute('data-tooltip', `Copy from ${State.bq.src} to ${State.bq.tgt}`);
-        Utils.$('btn-bq-copy-t2s')!.setAttribute('data-tooltip', `Copy from ${State.bq.tgt} to ${State.bq.src}`);
-        
-        Utils.hide('sec-forms'); Utils.show('sec-loading'); 
-        Utils.$('load-title')!.textContent = "Comparing Schemas"; 
+
+        Utils.hide('sec-forms'); Utils.show('sec-loading');
+        Utils.$('load-title')!.textContent = "Comparing Schemas";
         Utils.$('load-msg')!.textContent = "Fetching tables...";
         try {
-            const srcDs = State.bq.srcDs ? [State.bq.srcDs] : await Api.getDatasets(State.bq.src); 
+            const srcDs = State.bq.srcDs ? [State.bq.srcDs] : await Api.getDatasets(State.bq.src);
             const tgtDs = State.bq.tgtDs ? [State.bq.tgtDs] : await Api.getDatasets(State.bq.tgt);
             const srcTm = new Map<string, any>(), tgtTm = new Map<string, any>();
-            for (const ds of srcDs) { 
-                const ts = await Api.getTables(State.bq.src, ds); 
-                ts.forEach(t => srcTm.set(`${ds}.${t.table}`, t)); 
+            for (const ds of srcDs) {
+                const ts = await Api.getTables(State.bq.src, ds);
+                ts.forEach(t => srcTm.set(`${ds}.${t.table}`, t));
             }
-            for (const ds of tgtDs) { 
-                const ts = await Api.getTables(State.bq.tgt, ds); 
-                ts.forEach(t => tgtTm.set(`${ds}.${t.table}`, t)); 
+            for (const ds of tgtDs) {
+                const ts = await Api.getTables(State.bq.tgt, ds);
+                ts.forEach(t => tgtTm.set(`${ds}.${t.table}`, t));
             }
             State.bq.tables = [];
             for (const key of new Set([...srcTm.keys(), ...tgtTm.keys()])) {
-                const [ds, tbl] = key.split('.'); 
+                const [ds, tbl] = key.split('.');
                 const inSrc = srcTm.has(key), inTgt = tgtTm.has(key);
                 let status: 'different' | 'source_only' | 'target_only' | 'identical' | 'checking' = inSrc && inTgt ? 'checking' : (inSrc ? 'source_only' : 'target_only');
                 State.bq.tables.push({ dataset: ds, table: tbl, srcSchema: null, tgtSchema: null, status });
             }
             State.bq.tables.sort((a, b) => a.dataset.localeCompare(b.dataset) || a.table.localeCompare(b.table));
-            State.bq.page = 1; State.bq.selected.clear(); 
-            Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-bq'); 
+            State.bq.page = 1;
+            Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-bq');
             App.renderBqResults();
-        } catch(e: any) { 
+        } catch(e: any) {
             Utils.hide('sec-loading'); Utils.show('sec-forms');
             const { ErrorBoundary } = await import('./utils');
             await ErrorBoundary.handle(e, 'App.runBqCompare');
         }
     },
-    
+
     compareFields: (srcFields: any[], tgtFields: any[]): any[] => {
         const diffs: any[] = [];
         const srcMap = new Map(srcFields.map(f => [f.name, f]));
         const tgtMap = new Map(tgtFields.map(f => [f.name, f]));
-        
+
         for (const [name, sf] of srcMap) {
             if (!tgtMap.has(name)) {
                 diffs.push({ field: name, type: 'added', src: `${sf.type} (${sf.mode})`, tgt: '—' });
@@ -283,10 +288,10 @@ export const App = {
                 Api.getSchema(State.bq.src, r.dataset, r.table),
                 Api.getSchema(State.bq.tgt, r.dataset, r.table)
             ]);
-            
+
             r.srcSchema = srcSchema;
             r.tgtSchema = tgtSchema;
-            
+
             const diffs = App.compareFields(srcSchema, tgtSchema);
             if (diffs.length === 0) {
                 r.status = 'identical';
@@ -294,10 +299,10 @@ export const App = {
                 r.status = 'different';
                 r.diffs = diffs;
             }
-            
+
             const badge = tr.querySelector('.status-badge') as HTMLElement;
             const summaryTd = tr.querySelectorAll('td')[3];
-            
+
             if (r.status === 'identical') {
                 badge.textContent = 'IDENTICAL';
                 badge.style.color = 'var(--ok)';
@@ -322,13 +327,13 @@ export const App = {
         const tbody = Utils.$('bq-table-list');
         if (!tbody) return;
         tbody.innerHTML = '';
-        
+
         const query = State.bq.search.toLowerCase();
-        State.bq.filtered = State.bq.tables.filter(t => 
-            t.dataset.toLowerCase().includes(query) || 
+        State.bq.filtered = State.bq.tables.filter(t =>
+            t.dataset.toLowerCase().includes(query) ||
             t.table.toLowerCase().includes(query)
         );
-        
+
         // Render stats
         const total = State.bq.filtered.length;
         const srcOnly = State.bq.filtered.filter(t => t.status === 'source_only').length;
@@ -346,19 +351,18 @@ export const App = {
 
         const start = (State.bq.page - 1) * State.bq.perPage;
         const pageData = State.bq.filtered.slice(start, start + State.bq.perPage);
-        
+
         if (pageData.length === 0) {
             tbody.innerHTML = `<div class="card p-6 text-center text-sm" style="color:var(--muted)">No tables found</div>`;
             Utils.$('bq-pagination')!.innerHTML = '';
             return;
         }
-        
+
         const tableHtml = `
             <div class="card" style="padding:0;overflow:hidden">
                 <table class="w-full text-xs mono" style="border-collapse:collapse">
                     <thead>
                         <tr style="background:var(--bg2)">
-                            <th class="text-left px-4 py-3 w-10"><div class="chk" id="chk-all-bq"></div></th>
                             <th class="text-left px-4 py-3" style="color:var(--muted)">Table Path</th>
                             <th class="text-left px-4 py-3 w-32" style="color:var(--muted)">Status</th>
                             <th class="text-left px-4 py-3 w-64" style="color:var(--muted)">Diff Summary</th>
@@ -370,18 +374,17 @@ export const App = {
         `;
         tbody.innerHTML = tableHtml;
         const rowsContainer = Utils.$('bq-table-body-rows') as HTMLElement;
-        
+
         pageData.forEach(r => {
             const tablePath = `${r.dataset}.${r.table}`;
-            const sel = State.bq.selected.has(tablePath);
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--brd)';
-            
+
             let badgeText = 'Checking...';
             let badgeColor = 'var(--muted)';
             let badgeBg = 'var(--hover)';
             let diffSum = '—';
-            
+
             if (r.status === 'source_only') {
                 badgeText = 'SRC ONLY';
                 badgeColor = 'var(--info)';
@@ -403,32 +406,28 @@ export const App = {
                 badgeBg = 'var(--warn-dim)';
                 diffSum = 'Comparing schemas...';
             }
-            
+
             tr.innerHTML = `
-                <td class="px-4 py-3"><div class="chk ${sel?'on':''}"></div></td>
-                <td class="px-4 py-3 cursor-pointer font-semibold" style="color:var(--fg)">${tablePath} <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:4px"></i></td>
+                <td class="px-4 py-3 cursor-pointer font-semibold" style="color:var(--fg)">${Utils.escapeHtml(tablePath)} <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:4px"></i></td>
                 <td class="px-4 py-3"><span class="badge status-badge" style="background:${badgeBg};color:${badgeColor}">${badgeText}</span></td>
                 <td class="px-4 py-3" style="color:var(--muted)">${diffSum}</td>
             `;
-            
-            const keyTd = tr.querySelectorAll('td')[1] as HTMLElement;
+
+            const keyTd = tr.querySelectorAll('td')[0] as HTMLElement;
             keyTd.onclick = () => App.toggleBqRowExpand(tr, r);
-            
-            const chk = tr.querySelector('.chk') as HTMLElement;
-            chk.onclick = () => App.toggleBqSelect(tablePath, chk);
-            
+
             rowsContainer.appendChild(tr);
-            
+
             if (r.status === 'checking' && !r.srcSchema) {
                 App.compareBqTableSchema(r, tr);
             }
         });
-        
+
         const totalPages = Math.ceil(State.bq.filtered.length / State.bq.perPage);
-        Utils.$('bq-pagination')!.innerHTML = totalPages > 1 
-            ? `<button class="btn btn-s btn-bq-prev">Prev</button><span class="mono text-xs" style="color:var(--muted);padding:0 12px">Page ${State.bq.page} of ${totalPages}</span><button class="btn btn-s btn-bq-next">Next</button>` 
+        Utils.$('bq-pagination')!.innerHTML = totalPages > 1
+            ? `<button class="btn btn-s btn-bq-prev">Prev</button><span class="mono text-xs" style="color:var(--muted);padding:0 12px">Page ${State.bq.page} of ${totalPages}</span><button class="btn btn-s btn-bq-next">Next</button>`
             : '';
-            
+
         if (totalPages > 1) {
             const prevBtn = tbody.querySelector('.btn-bq-prev') as HTMLButtonElement | null;
             if (prevBtn) {
@@ -442,56 +441,26 @@ export const App = {
             }
         }
 
-        // Bind dynamic select all listener instead of inline onclick
-        const chkAllBq = tbody.querySelector('#chk-all-bq') as HTMLElement | null;
-        if (chkAllBq) {
-            chkAllBq.onclick = () => App.toggleAllBq();
-        }
-            
-        App.updateSelectAllBqState();
     },
 
     bqPage: (p: number): void => { State.bq.page = p; App.renderBqResults(); },
-    toggleBqSelect: (tablePath: string, el: HTMLElement): void => {
-        if (State.bq.selected.has(tablePath)) State.bq.selected.delete(tablePath);
-        else State.bq.selected.add(tablePath);
-        el.classList.toggle('on');
-        const disableBtn = State.bq.selected.size === 0;
-        (Utils.$('btn-bq-copy-s2t') as HTMLButtonElement).disabled = disableBtn;
-        (Utils.$('btn-bq-copy-t2s') as HTMLButtonElement).disabled = disableBtn;
-        App.updateSelectAllBqState();
-    },
-    toggleAllBq: (): void => {
-        const allSel = State.bq.selected.size === State.bq.filtered.length && State.bq.filtered.length > 0;
-        if (allSel) State.bq.selected.clear();
-        else State.bq.filtered.forEach(r => State.bq.selected.add(`${r.dataset}.${r.table}`));
-        App.renderBqResults();
-        const disableBtn = State.bq.selected.size === 0;
-        (Utils.$('btn-bq-copy-s2t') as HTMLButtonElement).disabled = disableBtn;
-        (Utils.$('btn-bq-copy-t2s') as HTMLButtonElement).disabled = disableBtn;
-    },
-    updateSelectAllBqState: (): void => {
-        const chkAll = Utils.$('chk-all-bq'); if(!chkAll) return;
-        const isAll = State.bq.filtered.length > 0 && State.bq.selected.size === State.bq.filtered.length;
-        chkAll.classList.toggle('on', isAll);
-    },
 
     toggleBqRowExpand: async (tr: HTMLElement, r: BqTable): Promise<void> => {
         const existingNext = tr.nextElementSibling;
         if (existingNext?.classList.contains('expand-row')) { existingNext.remove(); return; }
-        
+
         const expTr = document.createElement('tr');
         expTr.className = 'expand-row';
         expTr.style.borderBottom = '1px solid var(--brd)';
-        
+
         let content = `<div class="px-6 py-3 text-xs"><span class="spinner"></span> Loading schema details...</div>`;
-        expTr.innerHTML = `<td colspan="4" class="px-6 py-3" style="background:var(--bg)">${content}</td>`;
+        expTr.innerHTML = `<td colspan="3" class="px-6 py-3" style="background:var(--bg)">${content}</td>`;
         tr.after(expTr);
-        
+
         try {
             if (!r.srcSchema && r.status !== 'target_only') r.srcSchema = await Api.getSchema(State.bq.src, r.dataset, r.table);
             if (!r.tgtSchema && r.status !== 'source_only') r.tgtSchema = await Api.getSchema(State.bq.tgt, r.dataset, r.table);
-            
+
             let html = '';
             if (r.status === 'identical') {
                 html = `<div class="text-xs font-semibold text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i> Schemas are fully identical.</div>`;
@@ -542,106 +511,19 @@ export const App = {
             }
             expTr.querySelector('td')!.innerHTML = html;
         } catch (e: any) {
-            expTr.querySelector('td')!.innerHTML = `<div class="text-xs text-red-400">Error: ${e.message}</div>`;
+            expTr.querySelector('td')!.innerHTML = `<div class="text-xs text-red-400">Error: ${Utils.escapeHtml(e.message)}</div>`;
         }
-    },
-
-    openBqCopyModal: (direction: 's2t' | 't2s'): void => {
-        const selected = [...State.bq.selected]; if(selected.length === 0) return;
-        const fromPid = direction === 't2s' ? State.bq.tgt : State.bq.src;
-        const toPid = direction === 't2s' ? State.bq.src : State.bq.tgt;
-
-        const tmpl = Utils.$('template-bq-copy-modal') as HTMLTemplateElement;
-        if (!tmpl) return;
-        const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
-
-        fragment.querySelector('.from-pid-span')!.textContent = fromPid;
-        fragment.querySelector('.to-pid-span')!.textContent = toPid;
-        fragment.querySelector('.selected-cnt-span')!.textContent = String(selected.length);
-
-        UI.openModal(fragment);
-
-        Utils.$('modal-root')!.querySelector('.btn-cancel')!.onclick = () => UI.closeModal();
-        (Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement).onclick = () => {
-            UI.closeModal();
-            App.executeBqCopy(direction);
-        };
-    },
-
-    executeBqCopy: async (direction: 's2t' | 't2s' = 's2t'): Promise<void> => {
-        const selected = [...State.bq.selected]; if(selected.length === 0) return;
-        const fromPid = direction === 't2s' ? State.bq.tgt : State.bq.src;
-        const toPid = direction === 't2s' ? State.bq.src : State.bq.tgt;
-        
-        Utils.show('sec-loading'); Utils.hide('load-ds-stats'); Utils.hide('btn-cancel-ds');
-        Utils.$('load-title')!.textContent = "Syncing BQ Schemas...";
-        let ok = 0, fail = 0;
-        const backupData: any[] = [];
-        for (let i = 0; i < selected.length; i++) {
-            const path = selected[i]; const [dataset, table] = path.split('.');
-            const r = State.bq.tables.find(x => x.dataset === dataset && x.table === table);
-            if (!r) continue;
-            const toDataset = direction === 's2t' ? (State.bq.tgtDs || dataset) : (State.bq.srcDs || dataset);
-            Utils.$('load-msg')!.textContent = `Syncing ${i+1}/${selected.length}: ${path} -> ${toDataset}.${table}`;
-            try {
-                const fromSchema = await Api.getSchema(fromPid, dataset, table);
-                
-                let location = null;
-                try {
-                    const srcDsMeta = await Api.getDataset(fromPid, dataset);
-                    location = srcDsMeta.location;
-                } catch(err) {
-                    console.error("Failed to fetch source dataset location, falling back", err);
-                }
-                
-                let prevSchema = null;
-                let existsInDest = false;
-                try {
-                    prevSchema = await Api.getSchema(toPid, toDataset, table);
-                    existsInDest = true;
-                } catch(err) {
-                    console.log("Table does not exist in destination, or schema fetch failed", err);
-                }
-                
-                await Api.createDataset(toPid, toDataset, location);
-                let actionApplied = !existsInDest ? 'create' : 'patch';
-                if (!existsInDest) {
-                    await Api.createTable(toPid, toDataset, table, fromSchema);
-                } else {
-                    try {
-                        await Api.patchTable(toPid, toDataset, table, fromSchema);
-                    } catch (patchErr: any) {
-                        throw new Error(`Incompatible schema change on destination table (change of field type, mode, or deleted column). Sync failed to prevent data loss. Error: ${patchErr.message}`);
-                    }
-                }
-                
-                backupData.push({
-                    tablePath: `${dataset}.${table} -> ${toDataset}.${table}`,
-                    action: actionApplied,
-                    prevSchema: prevSchema
-                });
-                ok++;
-            } catch (e: any) { fail++; Utils.toast(`Failed ${path}: ${e.message}`, 'err'); }
-        }
-        Utils.hide('sec-loading'); Utils.toast(`Sync completed. Success: ${ok}, Failed: ${fail}`, ok > 0 ? 'ok' : 'err');
-        const status = fail === 0 && ok > 0 ? "SUCCESS" : (ok > 0 ? "PARTIAL" : "FAILED");
-        const details = `Synced ${ok} tables from ${fromPid} to ${toPid}, failed ${fail} tables. Tables: ${selected.join(', ')}`;
-        await AuditLog.addLog("BQ_SCHEMA_SYNC", fromPid, toPid, details, status, {
-            type: "BQ_SCHEMA_SYNC",
-            backupData: backupData
-        });
-        await App.runBqCompare();
     },
 
     // --- QUERY logic ---
     runQueryFetch: async (): Promise<void> => {
-        State.query.src = (Utils.$('q-src') as HTMLInputElement).value; 
+        State.query.src = (Utils.$('q-src') as HTMLInputElement).value;
         State.query.tgt = (Utils.$('q-tgt') as HTMLInputElement).value;
         State.query.srcLoc = (Utils.$('q-src-loc') as HTMLSelectElement).value || 'us';
         State.query.tgtLoc = (Utils.$('q-tgt-loc') as HTMLSelectElement).value || 'us';
         if(!State.query.src || !State.query.tgt) return Utils.toast("Select projects", "err");
         Utils.hide('sec-forms'); Utils.show('sec-loading'); Utils.$('load-title')!.textContent = "Scheduled Queries";
-        try { 
+        try {
             const [srcQueries, tgtQueries] = await Promise.all([
                 Api.getQueries(State.query.src, State.query.srcLoc),
                 Api.getQueries(State.query.tgt, State.query.tgtLoc)
@@ -703,10 +585,10 @@ export const App = {
 
             State.query.queries.sort((a, b) => a.displayName.localeCompare(b.displayName));
 
-            Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-query'); 
+            Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-query');
             App.renderQueryResults();
-        } catch(e: any) { 
-            Utils.hide('sec-loading'); Utils.show('sec-forms'); 
+        } catch(e: any) {
+            Utils.hide('sec-loading'); Utils.show('sec-forms');
             const { ErrorBoundary } = await import('./utils');
             await ErrorBoundary.handle(e, 'App.runQueryFetch');
         }
@@ -757,7 +639,7 @@ export const App = {
         State.query.queries.forEach(q => {
             const qId = q.name; const sel = State.query.selected.has(qId);
             const tr = document.createElement('tr'); tr.style.borderBottom = '1px solid var(--brd)';
-            
+
             let badgeText = '';
             let badgeColor = '';
             let badgeBg = '';
@@ -780,8 +662,8 @@ export const App = {
             }
 
             const isCopyable = q.srcQuery !== null;
-            const chkHtml = isCopyable 
-                ? `<div class="chk ${sel?'on':''}"></div>` 
+            const chkHtml = isCopyable
+                ? `<div class="chk ${sel?'on':''}"></div>`
                 : `<div class="chk disabled" style="opacity:0.3;cursor:not-allowed"></div>`;
 
             tr.innerHTML = `
@@ -833,7 +715,7 @@ export const App = {
         const existingNext = tr.nextElementSibling;
         if (existingNext?.classList.contains('expand-row')) { existingNext.remove(); return; }
         const expTr = document.createElement('tr'); expTr.className = 'expand-row'; expTr.style.borderBottom = '1px solid var(--brd)';
-        
+
         let html = '';
         if (q.status === 'different') {
             const srcSched = q.srcQuery?.schedule || 'Manual';
@@ -916,7 +798,7 @@ export const App = {
 
         UI.openModal(fragment);
 
-        Utils.$('modal-root')!.querySelector('.btn-cancel')!.onclick = () => UI.closeModal();
+        (Utils.$('modal-root')!.querySelector('.btn-cancel') as HTMLButtonElement).onclick = () => UI.closeModal();
         (Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement).onclick = () => {
             UI.closeModal();
             App.executeQueryCopy();
@@ -935,31 +817,56 @@ export const App = {
             if (!cmpObj || !cmpObj.srcQuery) continue;
             const q = cmpObj.srcQuery;
             Utils.$('load-msg')!.textContent = `Copying ${i+1}/${selected.length}: ${q.displayName}`;
+            const prevQuery = cmpObj.tgtQuery ? {
+                displayName: cmpObj.tgtQuery.displayName,
+                schedule: cmpObj.tgtQuery.schedule,
+                destinationDatasetId: cmpObj.tgtQuery.destinationDatasetId,
+                params: cmpObj.tgtQuery.params
+            } : null;
+            const newQuery = {
+                displayName: q.displayName,
+                schedule: q.schedule,
+                destinationDatasetId: q.destinationDatasetId,
+                params: q.params
+            };
+            const actionApplied = cmpObj.tgtQuery ? 'update' : 'create';
+            const backupCandidate = {
+                action: actionApplied,
+                name: cmpObj.tgtQuery?.name || `pending/${'x'.repeat(1024)}`,
+                displayName: q.displayName,
+                prevQuery,
+                newQuery
+            };
+            let removedPreviousTarget = false;
             try {
-                let actionApplied = 'create';
+                if (!AuditLog.canPersistPrevState({
+                    type: 'QUERY_SYNC',
+                    backupData: [...backupData, backupCandidate]
+                })) {
+                    throw new Error('Scheduled-query backup is too large for a safe audit entry.');
+                }
                 if (cmpObj.tgtQuery) {
                     await Api.deleteQuery(cmpObj.tgtQuery.name);
-                    actionApplied = 'update';
+                    removedPreviousTarget = true;
                 }
                 const created = await Api.createQuery(State.query.tgt, State.query.tgtLoc, q);
-                if (created && created.name) {
-                    backupData.push({
-                        action: actionApplied,
-                        name: created.name,
-                        displayName: q.displayName,
-                        prevQuery: cmpObj.tgtQuery ? {
-                            displayName: cmpObj.tgtQuery.displayName,
-                            schedule: cmpObj.tgtQuery.schedule,
-                            destinationDatasetId: cmpObj.tgtQuery.destinationDatasetId,
-                            params: cmpObj.tgtQuery.params
-                        } : null
-                    });
-                }
+                if (!created?.name) throw new Error('Scheduled-query create response did not include a resource name.');
+                backupData.push({ ...backupCandidate, name: created.name });
                 ok++;
-            } catch (e: any) { 
-                fail++; 
-                console.error(`Query copy error for ${q.displayName}:`, e);
-                Utils.toast(`Failed: ${q.displayName} - ${e.message}`, 'err'); 
+            } catch (e: any) {
+                let failure = e;
+                if (removedPreviousTarget && prevQuery) {
+                    try {
+                        await Api.createQuery(State.query.tgt, State.query.tgtLoc, prevQuery);
+                    } catch (rollbackError: any) {
+                        failure = new Error(
+                            `${e.message}; restoring the previous target query also failed: ${rollbackError.message}`
+                        );
+                    }
+                }
+                fail++;
+                console.error(`Query copy error for ${q.displayName}:`, failure);
+                Utils.toast(`Failed: ${q.displayName} - ${failure.message}`, 'err');
             }
         }
         Utils.hide('sec-loading'); Utils.toast(`Queries copied. Success: ${ok}, Failed: ${fail}`, ok > 0 ? 'ok' : 'err');
@@ -975,16 +882,22 @@ export const App = {
 
     // --- DATASTORE logic ---
     runDsAnalyze: async (): Promise<void> => {
-        State.ds.src = (Utils.$('ds-src') as HTMLInputElement).value; 
-        State.ds.tgt = (Utils.$('ds-tgt') as HTMLInputElement).value; 
+        State.ds.src = (Utils.$('ds-src') as HTMLInputElement).value;
+        State.ds.tgt = (Utils.$('ds-tgt') as HTMLInputElement).value;
         State.ds.kind = (Utils.$('ds-kind') as HTMLInputElement).value;
-        State.ds.srcDb = (Utils.$('ds-src-db') as HTMLInputElement).value; 
+        State.ds.srcDb = (Utils.$('ds-src-db') as HTMLInputElement).value;
         State.ds.tgtDb = (Utils.$('ds-tgt-db') as HTMLInputElement).value;
         if (!State.ds.src || !State.ds.tgt || !State.ds.kind) return Utils.toast("Fill required fields", "err");
 
-        State.ds.results = []; State.ds.stats = {identical:0, different:0, missing:0, total:0}; State.cancelDs = false;
+        State.ds.results = [];
+        State.ds.filtered = [];
+        State.ds.selected.clear();
+        State.ds.stats = {identical:0, different:0, missing:0, total:0};
+        State.cancelDs = false;
+        const copyButton = Utils.$('btn-ds-copy') as HTMLButtonElement | null;
+        if (copyButton) copyButton.disabled = true;
         Utils.hide('sec-forms'); Utils.show('sec-loading'); Utils.show('load-ds-stats'); Utils.show('btn-cancel-ds');
-        Utils.$('load-title')!.textContent = "Analyzing Entities..."; 
+        Utils.$('load-title')!.textContent = "Analyzing Entities...";
 
         const parseVal = (v: string) => {
             if (v === 'true') return { booleanValue: true };
@@ -1039,10 +952,10 @@ export const App = {
         if (filters.length > 0) {
             const props: any[] = [];
             try {
-                filters.forEach(r => { 
-                    const prop = (r.querySelector('select:first-child') as HTMLSelectElement).value; 
-                    const op = (r.querySelectorAll('select')[1] as HTMLSelectElement).value; 
-                    const val = (r.querySelector('input') as HTMLInputElement).value; 
+                filters.forEach(r => {
+                    const prop = (r.querySelector('select:first-child') as HTMLSelectElement).value;
+                    const op = (r.querySelectorAll('select')[1] as HTMLSelectElement).value;
+                    const val = (r.querySelector('input') as HTMLInputElement).value;
                     if(prop && val) {
                         if (prop === '__key__') {
                             if (op === 'IN' || op === 'NOT_IN') {
@@ -1062,53 +975,60 @@ export const App = {
                             const arrayVal = { arrayValue: { values: vals.map(v => parseVal(v)) } };
                             props.push({ propertyFilter: { property: { name: prop }, op: op, value: arrayVal } });
                         } else {
-                            props.push({ propertyFilter: { property: { name: prop }, op: op, value: parseVal(val) } }); 
+                            props.push({ propertyFilter: { property: { name: prop }, op: op, value: parseVal(val) } });
                         }
                     }
                 });
             } catch (err: any) {
                 Utils.toast(err.message, 'err');
+                Utils.hide('sec-loading');
+                Utils.show('sec-forms');
                 return;
             }
             if (props.length > 0) body.query.filter = { compositeFilter: { op: 'AND', filters: props } };
         }
 
+        const controller = beginDsOperation();
+        const discoveredProperties = new Set(State.ds.properties);
         try {
             let cursor = null; let totalScanned = 0;
             do {
                 if (cursor) body.query.startCursor = cursor;
                 Utils.$('load-msg')!.textContent = `Scanned ${totalScanned} entities... (Fetching batch)`;
-                const res = await Api.runDatastoreQuery(State.ds.src, body, State.ds.srcDb);
+                const res = await Api.runDatastoreQuery(State.ds.src, body, State.ds.srcDb, controller.signal);
                 const srcEntities = res.batch?.entityResults || [];
-                cursor = res.batch?.endCursor; 
+                cursor = res.batch?.moreResults === 'NO_MORE_RESULTS' ? null : (res.batch?.endCursor || null);
                 if (srcEntities.length === 0) break;
 
                 for (let i = 0; i < srcEntities.length; i += 100) {
-                    if (State.cancelDs) throw new Error("Process Cancelled");
+                    if (State.cancelDs) throw new DOMException("Process Cancelled", 'AbortError');
                     const chunk = srcEntities.slice(i, i + 100);
+                    chunk.forEach((result: any) => {
+                        Object.keys(result.entity?.properties || {}).forEach(name => discoveredProperties.add(name));
+                    });
                     const keysToLookup = chunk.map((e: any) => {
-                        const keyCopy = JSON.parse(JSON.stringify(e.entity.key));
+                        const keyCopy = cloneDatastoreValue(e.entity.key);
                         const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
                         const tgtPartitionId: any = { projectId: State.ds.tgt };
                         if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
                         keyCopy.partitionId = tgtPartitionId;
                         return keyCopy;
                     });
-                    
+
                     Utils.$('load-msg')!.textContent = `Scanned ${totalScanned} entities... (Comparing batch)`;
-                    const tgtRes = await Api.lookupEntities(State.ds.tgt, keysToLookup, State.ds.tgtDb);
-                    
+                    const tgtRes = await Api.lookupEntities(State.ds.tgt, keysToLookup, State.ds.tgtDb, controller.signal);
+
                     const tgtMap = new Map((tgtRes.found||[]).map((e: any) => [App.formatKey(e.entity.key), e.entity]));
                     const missingSet = new Set((tgtRes.missing||[]).map((e: any) => App.formatKey(e.entity.key)));
 
                     for (const srcE of chunk) {
                         const kStr = App.formatKey(srcE.entity.key);
                         State.ds.stats.total++;
-                        if (missingSet.has(kStr)) {
+                        const tgtEnt = tgtMap.get(kStr);
+                        if (missingSet.has(kStr) || !tgtEnt) {
                             State.ds.stats.missing++;
                             State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'missing', diffSum: 'Missing in Target', srcEntity: srcE.entity, tgtEntity: null });
                         } else {
-                            const tgtEnt = tgtMap.get(kStr);
                             const diff = App.compareEntities(srcE.entity, tgtEnt);
                             if (diff.length > 0) {
                                 State.ds.stats.different++;
@@ -1116,28 +1036,33 @@ export const App = {
                                 State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'different', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
                             } else {
                                 State.ds.stats.identical++;
-                                if (State.ds.results.length < 20000) State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff:[], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt });
+                                State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff:[], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt });
                             }
                         }
                         totalScanned++;
                     }
                 }
-                
-                Utils.$('ld-identical')!.textContent = String(State.ds.stats.identical); 
-                Utils.$('ld-different')!.textContent = String(State.ds.stats.different); 
+
+                Utils.$('ld-identical')!.textContent = String(State.ds.stats.identical);
+                Utils.$('ld-different')!.textContent = String(State.ds.stats.different);
                 Utils.$('ld-missing')!.textContent = String(State.ds.stats.missing);
                 await new Promise(resolve => setTimeout(resolve, 0));
             } while(cursor);
 
+            State.ds.properties = [...discoveredProperties].sort();
+            UI.initDropdowns();
             Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-ds'); App.filterDsResults('all');
-        } catch(e: any) { 
-            Utils.hide('sec-loading'); Utils.show('sec-forms'); 
-            if(e.message === "Process Cancelled") {
+        } catch(e: any) {
+            Utils.hide('sec-loading'); Utils.show('sec-forms');
+            if(isCancellationError(e)) {
                 Utils.toast("Analysis cancelled.", "info");
             } else {
                 const { ErrorBoundary } = await import('./utils');
                 await ErrorBoundary.handle(e, 'App.runDsAnalyze');
             }
+        } finally {
+            Utils.hide('btn-cancel-ds');
+            if (dsAbortController === controller) dsAbortController = null;
         }
     },
     formatKey: (key: any): string => { return key.path.map((p: any) => `${p.kind}:${p.name||p.id}`).join(' | '); },
@@ -1150,7 +1075,7 @@ export const App = {
             }
         } return diffs;
     },
-    valsEqual: (a: any, b: any): boolean => { return JSON.stringify(a) === JSON.stringify(b); },
+    valsEqual: (a: any, b: any): boolean => Diff.areValuesEqual(a, b),
     formatVal: (v: any): string => {
         if (!v) return '—'; const k = Object.keys(v).find(k => v[k] !== null && v[k] !== undefined && !(Array.isArray(v[k]?.values) && v[k].values.length === 0));
         if (!k) return '—'; if(k === 'arrayValue') return `[Array:${(v[k].values||[]).length}]`; if(k === 'mapValue') return `{Map}`; if(k === 'entityValue') return `{Entity}`;
@@ -1174,14 +1099,14 @@ export const App = {
         const tbody = Utils.$('ds-table-body');
         if (!tbody) return;
         tbody.innerHTML = '';
-        
+
         pageData.forEach(r => {
             const stCfg = {
                 different: { l: 'DIFFERENT', c: 'var(--warn)', b: 'var(--warn-dim)' },
                 missing: { l: 'MISSING IN TGT', c: 'var(--danger)', b: 'var(--danger-dim)' },
                 identical: { l: 'IDENTICAL', c: 'var(--ok)', b: 'var(--ok-dim)' }
             }[r.status];
-            
+
             const sel = State.ds.selected.has(r.keyStr);
             const tr = document.createElement('tr'); tr.style.borderBottom = '1px solid var(--brd)';
             tr.innerHTML = `
@@ -1189,19 +1114,19 @@ export const App = {
                 <td class="px-4 py-3 cursor-pointer" style="color:var(--fg)">${Utils.escapeHtml(r.keyStr)} <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:4px"></i></td>
                 <td class="px-4 py-3"><span class="badge" style="background:${stCfg.b};color:${stCfg.c}">${stCfg.l}</span></td>
                 <td class="px-4 py-3" style="color:var(--muted)">${Utils.escapeHtml(r.diffSum)}</td>`;
-            
-            const chk = tr.querySelector('.chk') as HTMLElement; 
+
+            const chk = tr.querySelector('.chk') as HTMLElement;
             chk.onclick = () => App.toggleDsSelect(r.keyStr, chk);
-            
-            const keyTd = tr.querySelectorAll('td')[1] as HTMLElement; 
+
+            const keyTd = tr.querySelectorAll('td')[1] as HTMLElement;
             keyTd.onclick = () => App.toggleDsRowExpand(tr, r.keyStr);
-            
+
             tbody.appendChild(tr);
         });
 
         const totalPages = Math.ceil(State.ds.filtered.length / State.ds.perPage);
         Utils.$('ds-pagination')!.innerHTML = totalPages > 1 ? `<button class="btn btn-s btn-ds-prev">Prev</button><span class="mono text-xs" style="color:var(--muted);padding:0 12px">Page ${State.ds.page} of ${totalPages}</span><button class="btn btn-s btn-ds-next">Next</button>` : '';
-        
+
         if (totalPages > 1) {
             const prevBtn = Utils.$('ds-pagination')!.querySelector('.btn-ds-prev') as HTMLButtonElement | null;
             if (prevBtn) {
@@ -1214,19 +1139,19 @@ export const App = {
                 nextBtn.onclick = () => App.dsPage(State.ds.page + 1);
             }
         }
-        
+
         App.updateSelectAllDsState();
     },
     dsPage: (p: number): void => { State.ds.page = p; App.renderDsTable(); },
-    toggleDsSelect: (keyStr: string, el: HTMLElement): void => { 
-        if (State.ds.selected.has(keyStr)) State.ds.selected.delete(keyStr); else State.ds.selected.add(keyStr); 
+    toggleDsSelect: (keyStr: string, el: HTMLElement): void => {
+        if (State.ds.selected.has(keyStr)) State.ds.selected.delete(keyStr); else State.ds.selected.add(keyStr);
         el.classList.toggle('on');
         (Utils.$('btn-ds-copy') as HTMLButtonElement).disabled = State.ds.selected.size === 0;
         App.updateSelectAllDsState();
     },
-    toggleAllDs: (): void => { 
-        const allSel = State.ds.selected.size === State.ds.filtered.length && State.ds.filtered.length > 0; 
-        if(allSel) State.ds.selected.clear(); else State.ds.filtered.forEach(r => State.ds.selected.add(r.keyStr)); 
+    toggleAllDs: (): void => {
+        const allSel = State.ds.selected.size === State.ds.filtered.length && State.ds.filtered.length > 0;
+        if(allSel) State.ds.selected.clear(); else State.ds.filtered.forEach(r => State.ds.selected.add(r.keyStr));
         App.renderDsTable();
         (Utils.$('btn-ds-copy') as HTMLButtonElement).disabled = State.ds.selected.size === 0;
     },
@@ -1240,22 +1165,23 @@ export const App = {
         const expTr = document.createElement('tr'); expTr.className = 'expand-row'; expTr.style.borderBottom = '1px solid var(--brd)';
         const r = State.ds.results.find(x => x.keyStr === keyStr);
         if (!r) return;
-        
+
         const srcProps = r.srcEntity?.properties || {};
         const tgtProps = r.tgtEntity?.properties || {};
         const allKeys = Array.from(new Set([...Object.keys(srcProps), ...Object.keys(tgtProps)])).sort();
-        
+
         const renderRowHtml = (key: string, type: string, sVal: string, tVal: string, diffClass = '') => {
             const isBool = type === 'Boolean';
             const isSrcJson = Diff.isJsonString(sVal);
             const isTgtJson = Diff.isJsonString(tVal);
-            const showJsonBtn = (isSrcJson || isTgtJson) && type === 'String';
-            
+            const jsonEditableTypes = ['String', 'Array', 'Map', 'Entity', 'Key', 'GeoPoint'];
+            const showJsonBtn = jsonEditableTypes.includes(type) && (isSrcJson || isTgtJson || type !== 'String');
+
             const sDisplayVal = sVal.includes('\n') ? sVal.split('\n')[0] + '...' : sVal;
             const tDisplayVal = tVal.includes('\n') ? tVal.split('\n')[0] + '...' : tVal;
-            
+
             return `
-                <tr class="prop-edit-row ${diffClass}" data-key="${Utils.escapeHtml(key)}">
+                <tr class="prop-edit-row ${diffClass}" data-key="${Utils.escapeHtml(key)}" data-initial-type="${type}">
                     <td class="px-3 py-1.5 font-semibold text-xs text-left" style="color:var(--fg)">${Utils.escapeHtml(key)}</td>
                     <td class="px-3 py-1.5 text-left">
                         <select class="inp select-type font-semibold" style="padding: 2px 6px; font-size: 11px; width: 100px;">
@@ -1263,6 +1189,14 @@ export const App = {
                             <option value="Integer" ${type==='Integer'?'selected':''}>Integer</option>
                             <option value="Double" ${type==='Double'?'selected':''}>Double</option>
                             <option value="Boolean" ${type==='Boolean'?'selected':''}>Boolean</option>
+                            <option value="Null" ${type==='Null'?'selected':''}>Null</option>
+                            <option value="Timestamp" ${type==='Timestamp'?'selected':''}>Timestamp</option>
+                            <option value="Blob" ${type==='Blob'?'selected':''}>Blob</option>
+                            <option value="Key" ${type==='Key'?'selected':''}>Key</option>
+                            <option value="GeoPoint" ${type==='GeoPoint'?'selected':''}>GeoPoint</option>
+                            <option value="Array" ${type==='Array'?'selected':''}>Array</option>
+                            <option value="Map" ${type==='Map'?'selected':''}>Map</option>
+                            <option value="Entity" ${type==='Entity'?'selected':''}>Entity</option>
                         </select>
                     </td>
                     <td class="px-3 py-1.5 text-left">
@@ -1308,42 +1242,25 @@ export const App = {
             const tProp = tgtProps[key];
             let type = 'String';
             let sVal = '', tVal = '';
-            
+
             if (sProp) {
-                const k = Object.keys(sProp)[0];
-                if (k === 'arrayValue' || k === 'mapValue' || k === 'entityValue') {
-                    type = 'String';
-                    sVal = JSON.stringify(Diff.datastoreToCleanJson(sProp));
-                } else {
-                    type = k === 'integerValue' ? 'Integer' : k === 'doubleValue' ? 'Double' : k === 'booleanValue' ? 'Boolean' : 'String';
-                    sVal = sProp[k] !== undefined && sProp[k] !== null ? String(sProp[k]) : '';
-                }
+                type = getDatastoreEditorType(sProp);
+                sVal = datastoreValueToEditorText(sProp);
             }
             if (tProp) {
-                const k = Object.keys(tProp)[0];
-                if (!sProp) {
-                    if (k === 'arrayValue' || k === 'mapValue' || k === 'entityValue') {
-                        type = 'String';
-                    } else {
-                        type = k === 'integerValue' ? 'Integer' : k === 'doubleValue' ? 'Double' : k === 'booleanValue' ? 'Boolean' : 'String';
-                    }
-                }
-                if (k === 'arrayValue' || k === 'mapValue' || k === 'entityValue') {
-                    tVal = JSON.stringify(Diff.datastoreToCleanJson(tProp));
-                } else {
-                    tVal = tProp[k] !== undefined && tProp[k] !== null ? String(tProp[k]) : '';
-                }
+                if (!sProp) type = getDatastoreEditorType(tProp);
+                tVal = datastoreValueToEditorText(tProp);
             }
-            
+
             let diffClass = '';
             if (sProp && !tProp) {
                 diffClass = 'diff-rem';
             } else if (!sProp && tProp) {
                 diffClass = 'diff-add';
-            } else if (sVal !== tVal) {
+            } else if (!Diff.areValuesEqual(sProp, tProp)) {
                 diffClass = 'diff-mod';
             }
-            
+
             rowsHtml += renderRowHtml(key, type, sVal, tVal, diffClass);
         });
 
@@ -1375,7 +1292,7 @@ export const App = {
                 </div>
             </div>
         `;
-        
+
         expTr.innerHTML = `<td colspan="4" class="px-6 py-3" style="background:var(--bg)">${content}</td>`;
         tr.after(expTr);
 
@@ -1385,14 +1302,16 @@ export const App = {
             if (!key) return;
             const cleanKey = key.trim();
             if (!cleanKey) return;
-            if (tbody.querySelector(`tr[data-key="${cleanKey}"]`)) {
+            const keyExists = Array.from(tbody.querySelectorAll('.prop-edit-row'))
+                .some(row => row.getAttribute('data-key') === cleanKey);
+            if (keyExists) {
                 alert("Property key already exists!");
                 return;
             }
-            const newRow = document.createElement('tr');
-            newRow.className = 'prop-edit-row';
-            newRow.setAttribute('data-key', cleanKey);
-            newRow.innerHTML = renderRowHtml(cleanKey, 'String', '', '');
+            const rowContainer = document.createElement('tbody');
+            rowContainer.innerHTML = renderRowHtml(cleanKey, 'String', '', '');
+            const newRow = rowContainer.firstElementChild as HTMLElement | null;
+            if (!newRow) return;
             (newRow.querySelector('.btn-delete-prop') as HTMLButtonElement).onclick = () => newRow.remove();
             (newRow.querySelector('.select-type') as HTMLSelectElement).onchange = (e: any) => handleTypeChange(newRow, cleanKey, e.target.value);
             tbody.appendChild(newRow);
@@ -1418,7 +1337,7 @@ export const App = {
                     btn.title = 'Edit JSON';
                     btn.innerHTML = '<i class="fa-solid fa-code"></i>';
                     inputEl.after(btn);
-                    
+
                     btn.onclick = () => {
                         const row = inputEl.closest('tr') as HTMLElement;
                         const key = row.getAttribute('data-key') || '';
@@ -1436,12 +1355,12 @@ export const App = {
             const srcTd = row.querySelectorAll('td')[2];
             const tgtTd = row.querySelectorAll('td')[3];
             const isBool = newType === 'Boolean';
-            
+
             const oldSrcEl = (srcTd.querySelector('.raw-val-src') || srcTd.querySelector('.val-src')) as HTMLInputElement | null;
             const oldTgtEl = (tgtTd.querySelector('.raw-val-tgt') || tgtTd.querySelector('.val-tgt')) as HTMLInputElement | null;
             const oldSrcVal = oldSrcEl ? oldSrcEl.value : '';
             const oldTgtVal = oldTgtEl ? oldTgtEl.value : '';
-            
+
             if (isBool) {
                 srcTd.innerHTML = `
                     <select class="inp val-src" style="padding: 2px 6px; font-size: 11px; width: 100%;">
@@ -1460,11 +1379,13 @@ export const App = {
             } else {
                 const isSrcJson = Diff.isJsonString(oldSrcVal);
                 const isTgtJson = Diff.isJsonString(oldTgtVal);
-                const showJsonBtn = (isSrcJson || isTgtJson) && newType === 'String';
-                
+                const jsonEditableTypes = ['String', 'Array', 'Map', 'Entity', 'Key', 'GeoPoint'];
+                const showJsonBtn = jsonEditableTypes.includes(newType) &&
+                    (isSrcJson || isTgtJson || newType !== 'String');
+
                 const sDisplayVal = oldSrcVal.includes('\n') ? oldSrcVal.split('\n')[0] + '...' : oldSrcVal;
                 const tDisplayVal = oldTgtVal.includes('\n') ? oldTgtVal.split('\n')[0] + '...' : oldTgtVal;
-                
+
                 srcTd.innerHTML = `
                     <div class="flex gap-1.5 items-center w-full">
                         <input class="inp val-src" style="padding: 2px 6px; font-size: 11px; width: 100%;" value="${Utils.escapeHtml(sDisplayVal)}" placeholder="— (Empty)">
@@ -1479,10 +1400,10 @@ export const App = {
                         ${showJsonBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="Edit JSON"><i class="fa-solid fa-code"></i></button>` : ''}
                     </div>
                 `;
-                
+
                 const srcInp = srcTd.querySelector('.val-src') as HTMLInputElement;
                 const tgtInp = tgtTd.querySelector('.val-tgt') as HTMLInputElement;
-                
+
                 srcInp.oninput = (e: any) => {
                     const rawTextarea = srcTd.querySelector('.raw-val-src') as HTMLTextAreaElement | null;
                     if (rawTextarea) rawTextarea.value = e.target.value;
@@ -1493,7 +1414,7 @@ export const App = {
                     if (rawTextarea) rawTextarea.value = e.target.value;
                     checkShowJsonBtn(e.target);
                 };
-                
+
                 if (showJsonBtn) {
                     row.querySelectorAll('.btn-json-edit-trigger').forEach(btn => {
                         (btn as HTMLElement).onclick = () => {
@@ -1510,12 +1431,12 @@ export const App = {
             const elRow = row as HTMLElement;
             const key = elRow.getAttribute('data-key') || '';
             (elRow.querySelector('.select-type') as HTMLSelectElement).onchange = (e: any) => handleTypeChange(elRow, key, e.target.value);
-            
+
             const srcInp = elRow.querySelector('.val-src') as HTMLInputElement | null;
             const tgtInp = elRow.querySelector('.val-tgt') as HTMLInputElement | null;
             const srcTd = elRow.querySelectorAll('td')[2];
             const tgtTd = elRow.querySelectorAll('td')[3];
-            
+
             if (srcInp) {
                 srcInp.oninput = (e: any) => {
                     const rawTextarea = srcTd.querySelector('.raw-val-src') as HTMLTextAreaElement | null;
@@ -1530,7 +1451,7 @@ export const App = {
                     checkShowJsonBtn(e.target);
                 };
             }
-            
+
             elRow.querySelectorAll('.btn-json-edit-trigger').forEach(btn => {
                 (btn as HTMLElement).onclick = () => {
                     const srcInput = elRow.querySelector('.raw-val-src') || elRow.querySelector('.val-src');
@@ -1544,45 +1465,39 @@ export const App = {
             const props: any = {};
             tbody.querySelectorAll('.prop-edit-row').forEach(row => {
                 const key = row.getAttribute('data-key') || '';
-                const type = (row.querySelector('.select-type') as HTMLSelectElement).value;
+                if (!key) return;
+                const type = (row.querySelector('.select-type') as HTMLSelectElement).value as DatastoreEditorType;
+                const initialType = row.getAttribute('data-initial-type') || 'String';
                 const rawTextarea = row.querySelector(`.raw-val-${side}`) as HTMLTextAreaElement | null;
                 const input = row.querySelector(`.val-${side}`) as HTMLInputElement | null;
                 const val = rawTextarea ? rawTextarea.value : (input ? input.value : '');
-                
-                if (val !== '') {
-                    if (type === 'Boolean') {
-                        props[key] = { booleanValue: val === 'true' };
-                    } else if (type === 'Integer') {
-                        props[key] = { integerValue: String(parseInt(val, 10)) };
-                    } else if (type === 'Double') {
-                        props[key] = { doubleValue: parseFloat(val) };
-                    } else {
-                        try {
-                            if (Diff.isJsonString(val)) {
-                                const parsed = JSON.parse(val);
-                                const origProp = side === 'src' ? r.srcEntity?.properties?.[key] : r.tgtEntity?.properties?.[key];
-                                const isOriginalComplex = origProp && ('mapValue' in origProp || 'arrayValue' in origProp || 'entityValue' in origProp);
-                                if (isOriginalComplex) {
-                                    props[key] = Diff.cleanJsonToDatastore(parsed);
-                                } else {
-                                    props[key] = { stringValue: val };
-                                }
-                            } else {
-                                props[key] = { stringValue: val };
-                            }
-                        } catch(e) {
-                            props[key] = { stringValue: val };
-                        }
-                    }
+
+                const original = side === 'src'
+                    ? r.srcEntity?.properties?.[key]
+                    : r.tgtEntity?.properties?.[key];
+                if (!original && val === '') return;
+
+                const originalText = original ? datastoreValueToEditorText(original) : '';
+                if (original && type === initialType && val === originalText) {
+                    props[key] = cloneDatastoreValue(original);
+                } else {
+                    props[key] = editorTextToDatastoreValue(type, val, original);
                 }
             });
+            Diff.minifyJsonProperties(props);
             return props;
         };
 
         const handleSave = async (side: 'src' | 'tgt') => {
             const pid = side === 'src' ? State.ds.src : State.ds.tgt;
-            const props = getPropertiesFromUI(side);
-            
+            let props: any;
+            try {
+                props = getPropertiesFromUI(side);
+            } catch (error: any) {
+                Utils.toast(`Cannot save: ${error.message}`, 'err');
+                return;
+            }
+
             const confirmTmpl = Utils.$('template-ds-save-confirm') as HTMLTemplateElement;
             if (!confirmTmpl) return;
             const fragment = confirmTmpl.content.cloneNode(true) as DocumentFragment;
@@ -1605,34 +1520,38 @@ export const App = {
                 Utils.show('sec-loading');
                 Utils.$('load-title')!.textContent = "Saving Entity...";
                 Utils.$('load-msg')!.textContent = `Committing changes to ${pid}...`;
-                
+
                 try {
+                    const prevEntity = side === 'src' ? r.srcEntity : r.tgtEntity;
+                    const dbId = side === 'src' ? State.ds.srcDb : State.ds.tgtDb;
+                    const prevState = {
+                        type: 'DATASTORE_EDIT',
+                        prevEntity: prevEntity ? cloneDatastoreValue(prevEntity) : null,
+                        rawKey: cloneDatastoreValue(r.rawKey),
+                        keyStr,
+                        dbId
+                    };
+                    if (!AuditLog.canPersistPrevState(prevState)) {
+                        throw new Error('The entity backup is too large for a safe audit entry. Reduce the entity size before saving.');
+                    }
                     const entity = {
-                        key: JSON.parse(JSON.stringify(r.rawKey)),
+                        key: cloneDatastoreValue(r.rawKey),
                         properties: props
                     };
-                    const dbId = side === 'src' ? State.ds.srcDb : State.ds.tgtDb;
                     const db = (dbId === '(default)' || !dbId) ? '' : dbId;
                     const partitionId: any = { projectId: pid };
                     if (db) partitionId.databaseId = db;
                     entity.key.partitionId = partitionId;
-                    
+
                     await Api.commitDatastore(pid, [{ upsert: entity }], dbId);
                     Utils.toast(`Successfully saved entity to ${side === 'src' ? 'source' : 'target'} project.`, "ok");
-                    
-                    const prevEntity = side === 'src' ? r.srcEntity : r.tgtEntity;
-                    const prevState = {
-                        type: 'DATASTORE_EDIT',
-                        prevEntity: prevEntity ? JSON.parse(JSON.stringify(prevEntity)) : null,
-                        rawKey: r.rawKey,
-                        keyStr: keyStr,
-                        dbId: dbId
-                    };
-                    await AuditLog.addLog("DATASTORE_EDIT", "—", pid, `Inline edited entity properties for ${keyStr}.`, "SUCCESS", prevState);
-                    
+
+                    const logged = await AuditLog.addLog("DATASTORE_EDIT", "—", pid, `Inline edited entity properties for ${keyStr}.`, "SUCCESS", prevState);
+                    if (!logged) Utils.toast('Entity saved, but its audit entry could not be persisted.', 'warn');
+
                     const expandedKey = keyStr;
                     await App.runDsAnalyze();
-                    
+
                     setTimeout(() => {
                         const newTr = Array.from(document.querySelectorAll('#ds-table-body tr')).find(tr => (tr as HTMLElement).innerText.includes(expandedKey)) as HTMLElement | null;
                         if (newTr) {
@@ -1663,11 +1582,12 @@ export const App = {
 
         const chkReplace = Utils.$('modal-root')!.querySelector('.chk-apply-replace') as HTMLElement;
         const replaceInputsWrap = Utils.$('modal-root')!.querySelector('.replace-inputs-wrap') as HTMLElement;
-        
+
         const modalFieldEl = Utils.$('modal-root')!.querySelector('.inp-field-val') as HTMLInputElement | null;
+        const modalMenuEl = Utils.$('modal-root')!.querySelector('.modal-dd-ds-mod') as HTMLElement | null;
         const modalTargetEl = Utils.$('modal-root')!.querySelector('.inp-find-val') as HTMLInputElement | null;
         const modalReplaceEl = Utils.$('modal-root')!.querySelector('.inp-replace-val') as HTMLInputElement | null;
-        
+
         if (modalFieldEl) {
             modalFieldEl.value = (Utils.$('ds-mod-field') as HTMLInputElement).value;
         }
@@ -1677,22 +1597,65 @@ export const App = {
         if (modalReplaceEl) {
             modalReplaceEl.value = (Utils.$('ds-mod-replace') as HTMLInputElement).value;
         }
-        
+
+        if (modalFieldEl && modalMenuEl) {
+            const properties = State.ds.properties;
+            const renderModalDD = (filter = '') => {
+                const filtered = properties.filter((k: string) => k.toLowerCase().includes(filter.toLowerCase()));
+                modalMenuEl.replaceChildren();
+                if (filtered.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'dropdown-item';
+                    empty.style.color = 'var(--muted)';
+                    empty.textContent = 'No results';
+                    modalMenuEl.appendChild(empty);
+                    return;
+                }
+                filtered.forEach(property => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.dataset.id = property;
+                    const label = document.createElement('span');
+                    label.className = 'id';
+                    label.textContent = property;
+                    item.appendChild(label);
+                    item.onmousedown = e => {
+                        e.preventDefault();
+                        modalFieldEl.value = property;
+                        modalMenuEl.classList.remove('open');
+                    };
+                    modalMenuEl.appendChild(item);
+                });
+            };
+
+            modalFieldEl.onfocus = () => {
+                renderModalDD(modalFieldEl.value);
+                modalMenuEl.classList.add('open');
+            };
+            modalFieldEl.oninput = () => {
+                renderModalDD(modalFieldEl.value);
+                modalMenuEl.classList.add('open');
+            };
+            modalFieldEl.onblur = () => {
+                setTimeout(() => modalMenuEl.classList.remove('open'), 150);
+            };
+        }
+
         const updateVisibility = () => {
             const on = chkReplace.classList.contains('on');
             if (replaceInputsWrap) {
                 replaceInputsWrap.style.display = on ? 'flex' : 'none';
             }
         };
-        
+
         updateVisibility();
-        
+
         chkReplace.onclick = () => {
             chkReplace.classList.toggle('on');
             updateVisibility();
         };
 
-        Utils.$('modal-root')!.querySelector('.btn-cancel')!.onclick = () => UI.closeModal();
+        (Utils.$('modal-root')!.querySelector('.btn-cancel') as HTMLButtonElement).onclick = () => UI.closeModal();
         (Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement).onclick = () => {
             App.executeDsCopy();
         };
@@ -1703,142 +1666,186 @@ export const App = {
         const modalFieldEl = modalRoot?.querySelector('.inp-field-val') as HTMLInputElement | null;
         const modalTargetEl = modalRoot?.querySelector('.inp-find-val') as HTMLInputElement | null;
         const modalReplaceEl = modalRoot?.querySelector('.inp-replace-val') as HTMLInputElement | null;
-        
+
         const modField = modalFieldEl ? modalFieldEl.value.trim() : (Utils.$('ds-mod-field') as HTMLInputElement).value.trim();
         const modTarget = modalTargetEl ? modalTargetEl.value : (Utils.$('ds-mod-target') as HTMLInputElement).value;
         const modReplace = modalReplaceEl ? modalReplaceEl.value : (Utils.$('ds-mod-replace') as HTMLInputElement).value;
-        
-        UI.closeModal(); 
-        
+
+        const keysToCopy = [...State.ds.selected];
+        if (keysToCopy.length === 0) {
+            UI.closeModal();
+            Utils.toast('Select at least one entity to copy.', 'err');
+            return;
+        }
+
+        UI.closeModal();
         Utils.show('sec-loading');
         Utils.hide('load-ds-stats');
         Utils.show('btn-cancel-ds');
         Utils.$('load-title')!.textContent = "Copying Entities...";
         State.cancelDs = false;
-        
-        const keysToCopy = [...State.ds.selected];
-        let ok = 0;
 
-        const recursiveReplaceValue = (val: any, target: string, replace: string) => {
-            if (!val || typeof val !== 'object') return;
-            if (val.stringValue !== undefined && val.stringValue !== null) {
-                val.stringValue = val.stringValue.split(target).join(replace);
-            } else if (val.arrayValue && Array.isArray(val.arrayValue.values)) {
-                val.arrayValue.values.forEach(subVal => recursiveReplaceValue(subVal, target, replace));
-            } else if (val.entityValue && val.entityValue.properties) {
-                for (const k in val.entityValue.properties) {
-                    recursiveReplaceValue(val.entityValue.properties[k], target, replace);
-                }
-            }
-        };
+        const controller = beginDsOperation();
+        const resultByKey = new Map(State.ds.results.map(result => [result.keyStr, result]));
+        let ok = 0;
         let fail = 0;
+        let replacementCount = 0;
         const backupData: any[] = [];
-        
+
         try {
-            const rawKeys = keysToCopy.map(kStr => {
-                const r = State.ds.results.find(x => x.keyStr === kStr);
-                if (!r) return null;
-                const keyCopy = JSON.parse(JSON.stringify(r.rawKey));
+            Utils.$('load-msg')!.textContent = `Backing up ${keysToCopy.length} target entities...`;
+            const targetKeyByString = new Map<string, any>();
+            for (const keyStr of keysToCopy) {
+                const result = resultByKey.get(keyStr);
+                if (!result) throw new Error(`Selected entity ${keyStr} is no longer in the current analysis.`);
+                const keyCopy = cloneDatastoreValue(result.rawKey);
                 const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
                 const tgtPartitionId: any = { projectId: State.ds.tgt };
                 if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
                 keyCopy.partitionId = tgtPartitionId;
-                return keyCopy;
-            }).filter(Boolean);
-            if (rawKeys.length > 0) {
-                const tgtBackupRes = await Api.lookupEntities(State.ds.tgt, rawKeys, State.ds.tgtDb);
-                const foundMap = new Map((tgtBackupRes.found||[]).map((e: any) => [App.formatKey(e.entity.key), e.entity]));
-                
-                keysToCopy.forEach(kStr => {
-                    const existingTgt = foundMap.get(kStr);
-                    const r = State.ds.results.find(x => x.keyStr === kStr);
-                    backupData.push({
-                        keyStr: kStr,
-                        action: existingTgt ? 'upsert' : 'delete',
-                        prevEntity: existingTgt || { key: r ? r.rawKey : null }
-                    });
+                targetKeyByString.set(keyStr, keyCopy);
+            }
+
+            const targetKeys = [...targetKeyByString.values()];
+            const targetBackup = await Api.lookupEntities(
+                State.ds.tgt,
+                targetKeys,
+                State.ds.tgtDb,
+                controller.signal
+            );
+            const foundMap = new Map<string, any>(
+                (targetBackup.found || []).map((entry: any) => [App.formatKey(entry.entity.key), entry.entity])
+            );
+
+            keysToCopy.forEach(keyStr => {
+                const existingTarget = foundMap.get(keyStr);
+                backupData.push({
+                    keyStr,
+                    action: existingTarget ? 'upsert' : 'delete',
+                    prevEntity: existingTarget
+                        ? cloneDatastoreValue(existingTarget)
+                        : { key: cloneDatastoreValue(targetKeyByString.get(keyStr)) }
                 });
+            });
+
+            const backupState = {
+                type: "DATASTORE_COPY",
+                kind: State.ds.kind,
+                srcDb: State.ds.srcDb,
+                tgtDb: State.ds.tgtDb,
+                backupData
+            };
+            if (!AuditLog.canPersistPrevState(backupState)) {
+                throw new Error('The selected entities exceed the safe audit-backup size. Copy a smaller selection.');
             }
-        } catch(err) {
-            console.error("Failed to perform target backup for revert", err);
+        } catch (error: any) {
+            Utils.hide('sec-loading');
+            Utils.hide('btn-cancel-ds');
+            if (isCancellationError(error)) {
+                Utils.toast('Copy cancelled before any entities were changed.', 'info');
+            } else {
+                console.error("Failed to perform target backup for revert", error);
+                Utils.toast(`Copy stopped because the target backup failed: ${error.message}`, 'err');
+            }
+            if (dsAbortController === controller) dsAbortController = null;
+            return;
         }
-        
+
         for (let i = 0; i < keysToCopy.length; i += 100) {
-            if (State.cancelDs) {
-                Utils.toast("Copy process cancelled", "info");
-                break;
-            }
+            if (State.cancelDs || controller.signal.aborted) break;
             const chunkStrs = keysToCopy.slice(i, i + 100);
+            let batchFailureCount = chunkStrs.length;
             Utils.$('load-msg')!.textContent = `Copying ${ok} of ${keysToCopy.length}... (Fetching source entities)`;
-            
+
             try {
-                const rawKeys = chunkStrs.map(kStr => {
-                    const r = State.ds.results.find(x => x.keyStr === kStr);
-                    return r ? r.rawKey : null;
-                }).filter(Boolean);
-                
+                const rawKeys = chunkStrs
+                    .map(keyStr => resultByKey.get(keyStr)?.rawKey)
+                    .filter((key): key is any => Boolean(key))
+                    .map(key => cloneDatastoreValue(key));
                 if (rawKeys.length === 0) continue;
-                
-                const srcRes = await Api.lookupEntities(State.ds.src, rawKeys, State.ds.srcDb);
+
+                const srcRes = await Api.lookupEntities(
+                    State.ds.src,
+                    rawKeys,
+                    State.ds.srcDb,
+                    controller.signal
+                );
                 const mutations: any[] = [];
-                
+                const foundSourceKeys = new Set(
+                    (srcRes.found || []).map((entry: any) => App.formatKey(entry.entity.key))
+                );
+                const missingSourceCount = chunkStrs.filter(keyStr => !foundSourceKeys.has(keyStr)).length;
+                fail += missingSourceCount;
+                batchFailureCount = foundSourceKeys.size;
+
                 for (const e of srcRes.found || []) {
-                    const entity = JSON.parse(JSON.stringify(e.entity));
+                    const entity = cloneDatastoreValue(e.entity);
                     const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
                     const tgtPartitionId: any = { projectId: State.ds.tgt };
                     if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
                     entity.key.partitionId = tgtPartitionId;
-                    
-                    if (applyMod && modTarget) {
-                        if (modField && modField.trim() !== "" && modField !== "*") {
-                            if (entity.properties?.[modField]) {
-                                recursiveReplaceValue(entity.properties[modField], modTarget, modReplace);
-                            }
-                        } else {
-                            if (entity.properties) {
-                                for (const k in entity.properties) {
-                                    recursiveReplaceValue(entity.properties[k], modTarget, modReplace);
-                                }
+
+                    if (applyMod && modTarget && entity.properties) {
+                        replacementCount += replaceDatastoreField(
+                            entity.properties,
+                            modField,
+                            modTarget,
+                            modReplace
+                        );
+                    }
+
+                    if (entity.properties) {
+                        Diff.minifyJsonProperties(entity.properties);
+                        for (const [property, sourceValue] of Object.entries(e.entity.properties || {})) {
+                            const copiedValue = entity.properties[property];
+                            const sourceType = getDatastoreEditorType(sourceValue);
+                            const copiedType = getDatastoreEditorType(copiedValue);
+                            if (sourceType !== copiedType) {
+                                throw new Error(`Type fidelity check failed for ${App.formatKey(e.entity.key)}.${property}`);
                             }
                         }
                     }
-                    
-                    if (entity.properties) {
-                        Diff.minifyJsonProperties(entity.properties);
-                    }
-                    
+
                     mutations.push({ upsert: entity });
                 }
-                
+
                 if (mutations.length > 0) {
                     Utils.$('load-msg')!.textContent = `Copying ${ok} of ${keysToCopy.length}... (Writing to target)`;
-                    await Api.commitDatastore(State.ds.tgt, mutations, State.ds.tgtDb);
+                    await Api.commitDatastore(State.ds.tgt, mutations, State.ds.tgtDb, controller.signal);
                     ok += mutations.length;
                 }
             } catch (e: any) {
-                fail += chunkStrs.length;
+                if (isCancellationError(e)) break;
+                fail += batchFailureCount;
                 Utils.toast(`Failed to copy batch: ${e.message}`, "err");
             }
         }
-        
+
+        const cancelled = State.cancelDs || controller.signal.aborted;
         Utils.hide('sec-loading');
-        Utils.toast(`Copy complete. Success: ${ok}, Failed: ${fail}`, ok > 0 ? 'ok' : 'err');
-        const status = fail === 0 && ok > 0 ? "SUCCESS" : (ok > 0 ? "PARTIAL" : "FAILED");
+        Utils.hide('btn-cancel-ds');
+        Utils.toast(
+            `${cancelled ? 'Copy cancelled' : 'Copy complete'}. Success: ${ok}, Failed: ${fail}`,
+            cancelled ? 'info' : (ok > 0 ? 'ok' : 'err')
+        );
+        const status = !cancelled && fail === 0 && ok > 0 ? "SUCCESS" : (ok > 0 ? "PARTIAL" : "FAILED");
         let details = `Copied ${ok} entities of kind ${State.ds.kind}.`;
         if (applyMod) {
             const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (recursively)";
-            details += ` Applied Find & Replace on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
+            details += ` Applied ${replacementCount} Find & Replace substitutions on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
         }
-        if (State.cancelDs) {
+        if (cancelled) {
             details += " Copy process was cancelled by the user.";
         }
-        await AuditLog.addLog("DATASTORE_COPY", State.ds.src, State.ds.tgt, details, status, {
+        const logged = await AuditLog.addLog("DATASTORE_COPY", State.ds.src, State.ds.tgt, details, status, {
             type: "DATASTORE_COPY",
             kind: State.ds.kind,
             srcDb: State.ds.srcDb,
             tgtDb: State.ds.tgtDb,
             backupData: backupData
         });
+        if (!logged) Utils.toast('Copy finished, but its revert audit entry could not be persisted.', 'warn');
+        if (dsAbortController === controller) dsAbortController = null;
         await App.runDsAnalyze();
     },
 
@@ -1848,26 +1855,9 @@ export const App = {
 };
 
 window.onload = () => {
-    // Check local storage for session recovery
-    const savedToken = localStorage.getItem('access_token');
-    const savedEmail = localStorage.getItem('auth_email');
-    if (savedToken) {
-        State.token = savedToken;
-        Api.setToken(savedToken);
-        const inp = Utils.$('inp-token') as HTMLInputElement | null;
-        if (inp) {
-            inp.value = savedToken;
-            const btn = Utils.$('btn-verify') as HTMLButtonElement | null;
-            if (btn) btn.disabled = false;
-        }
-        if (savedEmail) {
-            State.authEmail = savedEmail;
-        }
-    }
-    
     // Expose for E2E testing context
     (window as any).State = State;
     (window as any).App = App;
-    
+
     App.init();
 };

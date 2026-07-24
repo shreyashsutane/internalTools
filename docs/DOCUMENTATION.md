@@ -9,7 +9,7 @@ This collection of utilities is designed to assist internal development, operati
 ### 1. GCP Infrastructure Manager
 - **ID**: `datastore-copier`
 - **Status**: Active
-- **Purpose**: Manage, compare, and sync BigQuery table schemas, transfer scheduled query configurations, and copy Cloud Datastore entities.
+- **Purpose**: Compare BigQuery table schemas in read-only mode, transfer scheduled query configurations, and copy Cloud Datastore entities.
 - **Reference**: See the [Tool-Specific Documentation](../datastore-copier/README.md).
 
 ### 2. Tool 2 (Coming Soon)
@@ -22,6 +22,6 @@ This collection of utilities is designed to assist internal development, operati
 
 ## General Usage Policies
 
-1. **Permissions**: Ensure your local workstation or environment has correct cloud provider configurations. Active tokens are required for direct interactions.
+1. **Permissions**: Use least-privilege IAM. BigQuery schema comparison requires metadata read access only; write permissions apply only to the separate scheduled-query and Datastore tools.
 2. **Backups**: Never run synchronization/transfer actions against production environments without taking snapshots or backups first.
 3. **Internal Use Only**: These tools are intended for internal development and administration. Do not expose them externally or share credentials/access keys.

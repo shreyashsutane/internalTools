@@ -1,13 +1,13 @@
 # GCP Infrastructure Manager
 
-A powerful administrative utility designed to manage and sync schemas and data across GCP projects.
+A browser-based utility for read-only BigQuery schema comparison plus separately authorized scheduled-query and Datastore workflows.
 
 ## Key Features
 
-1. **BigQuery Schema Sync**:
+1. **BigQuery Schema Comparator (Read Only)**:
    - Compare schemas (fields, types, modes) side-by-side between datasets.
    - Detect differences (added, missing, or modified columns).
-   - Sync target schemas (creating target datasets/tables or updating table schemas as needed).
+   - Export comparison results without creating, copying, updating, overriding, or deleting schemas.
 
 2. **Scheduled Query Transfer**:
    - Fetch BQ scheduled query configurations (`transferConfigs`) from a source project and location.
@@ -22,10 +22,11 @@ A powerful administrative utility designed to manage and sync schemas and data a
 
 ## Prerequisites
 
-To perform any read or write actions, you will need a valid **GCP Access Token** with appropriate IAM permissions (e.g., `BigQuery Admin`, `Datastore Owner`).
+You need a temporary **GCP Access Token** with least-privilege IAM permissions. BigQuery comparison can use metadata read access; the scheduled-query and Datastore tools need separate permissions for their explicitly selected write operations.
 
 To generate a token locally, execute:
 ```bash
 gcloud auth print-access-token
 ```
 Paste the token into the **Authenticate** input field inside the application.
+The token is retained in memory only and is discarded on reload or page close.

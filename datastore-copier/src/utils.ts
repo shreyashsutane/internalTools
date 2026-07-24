@@ -1,6 +1,6 @@
 export const Utils = {
-    $: (id: string): HTMLElement | null => document.getElementById(id), 
-    
+    $: (id: string): HTMLElement | null => document.getElementById(id),
+
     getInput: (id: string): HTMLInputElement => {
         const el = document.getElementById(id);
         if (!el || !(el instanceof HTMLInputElement)) {
@@ -30,26 +30,26 @@ export const Utils = {
         return el;
     },
 
-    show: (id: string): void => { 
-        const el = Utils.$(id); 
-        if (el) el.style.display = ''; 
-    }, 
-    hide: (id: string): void => { 
-        const el = Utils.$(id); 
-        if (el) el.style.display = 'none'; 
+    show: (id: string): void => {
+        const el = Utils.$(id);
+        if (el) el.style.display = '';
     },
-    toast: (msg: string, type: 'info' | 'ok' | 'err' = 'info'): void => {
+    hide: (id: string): void => {
+        const el = Utils.$(id);
+        if (el) el.style.display = 'none';
+    },
+    toast: (msg: string, type: 'info' | 'ok' | 'warn' | 'err' = 'info'): void => {
         const c = Utils.$('toast-container');
         if (!c) return;
         const el = document.createElement('div');
         el.className = `toast ${type}`;
-        const icons = { info: 'info', ok: 'circle-check', err: 'triangle-exclamation' };
+        const icons = { info: 'info', ok: 'circle-check', warn: 'triangle-exclamation', err: 'triangle-exclamation' };
         el.innerHTML = `<i class="fa-solid fa-${icons[type]}"></i><span>${Utils.escapeHtml(msg)}</span>`;
         c.appendChild(el);
         setTimeout(() => el.classList.add('on'), 10);
-        setTimeout(() => { 
-            el.classList.remove('on'); 
-            setTimeout(() => el.remove(), 400); 
+        setTimeout(() => {
+            el.classList.remove('on');
+            setTimeout(() => el.remove(), 400);
         }, 4000);
     },
     escapeHtml: (str: string): string => {
@@ -98,7 +98,7 @@ export const ErrorBoundary = {
     handle: async (error: Error, context: string, stateMode = 'general'): Promise<void> => {
         console.error(`[${context}] Error occurred:`, error);
         Utils.toast(error.message, 'err');
-        
+
         try {
             const { AuditLog } = await import('./audit');
             const { State } = await import('./state');

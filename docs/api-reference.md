@@ -5,7 +5,9 @@ This document highlights the endpoints called by the client-side code of the GCP
 ## Authentication
 All requests require the `Authorization: Bearer <access_token>` header.
 To retrieve account information for verification:
-- **GET** `https://www.googleapis.com/oauth2/v3/userinfo`
+- **GET** `https://openidconnect.googleapis.com/v1/userinfo`
+
+Tokens are sent in the Authorization header, held in memory only, and never placed in URLs or browser storage.
 
 ## Resource Manager
 Used to query available Google Cloud projects for source and target selections:
@@ -13,19 +15,18 @@ Used to query available Google Cloud projects for source and target selections:
 
 ## BigQuery API
 
-### Dataset Management
+### Dataset Metadata (Read Only)
 - **GET** `https://bigquery.googleapis.com/bigquery/v2/projects/{projectId}/datasets`
-- **POST** `https://bigquery.googleapis.com/bigquery/v2/projects/{projectId}/datasets`
 
-### Table Management
+### Table Schema Metadata (Read Only)
 - **GET** `https://bigquery.googleapis.com/bigquery/v2/projects/{projectId}/datasets/{datasetId}/tables`
 - **GET** `https://bigquery.googleapis.com/bigquery/v2/projects/{projectId}/datasets/{datasetId}/tables/{tableId}`
-- **POST** `https://bigquery.googleapis.com/bigquery/v2/projects/{projectId}/datasets/{datasetId}/tables`
-- **PATCH** `https://bigquery.googleapis.com/bigquery/v2/projects/{projectId}/datasets/{datasetId}/tables/{tableId}`
+
+The schema comparator has no BigQuery POST, PATCH, PUT, or DELETE operation.
 
 ### Scheduled Queries (BigQuery Data Transfer Service)
-- **GET** `https://datatransfer.googleapis.com/v1/projects/{projectId}/locations/{locationId}/transferConfigs`
-- **POST** `https://datatransfer.googleapis.com/v1/projects/{projectId}/locations/{locationId}/transferConfigs`
+- **GET** `https://bigquerydatatransfer.googleapis.com/v1/projects/{projectId}/locations/{locationId}/transferConfigs`
+- **POST** `https://bigquerydatatransfer.googleapis.com/v1/projects/{projectId}/locations/{locationId}/transferConfigs`
 
 ## Cloud Datastore API
 

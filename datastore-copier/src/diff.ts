@@ -1,45 +1,15 @@
 import { Utils } from './utils';
+import {
+    cleanJsonToDatastore,
+    datastoreToCleanJson,
+    deepEqual,
+    isJsonString,
+    minifyJsonProperties
+} from './datastore-utils';
 
 export const Diff = {
-    isJsonString: (str: string): boolean => {
-        if (!str || typeof str !== 'string') return false;
-        const trimmed = str.trim();
-        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-            try {
-                JSON.parse(trimmed);
-                return true;
-            } catch (e) {
-                return false;
-            }
-        }
-        return false;
-    },
-    areValuesEqual: (a: any, b: any): boolean => {
-        if (a === b) return true;
-        if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
-        
-        const isArrA = Array.isArray(a);
-        const isArrB = Array.isArray(b);
-        if (isArrA !== isArrB) return false;
-        
-        if (isArrA) {
-            if (a.length !== b.length) return false;
-            for (let i = 0; i < a.length; i++) {
-                if (!Diff.areValuesEqual(a[i], b[i])) return false;
-            }
-            return true;
-        }
-        
-        const keysA = Object.keys(a);
-        const keysB = Object.keys(b);
-        if (keysA.length !== keysB.length) return false;
-        
-        for (const k of keysA) {
-            if (!(k in b)) return false;
-            if (!Diff.areValuesEqual(a[k], b[k])) return false;
-        }
-        return true;
-    },
+    isJsonString,
+    areValuesEqual: deepEqual,
     getJsonDiffHtml: (obj1: any, obj2: any): string => {
         if (Diff.areValuesEqual(obj1, obj2)) {
             if (typeof obj1 !== 'object' || obj1 === null) {
@@ -217,7 +187,7 @@ export const Diff = {
         liveTgtArea.oninput = validateAndDiff;
 
         const globalQuery = (sel: string) => document.querySelector(sel) as HTMLElement;
-        
+
         globalQuery('.btn-fmt-src').onclick = () => {
             try {
                 liveSrcArea.value = JSON.stringify(JSON.parse(liveSrcArea.value), null, 2);
@@ -267,10 +237,10 @@ export const Diff = {
                         return val;
                     }
                 };
-                
+
                 const cleanSrc = getAppliedVal(liveSrcArea.value);
                 const cleanTgt = getAppliedVal(liveTgtArea.value);
-                
+
                 if (srcInput) {
                     srcInput.value = cleanSrc;
                     if (srcInput.classList.contains('raw-val-src')) {
@@ -289,7 +259,7 @@ export const Diff = {
                         }
                     }
                 }
-                
+
                 UI.closeModal();
                 Utils.toast("Applied JSON edits to properties table.", "ok");
             } catch(e) {
@@ -300,81 +270,7 @@ export const Diff = {
         validateAndDiff();
     },
 
-    datastoreToCleanJson: (val: any): any => {
-        if (!val || typeof val !== 'object') return val;
-        const k = Object.keys(val)[0];
-        if (k === 'nullValue') return null;
-        if (k === 'booleanValue') return val.booleanValue;
-        if (k === 'integerValue') return parseInt(val.integerValue, 10);
-        if (k === 'doubleValue') return val.doubleValue;
-        if (k === 'stringValue') return val.stringValue;
-        if (k === 'timestampValue') return val.timestampValue;
-        if (k === 'blobValue') return val.blobValue;
-        if (k === 'arrayValue') {
-            return (val.arrayValue.values || []).map((v: any) => Diff.datastoreToCleanJson(v));
-        }
-        if (k === 'mapValue') {
-            const res: any = {};
-            const props = val.mapValue.properties || {};
-            for (const key in props) {
-                res[key] = Diff.datastoreToCleanJson(props[key]);
-            }
-            return res;
-        }
-        if (k === 'entityValue') {
-            const res: any = {};
-            const props = val.entityValue.properties || {};
-            for (const key in props) {
-                res[key] = Diff.datastoreToCleanJson(props[key]);
-            }
-            return res;
-        }
-        return val[k];
-    },
-    cleanJsonToDatastore: (val: any): any => {
-        if (val === null) return { nullValue: null };
-        if (typeof val === 'boolean') return { booleanValue: val };
-        if (typeof val === 'number') {
-            if (Number.isInteger(val)) return { integerValue: String(val) };
-            return { doubleValue: val };
-        }
-        if (typeof val === 'string') return { stringValue: val };
-        if (Array.isArray(val)) {
-            return { arrayValue: { values: val.map(v => Diff.cleanJsonToDatastore(v)) } };
-        }
-        if (typeof val === 'object') {
-            const props: any = {};
-            for (const k in val) {
-                props[k] = Diff.cleanJsonToDatastore(val[k]);
-            }
-            return { mapValue: { properties: props } };
-        }
-        return { stringValue: String(val) };
-    },
-    minifyJsonProperties: (props: any): void => {
-        if (!props || typeof props !== 'object') return;
-        for (const k in props) {
-            const p = props[k];
-            if (!p || typeof p !== 'object') continue;
-            
-            if ('stringValue' in p) {
-                const str = p.stringValue;
-                if (str && typeof str === 'string' && (str.trim().startsWith('{') || str.trim().startsWith('['))) {
-                    try {
-                        const parsed = JSON.parse(str);
-                        p.stringValue = JSON.stringify(parsed);
-                    } catch(e) {}
-                }
-            } else if (p.arrayValue && Array.isArray(p.arrayValue.values)) {
-                p.arrayValue.values.forEach((subVal: any) => {
-                    const subProps = subVal.entityValue?.properties || subVal.mapValue?.properties;
-                    if (subProps) Diff.minifyJsonProperties(subProps);
-                });
-            } else if (p.entityValue && p.entityValue.properties) {
-                Diff.minifyJsonProperties(p.entityValue.properties);
-            } else if (p.mapValue && p.mapValue.properties) {
-                Diff.minifyJsonProperties(p.mapValue.properties);
-            }
-        }
-    }
+    datastoreToCleanJson,
+    cleanJsonToDatastore,
+    minifyJsonProperties
 };

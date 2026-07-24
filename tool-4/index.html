@@ -431,8 +431,22 @@
             const it = document.getElementById(type + 'DropdownItems'); if (it) it.innerHTML = `<div class="dropdown-empty">${e[type]}</div>`;
         }
 
-        function setDropdownLoading(type, message) { document.getElementById(type + 'DropdownItems').innerHTML = `<div class="dropdown-loading"><span class="spinner"></span>${message}</div>`; }
-        function setDropdownError(type, message) { document.getElementById(type + 'DropdownItems').innerHTML = `<div class="dropdown-error">❌ ${message}</div>`; }
+        function setDropdownLoading(type, message) {
+            const container = document.getElementById(type + 'DropdownItems');
+            const row = document.createElement('div');
+            row.className = 'dropdown-loading';
+            const spinner = document.createElement('span');
+            spinner.className = 'spinner';
+            row.append(spinner, document.createTextNode(String(message)));
+            container.replaceChildren(row);
+        }
+        function setDropdownError(type, message) {
+            const container = document.getElementById(type + 'DropdownItems');
+            const row = document.createElement('div');
+            row.className = 'dropdown-error';
+            row.textContent = `❌ ${message}`;
+            container.replaceChildren(row);
+        }
 
         function getToken() { 
             let val = document.getElementById('accessToken').value || '';
@@ -682,7 +696,7 @@
         }
 
         function escapeHtml(text) { const d = document.createElement('div'); d.appendChild(document.createTextNode(text)); return d.innerHTML; }
-        function showAlert(id, message) { const el = document.getElementById(id); el.innerHTML = message; el.style.display = 'flex'; }
+        function showAlert(id, message) { const el = document.getElementById(id); el.textContent = String(message); el.style.display = 'flex'; }
         function hideAlerts() { document.querySelectorAll('.alert').forEach(el => el.style.display = 'none'); }
         function log(message, type = 'info') { const c = document.getElementById('logContainer'); c.style.display = 'block'; const e = document.createElement('div'); e.className = `log-entry log-${type}`; e.textContent = `[${new Date().toLocaleTimeString()}] ${message}`; c.appendChild(e); c.scrollTop = c.scrollHeight; }
 

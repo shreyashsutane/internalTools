@@ -240,11 +240,12 @@
             overflow-x: auto;
         }
         /* Glowing Flowlines Animation */
-        .mermaid svg .edgePath .path {
+        .mermaid svg .edgePath .path,
+        .mermaid svg .flowchart-link {
             stroke: var(--accent-teal) !important;
             stroke-width: 2.5px !important;
             stroke-dasharray: 8, 8 !important;
-            animation: flowLine 25s linear infinite !important;
+            animation: flowLine 1.8s linear infinite !important;
             filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.4));
         }
         .mermaid svg .edgePath .arrowheadPath {
@@ -274,8 +275,154 @@
             font-weight: 500 !important;
         }
         @keyframes flowLine {
-            from { stroke-dashoffset: 800; }
+            from { stroke-dashoffset: 32; }
             to { stroke-dashoffset: 0; }
+        }
+
+        .flow-shell {
+            position: relative;
+            margin: 28px 0 34px;
+            padding: 18px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 212, 255, 0.16);
+            border-radius: 18px;
+            background:
+                linear-gradient(135deg, rgba(0, 212, 255, 0.035), rgba(192, 132, 252, 0.035)),
+                rgba(2, 6, 23, 0.45);
+        }
+        .flow-shell::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto 0 -35%;
+            width: 28%;
+            pointer-events: none;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.07), transparent);
+            transform: skewX(-12deg);
+            animation: scanFlow 6s ease-in-out infinite;
+            animation-play-state: paused;
+        }
+        .flow-shell.is-visible::before {
+            animation-play-state: running;
+        }
+        .flow-shell:not(.is-visible) .flowchart-link {
+            animation-play-state: paused !important;
+        }
+        .flow-shell .mermaid {
+            position: relative;
+            z-index: 1;
+            margin: 0;
+            background: transparent;
+            border: 0;
+        }
+        .flow-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 6px;
+            color: var(--accent-teal);
+            font: 600 0.76rem var(--font-code);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .flow-caption {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .flow-caption span {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(2, 6, 23, 0.72);
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+        .flow-caption strong { color: #fff; }
+        @keyframes scanFlow {
+            0%, 14% { left: -35%; opacity: 0; }
+            25%, 75% { opacity: 1; }
+            86%, 100% { left: 110%; opacity: 0; }
+        }
+
+        .explanation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 14px;
+            margin: 22px 0;
+        }
+        .explanation-step {
+            position: relative;
+            min-height: 150px;
+            padding: 20px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.62));
+        }
+        .explanation-step .step-number {
+            display: inline-grid;
+            place-items: center;
+            width: 28px;
+            height: 28px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            color: #021017;
+            background: var(--accent-teal);
+            font: 800 0.8rem var(--font-code);
+            box-shadow: 0 0 16px rgba(0, 212, 255, 0.22);
+        }
+        .explanation-step h4 {
+            margin-bottom: 7px;
+            color: #fff;
+            font-size: 0.98rem;
+        }
+        .explanation-step p {
+            margin: 0;
+            font-size: 0.87rem;
+            line-height: 1.55;
+        }
+        .invariant {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px 18px;
+            margin: 18px 0;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 12px;
+            background: rgba(16, 185, 129, 0.055);
+        }
+        .invariant i { color: var(--accent-green); margin-top: 4px; }
+        .invariant p { margin: 0; font-size: 0.92rem; }
+
+        .code-explainer {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+            margin: -4px 0 24px;
+        }
+        .code-note {
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.025);
+            color: var(--text-muted);
+            font-size: 0.84rem;
+        }
+        .code-note strong {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--accent-purple);
+            font-family: var(--font-code);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+            }
         }
 
         /* Vertical Tabs sub-layout for Block Walkthroughs */
@@ -527,12 +674,12 @@
         <section class="section-content active" id="sec-copier">
             <div class="glass-card">
                 <h2><i class="fa-solid fa-layer-group" style="color:var(--accent-teal)"></i> 1. Architectural System Design</h2>
-                <p>The GCP Infrastructure Manager (Datastore Copier) is engineered as an enterprise-grade modular system using TypeScript. It enforces a strict **Clean Architecture (MVVM/Service-Layer)** separation of concerns, decoupling structural logic from rendering routines.</p>
+                <p>The GCP Infrastructure Manager is a browser-based TypeScript application organized into focused modules for orchestration, state, API access, Datastore value handling, rendering, comparison, and auditing. BigQuery schema handling is deliberately read-only; scheduled-query and Datastore tools retain their separate, guarded write workflows.</p>
                 
                 <div class="alert-box alert-box-info">
                     <i class="fa-solid fa-circle-info"></i>
                     <div>
-                        <strong>Modern Clean Code Goals:</strong> The codebase is structured with centralized configurations, strict type-safe DOM bindings, reactive subscriber state loops, dependency-injected gateways, and a secure Firestore logs HTTP proxy middleware.
+                        <strong>Core engineering goals:</strong> Preserve native GCP value types, keep BigQuery schema comparison non-mutating, make authorized writes reversible, keep API limits explicit, keep bearer tokens in memory, restrict credentialed requests to known Google API origins, and render untrusted metadata without executing markup.
                     </div>
                 </div>
 
@@ -551,7 +698,8 @@
                     CONFIG["config.ts (App Config Settings)"]:::config
                     UTILS["utils.ts (Safe DOM & ErrorBoundary)"]:::core
                     STATE["state.ts (Pub/Sub Observer State)"]:::state
-                    API["api.ts (DI REST client wrapper)"]:::core
+                    API["api.ts (Authenticated REST client)"]:::core
+                    DSUTIL["datastore-utils.ts (Type fidelity & JSON rules)"]:::core
                     DIFF["diff.ts (JSON Diff & Serializer)"]:::core
                     AUDIT["audit.ts (Firestore Logs Relayer)"]:::core
                     UI["ui.ts (Dropdowns, Modals, Views)"]:::ui
@@ -565,19 +713,118 @@
                     STATE -->|Notify observer updates| UI
                     APP -->|Coordinate events| UI
                     UI -->|Call REST services| API
-                    UI -->|Format differences & serialize| DIFF
-                    API -->|POST logs securely| PROXY
+                    APP -->|Clone, validate, minify, replace| DSUTIL
+                    DIFF -->|Reuse deep comparison & minification| DSUTIL
+                    UI -->|Format visual differences| DIFF
+                    AUDIT -->|Prefer local audit route| PROXY
                     API -->|Direct HTTPS calls| GCP
-                    PROXY -->|Token verification & insert logs| FIRE
-                    AUDIT -->|Relay log events| PROXY
+                    PROXY -->|Forward bearer request| FIRE
                     UTILS -->|Catch & propagate boundary errors| AUDIT
                     CONFIG -->|Inject static parameters| API
                 </div>
             </div>
 
             <div class="glass-card">
-                <h2><i class="fa-solid fa-shield-halved" style="color:var(--accent-purple)"></i> 2. Secure Auditing & Credential Shielding</h2>
-                <p>Direct browser connections to GCP databases pose security risks. To mitigate token hijacking and credential interception, Firestore operations are strictly proxied. Under the hood, log requests targeting Google Firestore are routed to the server middleware endpoint <code>/api/audit_logs</code>.</p>
+                <h2><i class="fa-solid fa-shield-halved" style="color:var(--accent-purple)"></i> 2. Audit Routing &amp; Credential Boundaries</h2>
+                <p>Audit operations prefer the local <code>/api/audit_logs</code> proxy and fall back to the direct Firestore REST endpoint when the proxy is unavailable. The GCP bearer token is held only in JavaScript memory, never placed in a URL or browser storage, and credentialed API calls are rejected unless their HTTPS origin appears in the client allowlist.</p>
+
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-shield-halved"></i> Credential and destination boundary</span>
+                    <div class="mermaid">
+                    flowchart LR
+                        AU1["Paste temporary bearer token"] --> AU2["Validate with Authorization header"]
+                        AU2 --> AU3["Keep token in memory only"]
+                        AU3 --> AU4["Build GCP API request"]
+                        AU4 --> AU5{"HTTPS origin allowlisted?"}
+                        AU5 -->|No| AUX["Block before sending credentials"]
+                        AU5 -->|Yes| AU6["Attach Authorization header"]
+                        AU6 --> AU7["Send to official Google API"]
+                        AU3 --> AU8["Page closes"]
+                        AU8 --> AU9["Token is discarded"]
+                    </div>
+                </div>
+
+                <h3><i class="fa-solid fa-user-shield"></i> External Attack Protection Added</h3>
+                <p>The release applies defense in depth. No browser-only application can promise absolute protection, but each control below reduces a specific attack path and fails closed where credentials or cloud mutations are involved.</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Attack path</th>
+                            <th>Protection added</th>
+                            <th>Security effect</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Bearer-token theft from URLs or persistent browser storage</td>
+                            <td>Tokens are sent in the <code>Authorization</code> header and retained in memory only.</td>
+                            <td>No token is written to URL history, referrer data, <code>localStorage</code>, or <code>sessionStorage</code>.</td>
+                        </tr>
+                        <tr>
+                            <td>Credential exfiltration through a manipulated API URL</td>
+                            <td><code>Api.fetch</code> accepts HTTPS requests only to an explicit Google API origin allowlist.</td>
+                            <td>Unknown destinations are blocked before the bearer header is attached.</td>
+                        </tr>
+                        <tr>
+                            <td>Cross-site scripting and untrusted cloud metadata</td>
+                            <td>Dynamic project, schema, error, and administrator values use escaped text or <code>textContent</code>; CSP limits script, style, connection, frame, and object sources.</td>
+                            <td>Injected markup is rendered as text, while unexpected script/object/frame execution is constrained by the browser.</td>
+                        </tr>
+                        <tr>
+                            <td>Clickjacking and opener/tab takeover</td>
+                            <td><code>X-Frame-Options: DENY</code>, CSP <code>frame-ancestors 'none'</code>, COOP, and <code>rel="noopener noreferrer"</code>.</td>
+                            <td>The portal cannot be embedded by an attacker, and new tabs cannot control the opener.</td>
+                        </tr>
+                        <tr>
+                            <td>Public feedback spam payloads and oversized writes</td>
+                            <td>Firestore Rules allow only four expected fields with strict types, lengths, and a ten-minute timestamp window.</td>
+                            <td>Arbitrary fields, oversized messages, invalid types, and stale replay payloads are rejected.</td>
+                        </tr>
+                        <tr>
+                            <td>Repository/source disclosure through static Hosting</td>
+                            <td>Firebase explicitly excludes <code>.git/**</code>, <code>.firebase/**</code>, tests, TypeScript sources, source maps, server scripts, and package metadata.</td>
+                            <td>Only the 12 intentional runtime assets are published; repository-internal URLs return 404.</td>
+                        </tr>
+                        <tr>
+                            <td>Browser feature abuse and content-type confusion</td>
+                            <td>Permissions Policy disables camera, microphone, location, payment, and USB; <code>nosniff</code>, strict referrer policy, CORP, HTTPS, and HSTS are enabled.</td>
+                            <td>Unused sensitive capabilities are unavailable and cross-origin/content interpretation is narrowed.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="code-window">
+                    <div class="code-header">
+                        <div class="code-dots">
+                            <div class="code-dot code-dot-red"></div>
+                            <div class="code-dot code-dot-yellow"></div>
+                            <div class="code-dot code-dot-green"></div>
+                        </div>
+                        <div class="code-title">api.ts — credential destination gate</div>
+                    </div>
+                    <div class="code-container">
+                        <pre><code>const parsed = new URL(url);
+if (
+    parsed.protocol !== 'https:' ||
+    !ALLOWED_API_ORIGINS.has(parsed.origin)
+) {
+    throw new Error(
+        `Blocked API destination: ${parsed.origin}`
+    );
+}
+
+headers.set(
+    'Authorization',
+    `Bearer ${activeToken}`
+);</code></pre>
+                    </div>
+                </div>
+                <div class="code-explainer">
+                    <div class="code-note"><strong>validate first</strong>The URL is parsed and checked before any network request or credential attachment.</div>
+                    <div class="code-note"><strong>exact origins</strong>Path parameters can vary, but the scheme and API host cannot be redirected to an attacker.</div>
+                    <div class="code-note"><strong>no-store / no-referrer</strong>Credentialed fetches opt out of caching and referrer disclosure.</div>
+                </div>
                 
                 <table>
                     <thead>
@@ -590,7 +837,7 @@
                     <tbody>
                         <tr>
                             <td><span class="badge-method badge-post">POST</span> Dispatch log</td>
-                            <td><code>/api/audit_logs/documents</code></td>
+                            <td><code>/api/audit_logs</code></td>
                             <td><code>https://firestore.googleapis.com/v1/projects/.../documents/audit_logs</code></td>
                         </tr>
                         <tr>
@@ -603,84 +850,193 @@
             </div>
 
             <div class="glass-card">
-                <h2><i class="fa-solid fa-gears" style="color:var(--accent-teal)"></i> 2.5 Core Operations Architecture & Execution Pipelines</h2>
-                <p>The GCP Infrastructure Manager runs 4 distinct pipeline execution channels. Below is the block-wise engineering specification for each workflow along with dynamic animated flowchart mappings:</p>
+                <h2><i class="fa-solid fa-gears" style="color:var(--accent-teal)"></i> 3. Core Operations &amp; Safety Pipelines</h2>
+                <p>These diagrams follow the implemented control flow. Animated links show request progression; BigQuery terminates after rendering differences, while branching nodes in the separate mutation tools document the conditions that stop a write or safely retry it.</p>
 
                 <h3>📊 A. BigQuery Table Schema Diff Pipeline</h3>
-                <p>Ensures structural consistency before copying dataset items. The pipeline requests table listings for both source and target configurations, indexing fields by their path identifier. It runs deep-equal comparisons across all fields (checking parameters like name, data-type, and mode tags) to pinpoint mismatch anomalies.</p>
-                
-                <div class="mermaid">
-                graph TD
-                    classDef default fill:#0c1220,stroke:#00d4ff,stroke-width:2,color:#fff;
-                    classDef flow fill:#1e1b4b,stroke:#6366f1,stroke-width:2,color:#fff;
-
-                    BQ1[Select Source & Target BQ Projects] --> BQ2[Fetch Datasets list for both Projects]
-                    BQ2 --> BQ3[Fetch Tables schema in selected Datasets]
-                    BQ3 --> BQ4[Build Source & Target Field Map key: dataset.table]
-                    BQ4 --> BQ5[Compare Fields metadata: Name, Type, Mode]
-                    BQ5 --> BQ6{Fields Match?}
-                    BQ6 -->|Yes| BQ7[Mark table status: Identical]
-                    BQ6 -->|No / Missing| BQ8[Generate color-coded schema differences grid]
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Read-only comparison</span>
+                    <div class="mermaid">
+                    flowchart LR
+                        BQ1["Select source and target"] --> BQ2["Fetch datasets and tables"]
+                        BQ2 --> BQ3["Load both table schemas"]
+                        BQ3 --> BQ4["Compare name, type and mode"]
+                        BQ4 --> BQ5{"Schemas match?"}
+                        BQ5 -->|Yes| BQ6["Identical"]
+                        BQ5 -->|No| BQ7["Render field-level differences"]
+                    </div>
                 </div>
 
                 <h3 style="margin-top:40px; color:var(--accent-purple)">📊 B. Scheduled Query Migration Pipeline</h3>
-                <p>Transfers BigQuery Transfer Configurations seamlessly. The client pulls active scheduled query definitions from the GCP Transfer Config Service, extracts core metadata variables (execution schedule, SQL script, and target tables), and provides a warning confirmation modal before committing the creation transaction to the target project namespace.</p>
-
-                <div class="mermaid">
-                graph TD
-                    classDef default fill:#0c1220,stroke:#00d4ff,stroke-width:2,color:#fff;
-
-                    Q1[Fetch Scheduled Queries list via Transfer Configs API] --> Q2[Parse query metadata: displayName, params, state]
-                    Q2 --> Q3[Render Scheduled Queries difference grid]
-                    Q3 --> Q4[User clicks Copy query]
-                    Q4 --> Q5[Build copy warning model popup]
-                    Q5 --> Q6[POST create request to Target Project API]
-                    Q6 --> Q7[Write operational transaction log in audit history]
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Configuration migration</span>
+                    <div class="mermaid">
+                    flowchart LR
+                        Q1["Fetch transfer configs"] --> Q2["Compare query metadata"]
+                        Q2 --> Q3["Select configurations"]
+                        Q3 --> Q4["Capture previous target state"]
+                        Q4 --> Q5["Create or replace target config"]
+                        Q5 --> Q6["Write audit result"]
+                    </div>
                 </div>
 
-                <h3 style="margin-top:40px; color:var(--accent-green)">📊 C. Datastore Paginated Entity Fetch & Overwrite Pipeline</h3>
-                <p>Pulls entities sequentially to prevent browser memory exhaust. The system fetches records in sequential blocks of 50 using Google Datastore's cursor pagination. Fetched entities are normalized into standard JSON strings (stripping Google wrapper envelopes like <code>mapValue</code>), compared keys-by-keys, and highlighted according to mismatch statuses.</p>
+                <h3 style="margin-top:40px; color:var(--accent-green)">📊 C. Datastore Analysis &amp; Deferred Lookup Resolution</h3>
+                <p>Source entities remain in native Datastore REST form. The analyzer paginates <code>runQuery</code>, compares target keys in 100-entity work units, resolves deferred lookup keys, and retains every result—including identical rows.</p>
 
-                <div class="mermaid">
-                graph TD
-                    classDef default fill:#0c1220,stroke:#00d4ff,stroke-width:2,color:#fff;
-
-                    DS1[Initialize Cursor pagination: cursor = null] --> DS2[Fetch 50 entities via runQuery REST API]
-                    DS2 --> DS3[Extract next page endCursor token]
-                    DS3 --> DS4[Process entities: Convert Datastore mapValue/arrayValue to clean JSON]
-                    DS4 --> DS5[Compare Source entity JSON with Target entity JSON]
-                    DS5 --> DS6{Different or Missing properties?}
-                    DS6 -->|Yes| DS7[Add entity row to diff grid & color differences]
-                    DS6 -->|No| DS8[Mark row: Identical]
-                    DS7 --> DS9{More pages && !Cancelled?}
-                    DS8 --> DS9
-                    DS9 -->|Yes| DS10[Update cursor & fetch next batch]
-                    DS10 --> DS2
-                    DS9 -->|No| DS11[Complete scan & draw statistics panel]
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Animated analysis lifecycle</span>
+                    <div class="mermaid">
+                    flowchart TD
+                        DS1["Start analysis"] --> DS2["Clear old results and selections"]
+                        DS2 --> DS3["Create AbortController"]
+                        DS3 --> DS4["Fetch source page with runQuery"]
+                        DS4 --> DS5["Split page into 100-entity work units"]
+                        DS5 --> DS6["Retarget key partitions for target lookup"]
+                        DS6 --> DS7["Lookup target entities"]
+                        DS7 --> DS8{"Deferred keys returned?"}
+                        DS8 -->|Yes| DS9["Retry deferred keys, maximum 5 rounds"]
+                        DS9 --> DS7
+                        DS8 -->|No| DS10["Deep-compare native value wrappers"]
+                        DS10 --> DS11["Store missing, different and identical rows"]
+                        DS11 --> DS12{"NO_MORE_RESULTS?"}
+                        DS12 -->|No| DS4
+                        DS12 -->|Yes| DS13["Render totals and complete property list"]
+                    </div>
+                    <div class="flow-caption">
+                        <span><strong>API limit:</strong> generic lookups are automatically partitioned into at most 1,000 keys.</span>
+                        <span><strong>Comparison:</strong> object property order is ignored; array order and Datastore wrappers remain significant.</span>
+                        <span><strong>Retention:</strong> results are no longer silently capped at 20,000 rows.</span>
+                    </div>
                 </div>
 
-                <h3 style="margin-top:40px; color:var(--accent-amber)">📊 D. Strict JSON Editor Validation & Automatic Minification Pipeline</h3>
-                <p>Ensures syntax validity and storage compaction. When a user modifies nested property blocks, the system runs strict <code>JSON.parse</code> evaluations. If syntax check fails, save buttons are locked and detailed validation warnings are shown. On successful submission, JSON keys are minified back to single line representations automatically.</p>
+                <h3 style="margin-top:40px; color:var(--accent-amber)">📊 D. Type-Preserving Datastore Copy</h3>
+                <div class="invariant">
+                    <i class="fa-solid fa-fingerprint"></i>
+                    <p><strong>Copy invariant:</strong> an <code>integerValue</code> is written as an <code>integerValue</code>; the same rule applies to doubles, booleans, nulls, timestamps, blobs, keys, geo-points, arrays, maps, and embedded entities. Only the text inside an existing JSON-bearing <code>stringValue</code> may be minified.</p>
+                </div>
 
-                <div class="mermaid">
-                graph TD
-                    classDef default fill:#0c1220,stroke:#00d4ff,stroke-width:2,color:#fff;
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Guarded write lifecycle</span>
+                    <div class="mermaid">
+                    flowchart TD
+                        CP1["Selected entity keys"] --> CP2["Build target-partition keys"]
+                        CP2 --> CP3["Lookup complete target backup"]
+                        CP3 --> CP4{"Backup complete?"}
+                        CP4 -->|No| CPX["Abort before any write"]
+                        CP4 -->|Yes| CP5{"Audit backup within safe size?"}
+                        CP5 -->|No| CPX
+                        CP5 -->|Yes| CP6["Lookup source entities"]
+                        CP6 --> CP7["Deep-clone native entities"]
+                        CP7 --> CP8["Change only key partitionId"]
+                        CP8 --> CP9["Optional string-only nested replacement"]
+                        CP9 --> CP10["Recursively minify JSON stringValue content"]
+                        CP10 --> CP11["Verify top-level value types are unchanged"]
+                        CP11 --> CP12["Commit target mutations"]
+                        CP12 --> CP13["Persist reversible audit record"]
+                        CP13 --> CP14["Re-analyze and clear selection"]
+                    </div>
+                    <div class="flow-caption">
+                        <span><strong>Backup first:</strong> a lookup or deferred-key failure prevents the copy.</span>
+                        <span><strong>Mutation scope:</strong> find/replace visits strings only—even inside maps, entities, and arrays.</span>
+                        <span><strong>Revert scale:</strong> restore mutations are committed in bounded chunks.</span>
+                    </div>
+                </div>
 
-                    JE1[User opens inline JSON Editor Modal] --> JE2[Extract raw JSON value from hidden textarea]
-                    JE2 --> JE3[Render side-by-side editing textareas]
-                    JE3 --> JE4[Detect keypress input in Editor window]
-                    JE4 --> JE5[Run JSON.parse syntax check on input text]
-                    JE5 --> JE6{Valid JSON syntax?}
-                    JE6 -->|Yes| JE7[Enable Save Button & render visual diff panel]
-                    JE6 -->|No| JE8[Disable Save Button & display detailed SyntaxError notice]
-                    JE7 --> JE9[User clicks Apply Changes]
-                    JE9 --> JE10[Minify JSON string: strip all tabs, spaces, newlines]
-                    JE10 --> JE11[Commit minified string payload to Google Datastore REST API]
+                <h3 style="margin-top:40px; color:var(--accent-purple)">📊 E. Inline Editor &amp; Recursive JSON Minification</h3>
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Value conversion rules</span>
+                    <div class="mermaid">
+                    flowchart TD
+                        JE1["Read native Datastore value wrapper"] --> JE2["Display exact type and lossless editor text"]
+                        JE2 --> JE3{"Value changed?"}
+                        JE3 -->|No| JE4["Clone original wrapper"]
+                        JE3 -->|Yes| JE5["Validate selected native type"]
+                        JE5 --> JE6{"Valid input?"}
+                        JE6 -->|No| JE7["Block save and show validation error"]
+                        JE6 -->|Yes| JE8["Rebuild the same selected wrapper type"]
+                        JE4 --> JE9["Walk stringValue, arrayValue, mapValue and entityValue"]
+                        JE8 --> JE9
+                        JE9 --> JE10{"Valid JSON object or array string?"}
+                        JE10 -->|Yes| JE11["JSON.parse then compact JSON.stringify"]
+                        JE10 -->|No| JE12["Keep original string text"]
+                        JE11 --> JE13["Preflight reversible backup and commit"]
+                        JE12 --> JE13
+                    </div>
+                </div>
+
+                <h3 style="margin-top:40px; color:var(--accent-red)">📊 F. Cancellation &amp; Bounded Retry Flow</h3>
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Cooperative cancellation</span>
+                    <div class="mermaid">
+                    flowchart LR
+                        CA1["Analyze or copy request"] --> CA2["Fetch / lookup / commit"]
+                        CA2 --> CA3{"HTTP 429?"}
+                        CA3 -->|Yes| CA4["Abortable exponential wait"]
+                        CA4 --> CA5{"Retry count below 5?"}
+                        CA5 -->|Yes| CA2
+                        CA5 -->|No| CA6["Return bounded rate-limit error"]
+                        CA3 -->|No| CA7["Continue operation"]
+                        CB1["User clicks Cancel"] --> CB2["Set cancel flag and abort signal"]
+                        CB2 --> CA2
+                        CB2 --> CA4
+                        CA2 -->|AbortError| CB3["Stop current work unit"]
+                        CA4 -->|AbortError| CB3
+                        CB3 --> CB4["Record partial outcome when writes occurred"]
+                    </div>
+                </div>
+
+                <h3 style="margin-top:40px; color:var(--accent-green)">📊 G. Permission-Aware Datastore Revert</h3>
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-rotate-left"></i> Restore first, delete only when authorized</span>
+                    <div class="mermaid">
+                    flowchart TD
+                        RV1["Load and validate audit backup"] --> RV2["Build separate upsert and delete plans"]
+                        RV2 --> RV3["Retarget keys to original project and database"]
+                        RV3 --> RV4["Minify JSON stringValue content"]
+                        RV4 --> RV5["Commit all restore upserts in chunks of 400"]
+                        RV5 --> RV6{"Deletes required?"}
+                        RV6 -->|No| RV10["Revert complete"]
+                        RV6 -->|Yes| RV7["Commit delete-only chunk"]
+                        RV7 --> RV8{"Delete permission denied?"}
+                        RV8 -->|No| RV9{"More delete chunks?"}
+                        RV9 -->|Yes| RV7
+                        RV9 -->|No| RV10
+                        RV8 -->|Yes| RV11["Skip remaining deletes; keep restored upserts"]
+                        RV11 --> RV12["Record PARTIAL result and skipped count"]
+                    </div>
+                    <div class="flow-caption">
+                        <span><strong>No delete permission:</strong> existing entities are still restored with upserts; delete-required reversals are skipped and reported.</span>
+                        <span><strong>Other failures:</strong> network and server errors are not hidden as permission issues.</span>
+                        <span><strong>Type fidelity:</strong> backup wrappers, 64-bit integers, database IDs, and nested values remain intact.</span>
+                    </div>
+                </div>
+
+                <div class="explanation-grid">
+                    <article class="explanation-step">
+                        <span class="step-number">1</span>
+                        <h4>Read without coercion</h4>
+                        <p>Analysis and copying use the REST value envelopes directly. Formatting helpers are reserved for display, not persistence.</p>
+                    </article>
+                    <article class="explanation-step">
+                        <span class="step-number">2</span>
+                        <h4>Validate before mutation</h4>
+                        <p>Target backup completeness and audit size are checked before the first target commit.</p>
+                    </article>
+                    <article class="explanation-step">
+                        <span class="step-number">3</span>
+                        <h4>Transform only strings</h4>
+                        <p>Replacement and JSON compaction operate on <code>stringValue</code>; numeric and structural wrappers are never coerced.</p>
+                    </article>
+                    <article class="explanation-step">
+                        <span class="step-number">4</span>
+                        <h4>Finish observably</h4>
+                        <p>The audit entry records success, partial completion, failure, replacement count, and reversible target state.</p>
+                    </article>
                 </div>
             </div>
 
             <div class="glass-card">
-                <h2><i class="fa-solid fa-code" style="color:var(--accent-green)"></i> 3. Block-by-Block Codebase Anatomy</h2>
+                <h2><i class="fa-solid fa-code" style="color:var(--accent-green)"></i> 4. Block-by-Block Codebase Anatomy</h2>
                 <p>Select a module to view its architecture details, Clean Code rationale, and specific technical code blocks:</p>
                 
                 <div class="walkthrough-layout">
@@ -689,8 +1045,10 @@
                         <button class="subtab-btn" id="sbtn-utils" onclick="switchSubTab('utils')"><i class="fa-solid fa-shield-cat"></i> utils.ts</button>
                         <button class="subtab-btn" id="sbtn-state" onclick="switchSubTab('state')"><i class="fa-solid fa-wave-square"></i> state.ts</button>
                         <button class="subtab-btn" id="sbtn-api" onclick="switchSubTab('api')"><i class="fa-solid fa-globe"></i> api.ts</button>
+                        <button class="subtab-btn" id="sbtn-datastore-utils" onclick="switchSubTab('datastore-utils')"><i class="fa-solid fa-fingerprint"></i> datastore-utils.ts</button>
                         <button class="subtab-btn" id="sbtn-diff" onclick="switchSubTab('diff')"><i class="fa-solid fa-code-compare"></i> diff.ts</button>
                         <button class="subtab-btn" id="sbtn-audit" onclick="switchSubTab('audit')"><i class="fa-solid fa-receipt"></i> audit.ts</button>
+                        <button class="subtab-btn" id="sbtn-revert" onclick="switchSubTab('revert')"><i class="fa-solid fa-rotate-left"></i> revert.ts</button>
                         <button class="subtab-btn" id="sbtn-ui" onclick="switchSubTab('ui')"><i class="fa-solid fa-desktop"></i> ui.ts & app.ts</button>
                         <button class="subtab-btn" id="sbtn-server" onclick="switchSubTab('server')"><i class="fa-solid fa-server"></i> server.js</button>
                     </div>
@@ -724,7 +1082,7 @@
         `https://datastore.googleapis.com/v1/projects/${pid}:lookup` + (db ? `?databaseId=${db}` : ''),
     DATASTORE_COMMIT_URL: (pid: string, db?: string) => 
         `https://datastore.googleapis.com/v1/projects/${pid}:commit` + (db ? `?databaseId=${db}` : ''),
-    AUDIT_LOG_URL: "/api/audit_logs/documents",
+    FIRESTORE_AUDIT_LOG_URL: "/api/audit_logs",
     AUDIT_QUERY_URL: "/api/audit_logs/runQuery"
 };</code></pre>
                                 </div>
@@ -739,7 +1097,7 @@
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
                                 <li><strong>DOM Casting Guard Rails:</strong> Elements are retrieved via <code>getInput</code> or <code>getButton</code> helpers. If elements are absent, an immediate error with stack context is thrown, preventing undefined reference crashes later.</li>
-                                <li><strong>ErrorBoundary Exception Relay:</strong> The <code>ErrorBoundary.handle</code> function captures stack traces, formats error labels, launches customized toast notification cards, and automatically dispatches audit records to <code>/api/audit_logs/documents</code> to track failures inside Firestore.</li>
+                                <li><strong>ErrorBoundary Exception Relay:</strong> The <code>ErrorBoundary.handle</code> function captures stack traces, shows an escaped toast message, and asks the audit client to record the failure when an authenticated session is available.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -775,7 +1133,7 @@
 };
 
 export const ErrorBoundary = {
-    handle: async (error: Error, context: string): Promise<void> => {
+    handle: async (error: Error, context: string): Promise&lt;void&gt; => {
         console.error(`[${context}] Trace:`, error);
         Utils.toast(error.message, 'err');
         try {
@@ -795,8 +1153,8 @@ export const ErrorBoundary = {
                             
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
-                                <li><strong>Global State Store:</strong> Maintains unified properties for active connection configuration parameters, lists of BigQuery tables, selected Datastore entities, and GCP bearer authentication keys.</li>
-                                <li><strong>Pub/Sub Observer Event Loop:</strong> Component elements register view repainters via <code>State.subscribe(callback)</code>. When operations modify data fields, a single call to <code>State.notify()</code> updates all observers.</li>
+                                <li><strong>Global State Store:</strong> Maintains active connection parameters, read-only BigQuery comparison results, selected Datastore entities, and the in-memory GCP bearer token.</li>
+                                <li><strong>Named Pub/Sub events:</strong> Components register callbacks with <code>State.subscribe(event, callback)</code> and notify only observers associated with that event name.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -809,17 +1167,27 @@ export const ErrorBoundary = {
                                     <div class="code-title">state.ts</div>
                                 </div>
                                 <div class="code-container">
-                                    <pre><code>type Listener = (state: any) => void;
-const subscribers = new Set<Listener>();
+                                    <pre><code>const observers =
+    new Map&lt;string, Array&lt;() =&gt; void&gt;&gt;();
 
 export const State = {
     token: '',
     authEmail: '',
-    bq: { src: '', tgt: '', srcDs: '', tgtDs: '', tables: [] },
-    ds: { src: '', tgt: '', kind: '', entities: [] },
-    
-    subscribe: (fn: Listener) => { subscribers.add(fn); },
-    notify: () => { subscribers.forEach(fn => fn(State)); }
+    ds: {
+        src: '',
+        tgt: '',
+        kind: '',
+        results: [],
+        selected: new Set&lt;string&gt;(),
+        properties: []
+    },
+
+    subscribe: (event, callback) => {
+        if (!observers.has(event)) observers.set(event, []);
+        observers.get(event).push(callback);
+    },
+    notify: event =>
+        observers.get(event)?.forEach(callback => callback())
 };</code></pre>
                                 </div>
                             </div>
@@ -827,13 +1195,14 @@ export const State = {
 
                         <!-- subtab: api -->
                         <div class="subtab-content" id="ssec-api">
-                            <h3>Module: `api.ts` (Dependency Injection REST Client)</h3>
-                            <p>Encapsulates all communications targeting Google Cloud Services via direct REST connections.</p>
+                            <h3>Module: <code>api.ts</code> (Bounded REST Client)</h3>
+                            <p>Centralizes authenticated GCP requests, cancellation, rate-limit handling, Datastore pagination helpers, and API-size constraints.</p>
                             
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
-                                <li><strong>Dynamic Bearer Auth Injection:</strong> Avoids static global credential declarations. Authorization variables are programmatically assigned via <code>Api.setToken(token)</code> on successful authentication, dynamically appending standard <code>Bearer</code> values to outgoing headers.</li>
-                                <li><strong>Datastore URL Mapping:</strong> Checks query configurations dynamically. If database ID selections are empty or set to <code>(default)</code>, it maps references to root parameters automatically to prevent REST routing faults.</li>
+                                <li><strong>Cancellation propagation:</strong> An optional <code>AbortSignal</code> is passed through query, lookup, commit, and retry waits so Cancel stops active network work.</li>
+                                <li><strong>Bounded 429 behavior:</strong> Rate limits use an abortable exponential delay and stop after five retries instead of recursing indefinitely.</li>
+                                <li><strong>Lookup constraint enforcement:</strong> Key arrays are split into groups of at most 1,000 and any <code>deferred</code> keys are retried independently.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -846,42 +1215,131 @@ export const State = {
                                     <div class="code-title">api.ts</div>
                                 </div>
                                 <div class="code-container">
-                                    <pre><code>let activeToken = '';
+                                    <pre><code>lookupEntities: async (pid, keys, databaseId, signal) => {
+    const found = [];
+    const missing = [];
 
-export const Api = {
-    setToken: (token: string) => { activeToken = token; },
-    
-    fetch: async (url: string, opts: RequestInit = {}) => {
-        opts.headers = {
-            ...opts.headers,
-            'Authorization': `Bearer ${activeToken}`,
-            'Content-Type': 'application/json'
-        };
-        const res = await fetch(url, opts);
-        if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
-        return res.json();
-    },
-    
-    runDatastoreQuery: async (pid: string, body: any, databaseId?: string) => {
-        const db = (databaseId === '(default)' || !databaseId) ? '' : databaseId;
-        const url = CONFIG.DATASTORE_RUN_QUERY_URL(pid, db);
-        return Api.fetch(url, { method: 'POST', body: JSON.stringify(body) });
+    for (let offset = 0; offset &lt; keys.length; offset += 1000) {
+        let pending = keys.slice(offset, offset + 1000);
+        let deferredAttempts = 0;
+
+        while (pending.length &gt; 0) {
+            const response = await Api.fetch(lookupUrl, {
+                method: 'POST',
+                body: JSON.stringify({ keys: pending }),
+                signal
+            });
+            found.push(...(response.found || []));
+            missing.push(...(response.missing || []));
+            pending = response.deferred || [];
+
+            if (pending.length &gt; 0 &amp;&amp; ++deferredAttempts &gt; 5) {
+                throw new Error('Deferred lookup retry limit reached');
+            }
+        }
+    }
+    return { found, missing, deferred: [] };
+}</code></pre>
+                                </div>
+                            </div>
+                            <div class="code-explainer">
+                                <div class="code-note"><strong>offset += 1000</strong>Applies the Datastore lookup ceiling before the request is sent.</div>
+                                <div class="code-note"><strong>pending = response.deferred</strong>Prevents deferred keys from being misclassified as missing.</div>
+                                <div class="code-note"><strong>signal</strong>The same cancellation signal reaches both fetch and retry waiting.</div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: datastore-utils -->
+                        <div class="subtab-content" id="ssec-datastore-utils">
+                            <h3>Module: <code>datastore-utils.ts</code> (Type Fidelity Rules)</h3>
+                            <p>This module contains the pure functions that define the persistence contract. UI code may format a value for display, but copy and save operations use these helpers to keep native wrappers lossless.</p>
+
+                            <div class="invariant">
+                                <i class="fa-solid fa-shield-heart"></i>
+                                <p><strong>Why this module matters:</strong> JavaScript numbers cannot safely represent every Datastore 64-bit integer. Integer values therefore remain strings inside <code>integerValue</code> and are never passed through <code>parseInt</code> during copy or editing.</p>
+                            </div>
+
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">datastore-utils.ts — recursive minification</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>const minifyDatastoreValue = (value: any): void => {
+    if (typeof value?.stringValue === 'string'
+        &amp;&amp; isJsonString(value.stringValue)) {
+        value.stringValue = JSON.stringify(
+            JSON.parse(value.stringValue)
+        );
+    }
+    value.arrayValue?.values?.forEach(minifyDatastoreValue);
+    if (value.mapValue?.properties) {
+        minifyJsonProperties(value.mapValue.properties);
+    }
+    if (value.entityValue?.properties) {
+        minifyJsonProperties(value.entityValue.properties);
     }
 };</code></pre>
                                 </div>
+                            </div>
+                            <div class="code-explainer">
+                                <div class="code-note"><strong>stringValue only</strong>JSON compaction changes text content, never the enclosing Datastore type.</div>
+                                <div class="code-note"><strong>arrayValue</strong>Every nested Datastore value is visited, including direct string elements.</div>
+                                <div class="code-note"><strong>mapValue / entityValue</strong>Nested property maps reuse the same traversal, regardless of depth.</div>
+                            </div>
+
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">datastore-utils.ts — integer and nested replacement</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>case 'Integer':
+    if (!/^-?\d+$/.test(text.trim())) {
+        throw new Error('Invalid integer');
+    }
+    return { integerValue: text.trim() };
+
+export const replaceDatastoreField = (
+    properties, fieldPath, target, replacement
+) => {
+    if (!fieldPath || fieldPath === '*') {
+        return replaceEveryString(properties, target, replacement);
+    }
+    return replaceAtPath(
+        properties,
+        fieldPath.split('.'),
+        target,
+        replacement
+    );
+};</code></pre>
+                                </div>
+                            </div>
+                            <div class="code-explainer">
+                                <div class="code-note"><strong>integerValue: text</strong>Preserves the complete 64-bit decimal representation.</div>
+                                <div class="code-note"><strong>fieldPath.split('.')</strong>Enables paths such as <code>profile.links.url</code>.</div>
+                                <div class="code-note"><strong>replaceEveryString</strong>Recurses through maps, entities, and arrays while ignoring numeric fields.</div>
                             </div>
                         </div>
 
                         <!-- subtab: diff -->
                         <div class="subtab-content" id="ssec-diff">
-                            <h3>Module: `diff.ts` (JSON Diffing Engine & Serializer)</h3>
-                            <p>Processes entity difference comparisons and formats local payloads before executing datastore commits.</p>
+                            <h3>Module: <code>diff.ts</code> (Visual Difference Presenter)</h3>
+                            <p>Builds readable nested difference views while delegating persistence-sensitive equality and minification rules to <code>datastore-utils.ts</code>.</p>
                             
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
-                                <li><strong>Nested Datastore Normalization:</strong> Recursively normalizes complex, wrapped Google Datastore elements (like <code>mapValue</code>, <code>arrayValue</code>, and <code>entityValue</code>) into clean, standard JSON formats for direct visual comparison.</li>
+                                <li><strong>Order-independent object comparison:</strong> Objects are compared recursively by key rather than serialized property order, eliminating false differences.</li>
                                 <li><strong>Performance-Centric Collapsing:</strong> Identical large inner arrays or object blocks are summarized (e.g. <code>"[Array of 500 items] (identical)"</code>) to prevent visual DOM rendering bottlenecks in the browser.</li>
-                                <li><strong>Automatic Minification Filter:</strong> Sanitizes JSON text inputs by stripping tabs, carriage returns, and spaces before posting payloads to storage, conserving GCP capacity bytes.</li>
+                                <li><strong>Shared persistence helpers:</strong> The exported <code>Diff</code> object references the tested deep-equality and recursive minification functions instead of maintaining competing implementations.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -894,36 +1352,40 @@ export const Api = {
                                     <div class="code-title">diff.ts</div>
                                 </div>
                                 <div class="code-container">
-                                    <pre><code>export const minifyJsonString = (str: string): string => {
-    try {
-        const parsed = JSON.parse(str);
-        return JSON.stringify(parsed); // Minified string (no spaces/newlines)
-    } catch (e) {
-        return str; // Return as-is if normal string
-    }
-};
+                                    <pre><code>import {
+    deepEqual,
+    minifyJsonProperties
+} from './datastore-utils';
 
-export const collapseIdenticalNested = (obj: any): any => {
-    if (Array.isArray(obj)) {
-        return `[Array of ${obj.length} items] (identical)`;
-    } else if (obj && typeof obj === 'object') {
-        return `{Object of ${Object.keys(obj).length} keys} (identical)`;
+export const Diff = {
+    areValuesEqual: deepEqual,
+    minifyJsonProperties,
+
+    getJsonDiffHtml: (source, target) => {
+        if (Diff.areValuesEqual(source, target)) {
+            return renderIdenticalSummary(source);
+        }
+        return renderChangedBranches(source, target);
     }
-    return obj;
 };</code></pre>
                                 </div>
+                            </div>
+                            <div class="code-explainer">
+                                <div class="code-note"><strong>deepEqual</strong><code>{a:1,b:2}</code> and <code>{b:2,a:1}</code> compare as equal.</div>
+                                <div class="code-note"><strong>render only</strong>Readable clean JSON is a presentation concern and is not reused as a Datastore write payload.</div>
                             </div>
                         </div>
 
                         <!-- subtab: audit -->
                         <div class="subtab-content" id="ssec-audit">
-                            <h3>Module: `audit.ts` (Firestore Logs Client)</h3>
-                            <p>Records administrator operations and routes them to the backend server logging service.</p>
+                            <h3>Module: <code>audit.ts</code> (Reversible Operation Log)</h3>
+                            <p>Records administrator actions and stores bounded previous-state payloads used by the Revert workflow.</p>
                             
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
-                                <li><strong>Structured Log Payload:</strong> Logs contain detailed transaction schemas, tracking properties like timestamp, operation identifiers, source project namespaces, target targets, operational state descriptions, and execution status labels.</li>
-                                <li><strong>Proxy Middleware Delivery:</strong> Sends queries relative to the client endpoint <code>/api/audit_logs/documents</code> to leverage server-side proxy route protection.</li>
+                                <li><strong>Backup size preflight:</strong> Previous state is limited to a conservative 700 KB before a Datastore copy or inline edit begins.</li>
+                                <li><strong>Explicit persistence result:</strong> <code>addLog</code> returns a boolean so callers can distinguish a successful write from a failed audit entry.</li>
+                                <li><strong>Recovery delegation:</strong> Audit confirmation and result logging stay in <code>audit.ts</code>; mutation planning and permission handling live in the independently tested <code>revert.ts</code>.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -936,41 +1398,99 @@ export const collapseIdenticalNested = (obj: any): any => {
                                     <div class="code-title">audit.ts</div>
                                 </div>
                                 <div class="code-container">
-                                    <pre><code>import { CONFIG } from './config';
-import { Api } from './api';
+                                    <pre><code>const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
 
-export const AuditLog = {
-    addLog: async (op: string, src: string, tgt: string, details: string, status: string) => {
-        const body = {
-            fields: {
-                timestamp: { stringValue: new Date().toISOString() },
-                operation: { stringValue: op },
-                source: { stringValue: src },
-                target: { stringValue: tgt },
-                details: { stringValue: details },
-                status: { stringValue: status }
-            }
-        };
-        return Api.fetch(CONFIG.AUDIT_LOG_URL, {
-            method: 'POST',
-            body: JSON.stringify(body)
-        });
-    }
-};</code></pre>
+canPersistPrevState: prevState =>
+    new TextEncoder()
+        .encode(JSON.stringify(prevState))
+        .byteLength &lt;= MAX_AUDIT_PREV_STATE_BYTES;
+
+const result = await executeDatastoreRevert(
+    Api,
+    log.tgtProject,
+    previousState
+);
+
+await AuditLog.addLog(
+    'DATASTORE_REVERT',
+    '—',
+    log.tgtProject,
+    `Restored: ${result.restored}; deleted:
+     ${result.deleted}; skipped:
+     ${result.skippedDeletes}`,
+    result.skippedDeletes ? 'PARTIAL' : 'SUCCESS'
+);</code></pre>
                                 </div>
+                            </div>
+                            <div class="code-explainer">
+                                <div class="code-note"><strong>700,000 bytes</strong>Leaves headroom below Firestore's document ceiling for the other audit fields.</div>
+                                <div class="code-note"><strong>separate result totals</strong>Operators can distinguish a complete restore from permission-skipped deletes.</div>
+                            </div>
+                        </div>
+
+                        <!-- subtab: revert -->
+                        <div class="subtab-content" id="ssec-revert">
+                            <h3>Module: <code>revert.ts</code> (Permission-Aware Recovery Engine)</h3>
+                            <p>Builds validated recovery plans independently from the modal UI, preserves native Datastore value wrappers, and separates restore upserts from deletes so limited IAM permissions cannot block safe restoration.</p>
+
+                            <h4>Detailed Operations Walkthrough:</h4>
+                            <ul>
+                                <li><strong>Restore-before-delete ordering:</strong> Previous entities are upserted first in bounded chunks. Delete-only cleanup is attempted afterward.</li>
+                                <li><strong>Permission-aware degradation:</strong> A 403 or <code>PERMISSION_DENIED</code> on delete stops remaining deletes, keeps completed upserts, and returns an explicit skipped count.</li>
+                                <li><strong>Failure discrimination:</strong> Network and server errors still fail the operation; they are never mislabeled as missing delete permission.</li>
+                                <li><strong>Scheduled-query recovery:</strong> If restoring a previous query fails after the replacement was deleted, the copied query configuration is recreated to avoid leaving the target empty.</li>
+                            </ul>
+
+                            <div class="code-window">
+                                <div class="code-header">
+                                    <div class="code-dots">
+                                        <div class="code-dot code-dot-red"></div>
+                                        <div class="code-dot code-dot-yellow"></div>
+                                        <div class="code-dot code-dot-green"></div>
+                                    </div>
+                                    <div class="code-title">revert.ts — separated mutation phases</div>
+                                </div>
+                                <div class="code-container">
+                                    <pre><code>const restored = await commitChunks(
+    api, targetProject, databaseId, upserts, 400
+);
+
+for (const deleteChunk of chunk(deletes, 400)) {
+    try {
+        await api.commitDatastore(
+            targetProject,
+            deleteChunk,
+            databaseId
+        );
+        deleted += deleteChunk.length;
+    } catch (error) {
+        if (!isPermissionDenied(error)) throw error;
+        skippedDeletes = remainingDeleteCount;
+        break;
+    }
+}</code></pre>
+                                </div>
+                            </div>
+                            <div class="code-explainer">
+                                <div class="code-note"><strong>upserts first</strong>Users without delete permission still recover every existing entity they are allowed to write.</div>
+                                <div class="code-note"><strong>delete-only chunks</strong>A permission failure cannot roll back or contaminate the completed restore commits.</div>
+                                <div class="code-note"><strong>explicit PARTIAL</strong>The audit result records restored, deleted, and permission-skipped totals separately.</div>
                             </div>
                         </div>
 
                         <!-- subtab: ui -->
                         <div class="subtab-content" id="ssec-ui">
-                            <h3>Modules: `ui.ts` & `app.ts` (View Presenter & Controller)</h3>
+                            <h3>Modules: <code>ui.ts</code> &amp; <code>app.ts</code> (View &amp; Orchestrator)</h3>
                             <p>Handles the user interface layout, listens to DOM inputs, displays comparison matrices, and handles overlay popups.</p>
                             
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
-                                <li><strong>Volatile Access Tokens Cache:</strong> Looks up local storage tags at start. Injects credentials securely into <code>Api.setToken</code> if cached tokens exist.</li>
-                                <li><strong>Dynamic Event Handlers:</strong> Maps select inputs to change events, controls the JSON editor modals, renders inline difference previews, and triggers alerts before database modifications.</li>
-                                <li><strong>Popup Find &amp; Replace Customizations:</strong> When initiating batch copy operations, the "Copy Datastore Entities" popup dynamically renders Property Field, Find Substring, and Replace Substring inputs pre-populated with active main page values. Users can directly modify these inputs inside the popup, allowing custom target overrides right before committing. If the Property Field is empty or `*`, replacements occur recursively across all properties of the copied entity.</li>
+                                <li><strong>Memory-only access token:</strong> The token is never saved in <code>localStorage</code>, <code>sessionStorage</code>, or a URL. Reloading or closing the page requires a new token.</li>
+                                <li><strong>Outbound origin allowlist:</strong> <code>Api.fetch</code> blocks non-HTTPS and unknown destinations before attaching the bearer token.</li>
+                                <li><strong>Read-only schema comparator:</strong> BigQuery rendering has no selection, copy, create, patch, override, delete, or historical-revert action.</li>
+                                <li><strong>Safe metadata rendering:</strong> Project, kind, and property names are inserted with <code>textContent</code>, avoiding stored markup execution.</li>
+                                <li><strong>Selection lifecycle:</strong> Every new analysis clears stale selected keys and disables Copy until the user makes a fresh selection.</li>
+                                <li><strong>Copy orchestration:</strong> The modal accepts dotted paths such as <code>profile.links.url</code>; an empty path or <code>*</code> applies string replacement recursively.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -983,37 +1503,52 @@ export const AuditLog = {
                                     <div class="code-title">app.ts</div>
                                 </div>
                                 <div class="code-container">
-                                    <pre><code>import { State } from './state';
-import { Api } from './api';
-import { UI } from './ui';
+                                    <pre><code>const entity = cloneDatastoreValue(sourceEntity);
+entity.key.partitionId = targetPartitionId;
 
-window.onload = () => {
-    const savedToken = localStorage.getItem('access_token');
-    if (savedToken) {
-        State.token = savedToken;
-        Api.setToken(savedToken); // Programmatic injection
+if (applyReplacement &amp;&amp; entity.properties) {
+    replaceDatastoreField(
+        entity.properties,
+        fieldPath,
+        findText,
+        replacementText
+    );
+}
+
+Diff.minifyJsonProperties(entity.properties);
+
+for (const [name, sourceValue] of
+     Object.entries(sourceEntity.properties || {})) {
+    if (getDatastoreEditorType(sourceValue)
+        !== getDatastoreEditorType(entity.properties[name])) {
+        throw new Error(`Type fidelity failed for ${name}`);
     }
-    
-    // Bind state repainters
-    State.subscribe(() => {
-        UI.initDropdowns();
-    });
-    
-    App.init();
-};</code></pre>
+}
+
+await Api.commitDatastore(
+    targetProject,
+    [{ upsert: entity }],
+    targetDatabase,
+    abortSignal
+);</code></pre>
                                 </div>
+                            </div>
+                            <div class="code-explainer">
+                                <div class="code-note"><strong>cloneDatastoreValue</strong>The original analysis result is never mutated while building a copy.</div>
+                                <div class="code-note"><strong>partitionId only</strong>The entity key is retargeted without reconstructing its properties.</div>
+                                <div class="code-note"><strong>type fidelity check</strong>A defensive assertion runs immediately before the commit payload is queued.</div>
                             </div>
                         </div>
 
                         <!-- subtab: server -->
                         <div class="subtab-content" id="ssec-server">
-                            <h3>Module: `server.js` (Logs Security Proxy Server)</h3>
-                            <p>Runs a server middleware proxy to shield connection endpoints and protect database tokens.</p>
+                            <h3>Module: <code>server.js</code> (Static Server &amp; Audit Forwarder)</h3>
+                            <p>Serves the portal locally and forwards audit requests to Firestore. The proxy forwards the browser-provided bearer token; it does not independently authenticate the user or hide that token from the browser.</p>
                             
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
                                 <li><strong>Secure File Serving:</strong> Employs <code>path.normalize</code> bounds mapping to block directory traversal attempts, reading file types securely.</li>
-                                <li><strong>Audit Logs Reverse Proxy:</strong> Catches HTTP log calls on <code>/api/audit_logs</code>. Decodes client-side Bearer authorization headers, verifies GCP permission tokens, and proxies queries directly to Firestore REST targets.</li>
+                                <li><strong>Audit request forwarding:</strong> Routes <code>/api/audit_logs</code> collection writes and <code>/api/audit_logs/runQuery</code> reads to their Firestore REST destinations while preserving the Authorization header.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -1126,7 +1661,7 @@ const server = http.createServer((req, res) => {
         <section class="section-content" id="sec-crypto">
             <div class="glass-card">
                 <h2><i class="fa-solid fa-key" style="color:var(--accent-amber)"></i> Client-Side AES-GCM Encryption</h2>
-                <p>Provides highly secure symmetric encryption and decryption operations using standardized **AES-GCM (Galois/Counter Mode)**. Implements PBKDF2 passphrase key derivation functions directly via Web Crypto browser APIs.</p>
+                <p>Provides highly secure symmetric encryption and decryption operations using standardized <strong>AES-GCM (Galois/Counter Mode)</strong>. Implements PBKDF2 passphrase key derivation functions directly via Web Crypto browser APIs.</p>
                 
                 <h3><i class="fa-solid fa-lock"></i> Encrypt & Decrypt Flow Diagram</h3>
                 <div class="mermaid">
@@ -1222,8 +1757,25 @@ const server = http.createServer((req, res) => {
             startOnLoad: true,
             theme: 'dark',
             flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
-            securityLevel: 'loose'
+            securityLevel: 'strict',
+            themeVariables: {
+                fontFamily: 'Inter, sans-serif',
+                primaryColor: '#0c1220',
+                primaryTextColor: '#f8fafc',
+                primaryBorderColor: '#00d4ff',
+                lineColor: '#00d4ff',
+                secondaryColor: '#1e1b4b',
+                tertiaryColor: '#0b2e24'
+            }
         });
+
+        // Run flow motion only while a diagram is on screen.
+        const flowObserver = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                entry.target.classList.toggle('is-visible', entry.isIntersecting);
+            });
+        }, { threshold: 0.08 });
+        document.querySelectorAll('.flow-shell').forEach(flow => flowObserver.observe(flow));
     </script>
 </body>
 </html>

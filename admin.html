@@ -610,7 +610,10 @@
             if (type === "ok") icon = '<i class="bi bi-check-circle-fill" style="color:var(--ok)"></i>';
             if (type === "err") icon = '<i class="bi bi-exclamation-triangle-fill" style="color:var(--danger)"></i>';
             
-            el.innerHTML = `${icon} <span>${message}</span>`;
+            el.innerHTML = icon;
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = String(message);
+            el.appendChild(messageSpan);
             container.appendChild(el);
             setTimeout(() => {
                 el.style.opacity = '0';
@@ -1081,7 +1084,7 @@
                     const isSelf = adm.id === State.uid;
                     const deleteBtn = isSelf 
                         ? `<span class="badge" style="background:rgba(156,163,175,0.1); color:var(--muted)">Active</span>`
-                        : `<button onclick="deleteAdmin('${adm.id}', '${adm.username}')" style="background:none; border:none; color:var(--danger); cursor:pointer;" title="Revoke Admin Access"><i class="bi bi-trash-fill"></i></button>`;
+                        : `<button class="btn-delete-admin" data-uid="${escapeHtml(adm.id)}" data-username="${escapeHtml(adm.username)}" style="background:none; border:none; color:var(--danger); cursor:pointer;" title="Revoke Admin Access"><i class="bi bi-trash-fill"></i></button>`;
                     
                     return `
                         <tr>
@@ -1091,6 +1094,11 @@
                         </tr>
                     `;
                 }).join('');
+                listBody.querySelectorAll('.btn-delete-admin').forEach(button => {
+                    button.addEventListener('click', () => {
+                        deleteAdmin(button.dataset.uid, button.dataset.username);
+                    });
+                });
 
             } catch (e) {
                 console.error(e);

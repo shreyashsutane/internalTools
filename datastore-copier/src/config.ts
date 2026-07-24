@@ -4,7 +4,6 @@ export const CONFIG = {
     DATASETS_URL: (pid: string) => `https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets`,
     TABLES_URL: (pid: string, did: string) => `https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets/${did}/tables`,
     SCHEMA_URL: (pid: string, did: string, tid: string) => `https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets/${did}/tables/${tid}`,
-    DATASET_META_URL: (pid: string, did: string) => `https://bigquery.googleapis.com/bigquery/v2/projects/${pid}/datasets/${did}`,
     QUERIES_URL: (pid: string, loc: string) => `https://bigquerydatatransfer.googleapis.com/v1/projects/${pid}/locations/${loc}/transferConfigs`,
     QUERY_META_URL: (name: string) => `https://bigquerydatatransfer.googleapis.com/v1/${name}`,
     

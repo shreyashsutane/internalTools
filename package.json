@@ -4,8 +4,11 @@
   "description": "GCP Tools Portal with TypeScript & esbuild bundling",
   "private": true,
   "scripts": {
-    "build": "esbuild datastore-copier/src/app.ts --bundle --minify --sourcemap --outfile=datastore-copier/js/app.js",
-    "watch": "esbuild datastore-copier/src/app.ts --bundle --sourcemap --outfile=datastore-copier/js/app.js --watch"
+    "build": "esbuild datastore-copier/src/app.ts --bundle --minify --sourcemap --tsconfig=tsconfig.json --outfile=datastore-copier/js/app.js",
+    "watch": "esbuild datastore-copier/src/app.ts --bundle --sourcemap --tsconfig=tsconfig.json --outfile=datastore-copier/js/app.js --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.js",
+    "check": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

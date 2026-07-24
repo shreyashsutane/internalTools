@@ -1226,7 +1226,7 @@
                     <h1 class="header-title" id="scrambleHeader">Internal Tools Portal</h1>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <a href="docs/GCP_Infra_Manager_Documentation.pdf" target="_blank" class="btn-feedback" id="pdfDocBtn" title="View PDF Documentation" style="text-decoration: none;" onclick="AudioHaptic.playClunk()">
+                    <a href="docs/GCP_Infra_Manager_Documentation.pdf" target="_blank" rel="noopener noreferrer" class="btn-feedback" id="pdfDocBtn" title="View PDF Documentation" style="text-decoration: none;" onclick="AudioHaptic.playClunk()">
                         <i class="bi bi-file-earmark-pdf-fill"></i>
                         <span>PDF Docs</span>
                     </a>
@@ -1296,7 +1296,7 @@
                 <li>Always backup your Datastore before using any copy tools</li>
                 <li>GCP permissions required:
                     <ul style="list-style-type: circle; margin-top: 0.25rem; padding-left: 1.25rem;">
-                        <li><strong>GCP Infrastructure Manager</strong>: requires <code>BigQuery Admin</code> (for schema sync / query transfer), <code>Cloud Datastore Owner</code> / <code>User</code> (for entity copy), and <code>Cloud Datastore Delete</code> permissions (to allow reverting changes).</li>
+                        <li><strong>GCP Infrastructure Manager</strong>: the BigQuery Schema Comparator only needs metadata read access (for example, <code>BigQuery Metadata Viewer</code>). Scheduled-query transfer and Datastore copy/edit tools separately require the write permissions appropriate to those operations.</li>
                         <li><strong>Sweep</strong> &amp; <strong>Crypto Vault</strong>: 100% client-side, require no cloud permissions.</li>
                     </ul>
                 </li>
@@ -1705,8 +1705,8 @@
                 id: 'datastore-copier',
                 name: 'GCP Infrastructure Manager',
                 icon: '🔄',
-                descShort: 'Copy schemas, scheduled queries, and Datastore entities',
-                descFull: 'Compare and sync BigQuery table schemas, transfer scheduled queries, and copy Cloud Datastore entities between GCP projects. Features difference checking, query transfer, and batch copy logic.',
+                descShort: 'Compare schemas, transfer queries, and manage Datastore entities',
+                descFull: 'Compare BigQuery table schemas in strictly read-only mode, transfer scheduled queries, and copy Cloud Datastore entities between GCP projects. The schema comparator has no create, update, override, copy, or delete path.',
                 path: 'datastore-copier/',
                 docPath: 'docs/index.html',
                 status: 'active'
@@ -1716,7 +1716,7 @@
                 name: 'Sweep',
                 icon: '🧹',
                 descShort: 'Scan code locally for secrets before pasting',
-                descFull: 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href="https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b" target="_blank" style="color: var(--brand-orange); text-decoration: underline; word-break: break-all;">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.',
+                descFull: 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href="https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b" target="_blank" rel="noopener noreferrer" style="color: var(--brand-orange); text-decoration: underline; word-break: break-all;">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.',
                 path: 'tool-2/',
                 docPath: 'docs/index.html#section-sweep',
                 status: 'active'
@@ -1798,7 +1798,7 @@
                                 : `<span class="badge-locked"><i class="bi bi-lock-fill me-1"></i>Coming Soon</span>`
                             }
                             ${hasDoc 
-                                ? `<a href="${tool.docPath}" target="_blank" class="btn-doc-link" title="View Documentation">
+                                ? `<a href="${tool.docPath}" target="_blank" rel="noopener noreferrer" class="btn-doc-link" title="View Documentation">
                                      <i class="bi bi-file-text me-1"></i>Docs
                                    </a>`
                                 : ''
