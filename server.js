@@ -21,39 +21,67 @@ const MIME_TYPES = {
 const server = http.createServer((req, res) => {
     let reqUrl = req.url.split('?')[0]; // strip query params
     
-    // Firestore Proxy Endpoints
+    // Local development bridge to the secured production audit API.
     if (reqUrl.startsWith('/api/audit_logs')) {
         const https = require('https');
-        let targetUrl = '';
-        if (reqUrl === '/api/audit_logs/runQuery') {
-            targetUrl = 'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery';
-        } else {
-            targetUrl = 'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs';
+        const allowedPaths = new Set([
+            '/api/audit_logs',
+            '/api/audit_logs/runQuery',
+            '/api/audit_logs/update'
+        ]);
+        const origin = req.headers.origin || '';
+        const isLocalOrigin = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin);
+        if (!allowedPaths.has(reqUrl) || req.method !== 'POST' || !isLocalOrigin) {
+            res.writeHead(403, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store'
+            });
+            res.end(JSON.stringify({ ok: false, error: { message: 'Audit request denied.' } }));
+            return;
         }
         
         let bodyData = '';
-        req.on('data', chunk => { bodyData += chunk; });
+        let bodyTooLarge = false;
+        req.on('data', chunk => {
+            bodyData += chunk;
+            if (Buffer.byteLength(bodyData, 'utf8') > 800_000) {
+                bodyTooLarge = true;
+            }
+        });
         req.on('end', () => {
-            const parsedUrl = new URL(targetUrl);
+            if (bodyTooLarge) {
+                res.writeHead(413, {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store'
+                });
+                res.end(JSON.stringify({ ok: false, error: { message: 'Audit request is too large.' } }));
+                return;
+            }
             const proxyReq = https.request({
-                hostname: parsedUrl.hostname,
-                path: parsedUrl.pathname,
-                method: req.method,
+                hostname: 'gcp-tools-portal.web.app',
+                path: reqUrl,
+                method: 'POST',
                 headers: {
                     'Authorization': req.headers['authorization'] || '',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(bodyData, 'utf8'),
+                    'Origin': origin
                 }
             }, (proxyRes) => {
-                res.writeHead(proxyRes.statusCode || 200, {
+                res.writeHead(proxyRes.statusCode || 500, {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Cache-Control': 'no-store'
                 });
                 proxyRes.pipe(res);
             });
             
             proxyReq.on('error', (e) => {
-                res.writeHead(500, { 'Content-Type': 'text/plain' });
-                res.end(`Proxy Error: ${e.message}`);
+                console.error('Secured audit bridge failed:', e);
+                res.writeHead(502, {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store'
+                });
+                res.end(JSON.stringify({ ok: false, error: { message: 'Audit service unavailable.' } }));
             });
             
             if (bodyData) {

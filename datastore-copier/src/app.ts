@@ -28,6 +28,13 @@ export const App = {
     cancelDsOperation: (): void => {
         State.cancelDs = true;
         dsAbortController?.abort();
+        void AuditLog.addLog(
+            'DATASTORE_CANCEL',
+            State.ds.src || '—',
+            State.ds.tgt || '—',
+            `User requested cancellation for Datastore kind ${State.ds.kind || 'not selected'}.`,
+            'CANCELLED'
+        );
     },
     parseWelcomeName: (email: string): string => {
         if (!email) return 'User';
@@ -81,6 +88,15 @@ export const App = {
                 a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
                 a.download = `bq_compare.csv`;
                 a.click();
+                void AuditLog.addLog(
+                    'BQ_CSV_EXPORT',
+                    State.bq.src || '—',
+                    State.bq.tgt || '—',
+                    `Exported ${State.bq.filtered.length} BigQuery schema comparison rows.`,
+                    'SUCCESS'
+                ).then(logged => {
+                    if (!logged) Utils.toast('CSV exported, but the export action could not be logged.', 'warn');
+                });
             };
         }
 
@@ -182,7 +198,19 @@ export const App = {
 
             Utils.hide('sec-auth'); Utils.show('sec-modes'); Utils.show('sec-audit-logs'); UI.initDropdowns();
             Utils.$('header-right')!.innerHTML = `<span class="text-xs mono" style="color:var(--muted)">${Utils.escapeHtml(State.authEmail)}</span>`;
-            await AuditLog.addLog("AUTHENTICATION", "—", "—", `User verified token successfully. Loaded ${State.projects.length} projects.`, "SUCCESS");
+            const logged = await AuditLog.addLog(
+                "AUTHENTICATION",
+                "—",
+                "—",
+                `User verified token successfully. Loaded ${State.projects.length} projects.`,
+                "SUCCESS"
+            );
+            if (!logged) {
+                Utils.toast(
+                    'Signed in, but centralized audit logging is unavailable. Mutating operations may not be safely reversible.',
+                    'warn'
+                );
+            }
         } catch(e: any) {
             if (verifyBtn) {
                 verifyBtn.disabled = false;
@@ -211,6 +239,13 @@ export const App = {
         Utils.show('sec-forms'); Utils.hide('sec-results');
         ['bq','query','ds'].forEach(m => { Utils.hide(`form-${m}`); Utils.hide(`res-${m}`); });
         Utils.show(`form-${mode}`);
+        void AuditLog.addLog(
+            'MODE_SELECT',
+            '—',
+            '—',
+            `Selected Infrastructure Manager mode: ${mode}.`,
+            'SUCCESS'
+        );
     },
 
     // --- BQ logic ---
@@ -247,6 +282,14 @@ export const App = {
             State.bq.page = 1;
             Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-bq');
             App.renderBqResults();
+            const logged = await AuditLog.addLog(
+                'BQ_SCHEMA_COMPARE',
+                State.bq.src,
+                State.bq.tgt,
+                `Compared ${State.bq.tables.length} table paths. Source dataset filter: ${State.bq.srcDs || 'all'}; target dataset filter: ${State.bq.tgtDs || 'all'}.`,
+                'SUCCESS'
+            );
+            if (!logged) Utils.toast('Comparison completed, but the action could not be logged.', 'warn');
         } catch(e: any) {
             Utils.hide('sec-loading'); Utils.show('sec-forms');
             const { ErrorBoundary } = await import('./utils');
@@ -587,6 +630,14 @@ export const App = {
 
             Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-query');
             App.renderQueryResults();
+            const logged = await AuditLog.addLog(
+                'QUERY_COMPARE',
+                State.query.src,
+                State.query.tgt,
+                `Compared ${State.query.queries.length} scheduled query configurations in ${State.query.srcLoc} and ${State.query.tgtLoc}.`,
+                'SUCCESS'
+            );
+            if (!logged) Utils.toast('Scheduled-query comparison completed, but the action could not be logged.', 'warn');
         } catch(e: any) {
             Utils.hide('sec-loading'); Utils.show('sec-forms');
             const { ErrorBoundary } = await import('./utils');
@@ -811,6 +862,22 @@ export const App = {
         Utils.$('load-title')!.textContent = "Copying Scheduled Queries...";
         let ok = 0, fail = 0;
         const backupData: any[] = [];
+        const queryAuditLogId = await AuditLog.addLog(
+            'QUERY_SYNC',
+            State.query.src,
+            State.query.tgt,
+            `Started copying ${selected.length} scheduled query configurations.`,
+            'IN_PROGRESS',
+            { type: 'QUERY_SYNC', backupData: [] }
+        );
+        if (!queryAuditLogId) {
+            Utils.hide('sec-loading');
+            Utils.toast(
+                'Scheduled-query copy stopped before mutation because the centralized audit record could not be created.',
+                'err'
+            );
+            return;
+        }
         for (let i = 0; i < selected.length; i++) {
             const qId = selected[i];
             const cmpObj = State.query.queries.find(x => x.name === qId);
@@ -852,6 +919,27 @@ export const App = {
                 const created = await Api.createQuery(State.query.tgt, State.query.tgtLoc, q);
                 if (!created?.name) throw new Error('Scheduled-query create response did not include a resource name.');
                 backupData.push({ ...backupCandidate, name: created.name });
+                const backupPersisted = await AuditLog.updateLog(
+                    queryAuditLogId,
+                    'IN_PROGRESS',
+                    `Copied ${backupData.length} of ${selected.length} scheduled query configurations.`,
+                    { type: 'QUERY_SYNC', backupData }
+                );
+                if (!backupPersisted) {
+                    backupData.pop();
+                    try {
+                        await Api.deleteQuery(created.name);
+                        if (prevQuery) {
+                            await Api.createQuery(State.query.tgt, State.query.tgtLoc, prevQuery);
+                            removedPreviousTarget = false;
+                        }
+                    } catch (rollbackError: any) {
+                        throw new Error(
+                            `Audit backup update failed and immediate rollback also failed: ${rollbackError.message}`
+                        );
+                    }
+                    throw new Error('Audit backup update failed; the copied configuration was immediately rolled back.');
+                }
                 ok++;
             } catch (e: any) {
                 let failure = e;
@@ -872,10 +960,18 @@ export const App = {
         Utils.hide('sec-loading'); Utils.toast(`Queries copied. Success: ${ok}, Failed: ${fail}`, ok > 0 ? 'ok' : 'err');
         const status = fail === 0 && ok > 0 ? "SUCCESS" : (ok > 0 ? "PARTIAL" : "FAILED");
         const details = `Copied ${ok} scheduled queries, failed ${fail} queries.`;
-        await AuditLog.addLog("QUERY_SYNC", State.query.src, State.query.tgt, details, status, {
-            type: "QUERY_SYNC",
-            backupData: backupData
-        });
+        const logged = await AuditLog.updateLog(
+            queryAuditLogId,
+            status,
+            details,
+            { type: 'QUERY_SYNC', backupData }
+        );
+        if (!logged) {
+            Utils.toast(
+                'Scheduled queries finished, but the final audit status could not be saved. The last persisted revert backup remains available.',
+                'warn'
+            );
+        }
         State.query.selected.clear(); (Utils.$('btn-q-copy') as HTMLButtonElement).disabled = true;
         await App.runQueryFetch();
     },
@@ -1052,10 +1148,25 @@ export const App = {
             State.ds.properties = [...discoveredProperties].sort();
             UI.initDropdowns();
             Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-ds'); App.filterDsResults('all');
+            const logged = await AuditLog.addLog(
+                'DATASTORE_ANALYZE',
+                State.ds.src,
+                State.ds.tgt,
+                `Analyzed kind ${State.ds.kind}. Total: ${State.ds.stats.total}; identical: ${State.ds.stats.identical}; different: ${State.ds.stats.different}; missing: ${State.ds.stats.missing}.`,
+                'SUCCESS'
+            );
+            if (!logged) Utils.toast('Datastore analysis completed, but the action could not be logged.', 'warn');
         } catch(e: any) {
             Utils.hide('sec-loading'); Utils.show('sec-forms');
             if(isCancellationError(e)) {
                 Utils.toast("Analysis cancelled.", "info");
+                await AuditLog.addLog(
+                    'DATASTORE_ANALYZE',
+                    State.ds.src || '—',
+                    State.ds.tgt || '—',
+                    `Cancelled analysis for kind ${State.ds.kind || 'not selected'}.`,
+                    'CANCELLED'
+                );
             } else {
                 const { ErrorBoundary } = await import('./utils');
                 await ErrorBoundary.handle(e, 'App.runDsAnalyze');
@@ -1086,6 +1197,15 @@ export const App = {
         const rows = [['Key','Status','Diff Summary']]; State.ds.results.forEach(r => rows.push([r.keyStr, r.status, r.diffSum]));
         const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
         const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`ds_compare_${State.ds.kind}.csv`; a.click();
+        void AuditLog.addLog(
+            'DATASTORE_CSV_EXPORT',
+            State.ds.src || '—',
+            State.ds.tgt || '—',
+            `Exported ${State.ds.results.length} Datastore comparison rows for kind ${State.ds.kind || 'not selected'}.`,
+            'SUCCESS'
+        ).then(logged => {
+            if (!logged) Utils.toast('CSV exported, but the export action could not be logged.', 'warn');
+        });
     },
     filterDsResults: (status: string): void => {
         State.ds.filterStatus = status;
@@ -1521,6 +1641,7 @@ export const App = {
                 Utils.$('load-title')!.textContent = "Saving Entity...";
                 Utils.$('load-msg')!.textContent = `Committing changes to ${pid}...`;
 
+                let editAuditLogId: string | null = null;
                 try {
                     const prevEntity = side === 'src' ? r.srcEntity : r.tgtEntity;
                     const dbId = side === 'src' ? State.ds.srcDb : State.ds.tgtDb;
@@ -1534,6 +1655,17 @@ export const App = {
                     if (!AuditLog.canPersistPrevState(prevState)) {
                         throw new Error('The entity backup is too large for a safe audit entry. Reduce the entity size before saving.');
                     }
+                    editAuditLogId = await AuditLog.addLog(
+                        'DATASTORE_EDIT',
+                        '—',
+                        pid,
+                        `Started inline edit for entity ${keyStr}.`,
+                        'IN_PROGRESS',
+                        prevState
+                    );
+                    if (!editAuditLogId) {
+                        throw new Error('The centralized audit backup could not be persisted. The entity was not changed.');
+                    }
                     const entity = {
                         key: cloneDatastoreValue(r.rawKey),
                         properties: props
@@ -1546,8 +1678,17 @@ export const App = {
                     await Api.commitDatastore(pid, [{ upsert: entity }], dbId);
                     Utils.toast(`Successfully saved entity to ${side === 'src' ? 'source' : 'target'} project.`, "ok");
 
-                    const logged = await AuditLog.addLog("DATASTORE_EDIT", "—", pid, `Inline edited entity properties for ${keyStr}.`, "SUCCESS", prevState);
-                    if (!logged) Utils.toast('Entity saved, but its audit entry could not be persisted.', 'warn');
+                    const logged = await AuditLog.updateLog(
+                        editAuditLogId,
+                        'SUCCESS',
+                        `Inline edited entity properties for ${keyStr}.`
+                    );
+                    if (!logged) {
+                        Utils.toast(
+                            'Entity saved, but its audit status could not be finalized. The pre-mutation revert backup remains available.',
+                            'warn'
+                        );
+                    }
 
                     const expandedKey = keyStr;
                     await App.runDsAnalyze();
@@ -1560,6 +1701,13 @@ export const App = {
                     }, 800);
                 } catch(err: any) {
                     console.error("Save failed:", err);
+                    if (editAuditLogId) {
+                        await AuditLog.updateLog(
+                            editAuditLogId,
+                            'FAILED',
+                            `Inline edit failed for entity ${keyStr}: ${err.message}`
+                        );
+                    }
                     Utils.toast(`Save failed: ${err.message}`, "err");
                     Utils.hide('sec-loading');
                 }
@@ -1691,6 +1839,7 @@ export const App = {
         let fail = 0;
         let replacementCount = 0;
         const backupData: any[] = [];
+        let copyAuditLogId: string | null = null;
 
         try {
             Utils.$('load-msg')!.textContent = `Backing up ${keysToCopy.length} target entities...`;
@@ -1738,14 +1887,25 @@ export const App = {
             if (!AuditLog.canPersistPrevState(backupState)) {
                 throw new Error('The selected entities exceed the safe audit-backup size. Copy a smaller selection.');
             }
+            copyAuditLogId = await AuditLog.addLog(
+                'DATASTORE_COPY',
+                State.ds.src,
+                State.ds.tgt,
+                `Started copying ${keysToCopy.length} entities of kind ${State.ds.kind}.`,
+                'IN_PROGRESS',
+                backupState
+            );
+            if (!copyAuditLogId) {
+                throw new Error('The centralized audit backup could not be persisted. No entities were changed.');
+            }
         } catch (error: any) {
             Utils.hide('sec-loading');
             Utils.hide('btn-cancel-ds');
             if (isCancellationError(error)) {
                 Utils.toast('Copy cancelled before any entities were changed.', 'info');
             } else {
-                console.error("Failed to perform target backup for revert", error);
-                Utils.toast(`Copy stopped because the target backup failed: ${error.message}`, 'err');
+                console.error("Failed to prepare target backup and audit record for revert", error);
+                Utils.toast(`Copy stopped before mutation: ${error.message}`, 'err');
             }
             if (dsAbortController === controller) dsAbortController = null;
             return;
@@ -1837,14 +1997,15 @@ export const App = {
         if (cancelled) {
             details += " Copy process was cancelled by the user.";
         }
-        const logged = await AuditLog.addLog("DATASTORE_COPY", State.ds.src, State.ds.tgt, details, status, {
-            type: "DATASTORE_COPY",
-            kind: State.ds.kind,
-            srcDb: State.ds.srcDb,
-            tgtDb: State.ds.tgtDb,
-            backupData: backupData
-        });
-        if (!logged) Utils.toast('Copy finished, but its revert audit entry could not be persisted.', 'warn');
+        const logged = copyAuditLogId
+            ? await AuditLog.updateLog(copyAuditLogId, status, details)
+            : false;
+        if (!logged) {
+            Utils.toast(
+                'Copy finished, but its audit status could not be finalized. The pre-mutation revert backup remains available.',
+                'warn'
+            );
+        }
         if (dsAbortController === controller) dsAbortController = null;
         await App.runDsAnalyze();
     },

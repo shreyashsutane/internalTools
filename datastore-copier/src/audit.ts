@@ -7,88 +7,40 @@ import { executeDatastoreRevert, executeScheduledQueryRevert } from './revert';
 const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
 
 export const AuditLog = {
-    parseFirestoreDoc: (doc: any): any => {
-        if (!doc || !doc.fields) return null;
-        const fields = doc.fields;
-        const result: any = {};
-        for (const key in fields) {
-            const valObj = fields[key];
-            if (valObj.stringValue !== undefined) result[key] = valObj.stringValue;
-            else if (valObj.integerValue !== undefined) result[key] = parseInt(valObj.integerValue, 10);
-            else if (valObj.booleanValue !== undefined) result[key] = valObj.booleanValue === true || valObj.booleanValue === "true";
-            else if (valObj.doubleValue !== undefined) result[key] = parseFloat(valObj.doubleValue);
-            else if (valObj.nullValue !== undefined) result[key] = null;
-            else result[key] = valObj;
+    request: async (path: string, body: Record<string, any>): Promise<any> => {
+        if (!State.token) throw new Error('No active access token is available for audit logging.');
+        const response = await fetch(path, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${State.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body),
+            cache: 'no-store',
+            referrerPolicy: 'no-referrer'
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload?.error?.message || `Audit service error (${response.status})`);
         }
-        if (doc.name) {
-            const parts = doc.name.split('/');
-            result.id = parts[parts.length - 1];
-        }
-        if (result.prevState && typeof result.prevState === 'string') {
-            try {
-                result.prevState = JSON.parse(result.prevState);
-            } catch(e) {}
-        }
-        return result;
-    },
-    fetchWithFallback: async (endpoint: 'runQuery' | 'documents', options: RequestInit): Promise<any> => {
-        const proxyUrl = endpoint === 'runQuery'
-            ? `${CONFIG.FIRESTORE_AUDIT_LOG_URL}/runQuery`
-            : CONFIG.FIRESTORE_AUDIT_LOG_URL;
-
-        try {
-            const res = await fetch(proxyUrl, options);
-            if (res.ok) {
-                return await res.json();
-            }
-            console.warn(`Proxy request to ${proxyUrl} returned status ${res.status}. Falling back to direct Firestore REST API.`);
-        } catch (err) {
-            console.warn(`Proxy request to ${proxyUrl} failed. Falling back to direct Firestore REST API:`, err);
-        }
-
-        const directUrl = endpoint === 'runQuery'
-            ? `https://firestore.googleapis.com/v1/projects/${CONFIG.FIRESTORE_PROJECT_ID}/databases/${CONFIG.FIRESTORE_DATABASE_ID}/documents:runQuery`
-            : `https://firestore.googleapis.com/v1/projects/${CONFIG.FIRESTORE_PROJECT_ID}/databases/${CONFIG.FIRESTORE_DATABASE_ID}/documents/${CONFIG.AUDIT_LOG_COLLECTION}`;
-
-        const res = await fetch(directUrl, options);
-        if (!res.ok) {
-            throw new Error(`Firestore REST API Error: ${res.status} - ${await res.text()}`);
-        }
-        return await res.json();
+        return payload;
     },
     readLogs: async (): Promise<any[]> => {
         try {
             if (!State.token) return [];
-            const email = State.authEmail || 'anonymous';
-            const data = await AuditLog.fetchWithFallback('runQuery', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${State.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    structuredQuery: {
-                        from: [{ collectionId: CONFIG.AUDIT_LOG_COLLECTION }],
-                        where: {
-                            fieldFilter: {
-                                field: { fieldPath: "user" },
-                                op: "EQUAL",
-                                value: { stringValue: email }
-                            }
-                        }
-                    }
-                })
-            });
-            const decryptedList: any[] = [];
-            for (const item of data) {
-                if (item.document) {
-                    const parsed = AuditLog.parseFirestoreDoc(item.document);
-                    if (parsed) {
-                        decryptedList.push(parsed);
-                    }
+            const data = await AuditLog.request(
+                `${CONFIG.FIRESTORE_AUDIT_LOG_URL}/runQuery`,
+                { limit: 500 }
+            );
+            const ownLogs = Array.isArray(data.logs) ? data.logs : [];
+            ownLogs.forEach((log: any) => {
+                if (typeof log.prevState === 'string') {
+                    try { log.prevState = JSON.parse(log.prevState); } catch { log.prevState = null; }
                 }
-            }
-            return decryptedList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            });
+            return ownLogs.sort((a: any, b: any) =>
+                new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
         } catch(e) {
             console.error("Failed to read audit logs:", e);
             return [];
@@ -100,39 +52,41 @@ export const AuditLog = {
     canPersistPrevState: (prevState: any): boolean => {
         return AuditLog.getPrevStateSize(prevState) <= MAX_AUDIT_PREV_STATE_BYTES;
     },
-    addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null): Promise<boolean> => {
+    addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null): Promise<string | null> => {
         try {
-            if (!State.token) return false;
+            if (!State.token) return null;
             if (prevState && !AuditLog.canPersistPrevState(prevState)) {
                 throw new Error(`Audit backup exceeds the safe ${Math.floor(MAX_AUDIT_PREV_STATE_BYTES / 1000)} KB limit.`);
             }
-            const email = State.authEmail || 'anonymous';
-            const body: any = {
-                fields: {
-                    timestamp: { stringValue: new Date().toISOString() },
-                    user: { stringValue: email },
-                    operation: { stringValue: operation },
-                    srcProject: { stringValue: srcProject || '—' },
-                    tgtProject: { stringValue: tgtProject || '—' },
-                    status: { stringValue: status || 'SUCCESS' },
-                    details: { stringValue: details || '' }
-                }
-            };
-            if (prevState) {
-                body.fields.prevState = { stringValue: JSON.stringify(prevState) };
-            }
-            await AuditLog.fetchWithFallback('documents', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${State.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
+            const result = await AuditLog.request(CONFIG.FIRESTORE_AUDIT_LOG_URL, {
+                operation,
+                srcProject: srcProject || '—',
+                tgtProject: tgtProject || '—',
+                status: status || 'SUCCESS',
+                details: details || '',
+                prevState
             });
             await AuditLog.renderLogs();
-            return true;
+            return typeof result.id === 'string' ? result.id : null;
         } catch(e) {
             console.error("Failed to add audit log:", e);
+            return null;
+        }
+    },
+    updateLog: async (id: string, status: string, details: string, prevState?: any): Promise<boolean> => {
+        try {
+            const body: Record<string, any> = { id, status, details };
+            if (prevState !== undefined) {
+                if (prevState && !AuditLog.canPersistPrevState(prevState)) {
+                    throw new Error(`Audit backup exceeds the safe ${Math.floor(MAX_AUDIT_PREV_STATE_BYTES / 1000)} KB limit.`);
+                }
+                body.prevState = prevState;
+            }
+            await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, body);
+            await AuditLog.renderLogs();
+            return true;
+        } catch (error) {
+            console.error('Failed to update audit log:', error);
             return false;
         }
     },
@@ -153,6 +107,14 @@ export const AuditLog = {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         Utils.toast("Logs exported successfully", "ok");
+        const logged = await AuditLog.addLog(
+            'AUDIT_EXPORT',
+            '—',
+            '—',
+            `Exported ${logs.length} own audit log entries.`,
+            'SUCCESS'
+        );
+        if (!logged) Utils.toast('Audit export succeeded, but the export action could not be logged.', 'warn');
     },
     revertLog: async (logId: string): Promise<void> => {
         const logs = await AuditLog.readLogs();
@@ -270,7 +232,7 @@ export const AuditLog = {
                 <tr>
                     <td colspan="8" class="px-6 py-8 text-center text-xs" style="color:var(--muted)">
                         <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
-                        No local audit logs recorded yet.
+                        No audit logs recorded for this user yet.
                     </td>
                 </tr>
             `;

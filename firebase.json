@@ -2,6 +2,10 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22"
+  },
   "auth": {
     "providers": {
       "emailPassword": true
@@ -22,6 +26,7 @@
       "package-lock.json",
       "tsconfig.json",
       "tests/**",
+      "functions/**",
       "test-*.js",
       "server.js",
       "seed-gcp.js",
@@ -36,6 +41,32 @@
       "datastore-copier/script.js",
       "datastore-copier/src/**",
       "datastore-copier/js/*.map"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/audit_logs/update",
+        "function": {
+          "functionId": "auditApi",
+          "region": "us-central1",
+          "pinTag": true
+        }
+      },
+      {
+        "source": "/api/audit_logs/runQuery",
+        "function": {
+          "functionId": "auditApi",
+          "region": "us-central1",
+          "pinTag": true
+        }
+      },
+      {
+        "source": "/api/audit_logs",
+        "function": {
+          "functionId": "auditApi",
+          "region": "us-central1",
+          "pinTag": true
+        }
+      }
     ],
     "headers": [
       {

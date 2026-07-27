@@ -14,14 +14,9 @@ export const CONFIG = {
     DATASTORE_COMMIT_URL: (pid: string, db?: string) => 
         `https://datastore.googleapis.com/v1/projects/${pid}:commit` + (db ? `?databaseId=${db}` : ''),
 
-    // Firestore Proxy Endpoints
+    // Same-origin secured audit API (Firebase Hosting -> Cloud Function)
     FIRESTORE_DATABASES_URL: (pid: string) => `https://firestore.googleapis.com/v1/projects/${pid}/databases`,
     FIRESTORE_AUDIT_LOG_URL: '/api/audit_logs',
-
-    // Static values
-    FIRESTORE_PROJECT_ID: 'gcp-tools-portal',
-    FIRESTORE_DATABASE_ID: '(default)',
-    AUDIT_LOG_COLLECTION: 'audit_logs',
 
     // Asset paths
     TUDUM_SOUND_PATH: 'sounds/netflix-tudum.mp3',

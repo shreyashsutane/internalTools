@@ -684,7 +684,7 @@
                 </div>
 
                 <h3><i class="fa-solid fa-network-wired"></i> Dynamic Operation Flowchart</h3>
-                <p>The following live animated diagram visualizes the interactive modules communication loop and data relay vectors across the browser client, Node.js proxy, and official GCP REST APIs:</p>
+                <p>The following live animated diagram visualizes the interactive modules communication loop and data relay vectors across the browser client, secured audit function, and official GCP REST APIs:</p>
                 
                 <div class="mermaid">
                 graph TD
@@ -701,10 +701,10 @@
                     API["api.ts (Authenticated REST client)"]:::core
                     DSUTIL["datastore-utils.ts (Type fidelity & JSON rules)"]:::core
                     DIFF["diff.ts (JSON Diff & Serializer)"]:::core
-                    AUDIT["audit.ts (Firestore Logs Relayer)"]:::core
+                    AUDIT["audit.ts (Own-User Audit Client)"]:::core
                     UI["ui.ts (Dropdowns, Modals, Views)"]:::ui
                     APP["app.ts (System Entrypoint Orchestrator)"]:::ui
-                    PROXY["server.js (Audit Log Proxy Middleware)"]:::server
+                    PROXY["auditApi (Verified Central Audit Function)"]:::server
                     GCP["GCP Cloud APIs (BigQuery / Datastore)"]:::ext
                     FIRE["GCP Firestore (Audit Collection)"]:::ext
 
@@ -716,9 +716,9 @@
                     APP -->|Clone, validate, minify, replace| DSUTIL
                     DIFF -->|Reuse deep comparison & minification| DSUTIL
                     UI -->|Format visual differences| DIFF
-                    AUDIT -->|Prefer local audit route| PROXY
+                    AUDIT -->|Same-origin audited request| PROXY
                     API -->|Direct HTTPS calls| GCP
-                    PROXY -->|Forward bearer request| FIRE
+                    PROXY -->|Verify identity; write as restricted service account| FIRE
                     UTILS -->|Catch & propagate boundary errors| AUDIT
                     CONFIG -->|Inject static parameters| API
                 </div>
@@ -726,7 +726,7 @@
 
             <div class="glass-card">
                 <h2><i class="fa-solid fa-shield-halved" style="color:var(--accent-purple)"></i> 2. Audit Routing &amp; Credential Boundaries</h2>
-                <p>Audit operations prefer the local <code>/api/audit_logs</code> proxy and fall back to the direct Firestore REST endpoint when the proxy is unavailable. The GCP bearer token is held only in JavaScript memory, never placed in a URL or browser storage, and credentialed API calls are rejected unless their HTTPS origin appears in the client allowlist.</p>
+                <p>Audit operations use only the same-origin <code>/api/audit_logs</code> Cloud Function. There is no browser-to-Firestore fallback. The function verifies the Google bearer token, derives the email itself, validates and rate-limits the request, and writes with a dedicated least-privilege service account. Each user can retrieve only their own records; administrators retain global visibility through the protected admin console.</p>
 
                 <div class="flow-shell">
                     <span class="flow-kicker"><i class="fa-solid fa-shield-halved"></i> Credential and destination boundary</span>
@@ -741,6 +741,23 @@
                         AU6 --> AU7["Send to official Google API"]
                         AU3 --> AU8["Page closes"]
                         AU8 --> AU9["Token is discarded"]
+                    </div>
+                </div>
+
+                <div class="flow-shell">
+                    <span class="flow-kicker"><i class="fa-solid fa-users-viewfinder"></i> Central audit ownership and revert flow</span>
+                    <div class="mermaid">
+                    flowchart LR
+                        LG1["Authenticated user performs action"] --> LG2["Browser sends bearer header to same-origin auditApi"]
+                        LG2 --> LG3{"Trusted origin and valid Google identity?"}
+                        LG3 -->|No| LGX["Reject without writing"]
+                        LG3 -->|Yes| LG4["Derive verified email server-side"]
+                        LG4 --> LG5["Validate size, status, operation, and backup shape"]
+                        LG5 --> LG6["Apply per-user rate limit"]
+                        LG6 --> LG7["Write Firestore record using audit-logger service account"]
+                        LG7 --> LG8["User query is forced to verified email"]
+                        LG7 --> LG9["Admin console can view all users"]
+                        LG8 --> LG10["User may revert own record with current GCP permissions"]
                     </div>
                 </div>
 
@@ -838,12 +855,17 @@ headers.set(
                         <tr>
                             <td><span class="badge-method badge-post">POST</span> Dispatch log</td>
                             <td><code>/api/audit_logs</code></td>
-                            <td><code>https://firestore.googleapis.com/v1/projects/.../documents/audit_logs</code></td>
+                            <td><code>auditApi → Admin SDK → audit_logs</code></td>
                         </tr>
                         <tr>
                             <td><span class="badge-method badge-post">POST</span> Retrieve history</td>
                             <td><code>/api/audit_logs/runQuery</code></td>
-                            <td><code>https://firestore.googleapis.com/v1/projects/...:runQuery</code></td>
+                            <td><code>auditApi → forced verified-email query</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-method badge-post">POST</span> Finalize action</td>
+                            <td><code>/api/audit_logs/update</code></td>
+                            <td><code>auditApi → owner-checked document update</code></td>
                         </tr>
                     </tbody>
                 </table>
@@ -1050,7 +1072,7 @@ headers.set(
                         <button class="subtab-btn" id="sbtn-audit" onclick="switchSubTab('audit')"><i class="fa-solid fa-receipt"></i> audit.ts</button>
                         <button class="subtab-btn" id="sbtn-revert" onclick="switchSubTab('revert')"><i class="fa-solid fa-rotate-left"></i> revert.ts</button>
                         <button class="subtab-btn" id="sbtn-ui" onclick="switchSubTab('ui')"><i class="fa-solid fa-desktop"></i> ui.ts & app.ts</button>
-                        <button class="subtab-btn" id="sbtn-server" onclick="switchSubTab('server')"><i class="fa-solid fa-server"></i> server.js</button>
+                        <button class="subtab-btn" id="sbtn-server" onclick="switchSubTab('server')"><i class="fa-solid fa-server"></i> functions/auditApi</button>
                     </div>
 
                     <div class="walkthrough-content">
@@ -1062,7 +1084,7 @@ headers.set(
                             <h4>Key Architectural Highlights:</h4>
                             <ul>
                                 <li><strong>REST URL Generics:</strong> Uses dynamically computed functions (such as <code>DATASTORE_RUN_QUERY_URL</code>) that receive project and database ID tags, formats target paths, and handles database name mappings.</li>
-                                <li><strong>Proxy Redirection Paths:</strong> Exposes the client-side proxy route <code>/api/audit_logs</code>. This intercepts audit transactions on the node backend to attach secret keys, preventing token exposures.</li>
+                                <li><strong>Secured audit route:</strong> Exposes only the same-origin <code>/api/audit_logs</code> path. Firebase Hosting rewrites it to the verified Cloud Function; the browser never writes directly to Firestore.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -1082,8 +1104,7 @@ headers.set(
         `https://datastore.googleapis.com/v1/projects/${pid}:lookup` + (db ? `?databaseId=${db}` : ''),
     DATASTORE_COMMIT_URL: (pid: string, db?: string) => 
         `https://datastore.googleapis.com/v1/projects/${pid}:commit` + (db ? `?databaseId=${db}` : ''),
-    FIRESTORE_AUDIT_LOG_URL: "/api/audit_logs",
-    AUDIT_QUERY_URL: "/api/audit_logs/runQuery"
+    FIRESTORE_AUDIT_LOG_URL: "/api/audit_logs"
 };</code></pre>
                                 </div>
                             </div>
@@ -1379,12 +1400,14 @@ export const Diff = {
                         <!-- subtab: audit -->
                         <div class="subtab-content" id="ssec-audit">
                             <h3>Module: <code>audit.ts</code> (Reversible Operation Log)</h3>
-                            <p>Records administrator actions and stores bounded previous-state payloads used by the Revert workflow.</p>
+                            <p>Records each authenticated user's infrastructure actions and stores bounded previous-state payloads used by that user's Revert workflow. Administrators can review the centralized collection across all users.</p>
                             
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
                                 <li><strong>Backup size preflight:</strong> Previous state is limited to a conservative 700 KB before a Datastore copy or inline edit begins.</li>
-                                <li><strong>Explicit persistence result:</strong> <code>addLog</code> returns a boolean so callers can distinguish a successful write from a failed audit entry.</li>
+                                <li><strong>Verified ownership:</strong> The server derives email from the Google token; client-supplied identity fields are ignored.</li>
+                                <li><strong>Explicit persistence result:</strong> <code>addLog</code> returns the created record ID so mutating workflows can finalize the same record.</li>
+                                <li><strong>Mutation fail-closed:</strong> Datastore copy and inline edit persist an <code>IN_PROGRESS</code> revert backup before the first GCP mutation.</li>
                                 <li><strong>Recovery delegation:</strong> Audit confirmation and result logging stay in <code>audit.ts</code>; mutation planning and permission handling live in the independently tested <code>revert.ts</code>.</li>
                             </ul>
                             
@@ -1405,26 +1428,28 @@ canPersistPrevState: prevState =>
         .encode(JSON.stringify(prevState))
         .byteLength &lt;= MAX_AUDIT_PREV_STATE_BYTES;
 
-const result = await executeDatastoreRevert(
-    Api,
-    log.tgtProject,
+const auditId = await AuditLog.addLog(
+    'DATASTORE_COPY',
+    sourceProject,
+    targetProject,
+    'Copy started',
+    'IN_PROGRESS',
     previousState
 );
 
-await AuditLog.addLog(
-    'DATASTORE_REVERT',
-    '—',
-    log.tgtProject,
-    `Restored: ${result.restored}; deleted:
-     ${result.deleted}; skipped:
-     ${result.skippedDeletes}`,
-    result.skippedDeletes ? 'PARTIAL' : 'SUCCESS'
+if (!auditId) throw new Error('No mutation without a persisted backup');
+
+await AuditLog.updateLog(
+    auditId,
+    'SUCCESS',
+    'Copy completed'
 );</code></pre>
                                 </div>
                             </div>
                             <div class="code-explainer">
                                 <div class="code-note"><strong>700,000 bytes</strong>Leaves headroom below Firestore's document ceiling for the other audit fields.</div>
-                                <div class="code-note"><strong>separate result totals</strong>Operators can distinguish a complete restore from permission-skipped deletes.</div>
+                                <div class="code-note"><strong>own-user retrieval</strong>The backend ignores query filters from the browser and always filters by the verified token email.</div>
+                                <div class="code-note"><strong>admin visibility</strong>Direct collection reads remain protected by the existing administrator rule.</div>
                             </div>
                         </div>
 
@@ -1540,15 +1565,17 @@ await Api.commitDatastore(
                             </div>
                         </div>
 
-                        <!-- subtab: server -->
+                        <!-- subtab: secured audit function -->
                         <div class="subtab-content" id="ssec-server">
-                            <h3>Module: <code>server.js</code> (Static Server &amp; Audit Forwarder)</h3>
-                            <p>Serves the portal locally and forwards audit requests to Firestore. The proxy forwards the browser-provided bearer token; it does not independently authenticate the user or hide that token from the browser.</p>
+                            <h3>Module: <code>functions/index.js</code> (Verified Central Audit API)</h3>
+                            <p>Runs as a second-generation Firebase HTTPS function. It validates the request origin and Google identity, derives ownership server-side, rate-limits each identity, validates reversible state, and writes through the dedicated <code>audit-logger</code> service account.</p>
                             
                             <h4>Detailed Operations Walkthrough:</h4>
                             <ul>
-                                <li><strong>Secure File Serving:</strong> Employs <code>path.normalize</code> bounds mapping to block directory traversal attempts, reading file types securely.</li>
-                                <li><strong>Audit request forwarding:</strong> Routes <code>/api/audit_logs</code> collection writes and <code>/api/audit_logs/runQuery</code> reads to their Firestore REST destinations while preserving the Authorization header.</li>
+                                <li><strong>No client impersonation:</strong> Email and Google subject come only from the verified user-info response.</li>
+                                <li><strong>Own-log boundary:</strong> User reads are forcibly filtered to the token email, and updates confirm document ownership.</li>
+                                <li><strong>Admin-wide view:</strong> Function-created documents remain in the central <code>audit_logs</code> collection, where Firestore rules permit global reads only to registered administrators.</li>
+                                <li><strong>Bounded abuse surface:</strong> Exact origins, strict methods, payload limits, forbidden object keys, and per-user rate limiting are enforced before storage.</li>
                             </ul>
                             
                             <div class="code-window">
@@ -1558,42 +1585,21 @@ await Api.commitDatastore(
                                         <div class="code-dot code-dot-yellow"></div>
                                         <div class="code-dot code-dot-green"></div>
                                     </div>
-                                    <div class="code-title">server.js</div>
+                                    <div class="code-title">functions/index.js</div>
                                 </div>
                                 <div class="code-container">
-                                    <pre><code>const http = require('http');
-const https = require('https');
+                                    <pre><code>const token = extractBearerToken(req.headers);
+const identity = await verifyGoogleIdentity(token);
+await enforceRateLimit(identity.email);
 
-const server = http.createServer((req, res) => {
-    let reqUrl = req.url.split('?')[0];
-    
-    if (reqUrl.startsWith('/api/audit_logs')) {
-        let targetUrl = reqUrl === '/api/audit_logs/runQuery'
-            ? 'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery'
-            : 'https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs';
-        
-        let bodyData = '';
-        req.on('data', chunk => { bodyData += chunk; });
-        req.on('end', () => {
-            const parsedUrl = new URL(targetUrl);
-            const proxyReq = https.request({
-                hostname: parsedUrl.hostname,
-                path: parsedUrl.pathname,
-                method: req.method,
-                headers: {
-                    'Authorization': req.headers['authorization'] || '',
-                    'Content-Type': 'application/json'
-                }
-            }, (proxyRes) => {
-                res.writeHead(proxyRes.statusCode || 200, { 'Content-Type': 'application/json' });
-                proxyRes.pipe(res);
-            });
-            proxyReq.write(bodyData);
-            proxyReq.end();
-        });
-        return;
-    }
-});</code></pre>
+if (req.path.endsWith('/runQuery')) {
+    const logs = await readOwnLogs(identity.email, limit);
+    return sendJson(res, 200, { ok: true, logs }, origin);
+}
+
+const payload = normalizeAuditPayload(req.body);
+const id = await createAuditLog(identity, payload, req);
+return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
                                 </div>
                             </div>
                         </div>

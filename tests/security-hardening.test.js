@@ -55,6 +55,7 @@ test('Firebase Hosting applies browser security headers and safe exclusions', ()
         '.firebase/**',
         '.firebaserc',
         'tests/**',
+        'functions/**',
         'datastore-copier/src/**',
         'datastore-copier/js/*.map',
         'datastore-copier/script.js'

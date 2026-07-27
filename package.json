@@ -8,7 +8,8 @@
     "watch": "esbuild datastore-copier/src/app.ts --bundle --sourcemap --tsconfig=tsconfig.json --outfile=datastore-copier/js/app.js --watch",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.js",
-    "check": "npm run typecheck && npm test && npm run build"
+    "test:functions": "npm --prefix functions run check",
+    "check": "npm run typecheck && npm test && npm run test:functions && npm run build"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
