@@ -47,24 +47,21 @@
         "source": "/api/audit_logs/update",
         "function": {
           "functionId": "auditApi",
-          "region": "us-central1",
-          "pinTag": true
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/audit_logs/runQuery",
         "function": {
           "functionId": "auditApi",
-          "region": "us-central1",
-          "pinTag": true
+          "region": "us-central1"
         }
       },
       {
         "source": "/api/audit_logs",
         "function": {
           "functionId": "auditApi",
-          "region": "us-central1",
-          "pinTag": true
+          "region": "us-central1"
         }
       }
     ],
