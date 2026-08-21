@@ -14,22 +14,6 @@ export type DatastoreEditorType =
 
 export const cloneDatastoreValue = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
-export const deepEqual = (a: any, b: any): boolean => {
-    if (Object.is(a, b)) return true;
-    if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
-    if (Array.isArray(a) !== Array.isArray(b)) return false;
-
-    if (Array.isArray(a)) {
-        if (a.length !== b.length) return false;
-        return a.every((value, index) => deepEqual(value, b[index]));
-    }
-
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-    if (keysA.length !== keysB.length) return false;
-    return keysA.every(key => Object.prototype.hasOwnProperty.call(b, key) && deepEqual(a[key], b[key]));
-};
-
 export const isJsonString = (value: unknown): value is string => {
     if (typeof value !== 'string') return false;
     const trimmed = value.trim();
@@ -42,6 +26,188 @@ export const isJsonString = (value: unknown): value is string => {
     } catch {
         return false;
     }
+};
+
+export const compressJsonToBase64 = async (data: any): Promise<string> => {
+    const jsonStr = JSON.stringify(data);
+    const bytes = new TextEncoder().encode(jsonStr);
+
+    if (typeof CompressionStream !== 'undefined') {
+        const stream = new Response(
+            new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))
+        );
+        const compressedBuffer = await stream.arrayBuffer();
+        const compressedBytes = new Uint8Array(compressedBuffer);
+        let binary = '';
+        const len = compressedBytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(compressedBytes[i]);
+        }
+        return btoa(binary);
+    }
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+};
+
+export const decompressJsonFromBase64 = async (base64Str: string): Promise<any> => {
+    const binary = atob(base64Str);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+
+    if (typeof DecompressionStream !== 'undefined') {
+        try {
+            const stream = new Response(
+                new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+            );
+            const text = await stream.text();
+            return JSON.parse(text);
+        } catch {
+            const text = new TextDecoder().decode(bytes);
+            return JSON.parse(text);
+        }
+    }
+    const text = new TextDecoder().decode(bytes);
+    return JSON.parse(text);
+};
+
+export const mapConcurrent = async <T, R>(
+    items: T[],
+    concurrency: number,
+    fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> => {
+    const results: R[] = new Array(items.length);
+    let currentIndex = 0;
+
+    const worker = async () => {
+        while (currentIndex < items.length) {
+            const index = currentIndex++;
+            results[index] = await fn(items[index], index);
+        }
+    };
+
+    const workerCount = Math.min(Math.max(1, concurrency), items.length);
+    const workers = Array.from({ length: workerCount }, () => worker());
+    await Promise.all(workers);
+    return results;
+};
+
+export const deepEqual = (a: any, b: any): boolean => {
+    if (Object.is(a, b)) return true;
+
+    // 1. Primitive string comparisons (semantic JSON, ISO timestamps, CRLF whitespace)
+    if (typeof a === 'string' && typeof b === 'string') {
+        if (a === b) return true;
+        if (a.replace(/\r\n/g, '\n').trim() === b.replace(/\r\n/g, '\n').trim()) return true;
+
+        if (isJsonString(a) && isJsonString(b)) {
+            try {
+                return deepEqual(JSON.parse(a.trim()), JSON.parse(b.trim()));
+            } catch {
+                return false;
+            }
+        }
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(a.trim()) &&
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(b.trim())) {
+            const tA = Date.parse(a.trim());
+            const tB = Date.parse(b.trim());
+            if (!isNaN(tA) && !isNaN(tB)) return tA === tB;
+        }
+        return false;
+    }
+
+    if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+    if (Array.isArray(a)) {
+        if (a.length !== b.length) return false;
+        return a.every((value, index) => deepEqual(value, b[index]));
+    }
+
+    // 2. Datastore REST Property Wrapper Normalization
+    // Boolean wrapper
+    if ('booleanValue' in a && 'booleanValue' in b) {
+        return a.booleanValue === b.booleanValue;
+    }
+
+    // Null wrapper
+    if ('nullValue' in a && 'nullValue' in b) {
+        return true;
+    }
+
+    // Blob wrapper
+    if ('blobValue' in a && 'blobValue' in b) {
+        return String(a.blobValue).replace(/=+$/, '') === String(b.blobValue).replace(/=+$/, '');
+    }
+
+    // Array value normalization: { arrayValue: {} } vs { arrayValue: { values: [] } }
+    if ('arrayValue' in a && 'arrayValue' in b) {
+        const arrA = a.arrayValue?.values || [];
+        const arrB = b.arrayValue?.values || [];
+        return deepEqual(arrA, arrB);
+    }
+
+    // Map/Entity value normalization
+    if (('mapValue' in a || 'entityValue' in a) && ('mapValue' in b || 'entityValue' in b)) {
+        const propsA = a.mapValue?.properties || a.entityValue?.properties || {};
+        const propsB = b.mapValue?.properties || b.entityValue?.properties || {};
+        return deepEqual(propsA, propsB);
+    }
+
+    // Key value normalization (compare key path and ignore project partition if cross-project)
+    if ('keyValue' in a && 'keyValue' in b) {
+        const pathA = a.keyValue?.path || [];
+        const pathB = b.keyValue?.path || [];
+        return deepEqual(pathA, pathB);
+    }
+
+    // GeoPoint wrapper
+    if ('geoPointValue' in a && 'geoPointValue' in b) {
+        return deepEqual(a.geoPointValue, b.geoPointValue);
+    }
+
+    // String value wrapper containing JSON or string
+    if ('stringValue' in a && 'stringValue' in b) {
+        return deepEqual(a.stringValue, b.stringValue);
+    }
+
+    // Timestamp wrapper normalization
+    if ('timestampValue' in a && 'timestampValue' in b) {
+        const tA = Date.parse(a.timestampValue);
+        const tB = Date.parse(b.timestampValue);
+        if (!isNaN(tA) && !isNaN(tB)) return tA === tB;
+        return a.timestampValue === b.timestampValue;
+    }
+
+    // Integer wrapper normalization
+    if ('integerValue' in a && 'integerValue' in b) {
+        return String(a.integerValue).trim() === String(b.integerValue).trim();
+    }
+
+    // Double wrapper normalization
+    if ('doubleValue' in a && 'doubleValue' in b) {
+        return Object.is(a.doubleValue, b.doubleValue) || Math.abs(a.doubleValue - b.doubleValue) < 1e-12;
+    }
+
+    // 3. Object property comparison ignoring metadata (excludeFromIndexes, meaning)
+    const getSignificantKeys = (obj: any): string[] => {
+        return Object.keys(obj).filter(k => {
+            if (obj[k] === undefined) return false;
+            if (k === 'excludeFromIndexes' || k === 'meaning') return false;
+            return true;
+        });
+    };
+
+    const keysA = getSignificantKeys(a);
+    const keysB = getSignificantKeys(b);
+
+    if (keysA.length !== keysB.length) return false;
+    return keysA.every(key => Object.prototype.hasOwnProperty.call(b, key) && deepEqual(a[key], b[key]));
 };
 
 const minifyDatastoreValue = (value: any): void => {
@@ -288,3 +454,196 @@ export const replaceDatastoreField = (
     const segments = normalized.split('.').map(segment => segment.trim()).filter(Boolean);
     return replaceAtPath(properties, segments, target, replacement);
 };
+
+export const isQueryKey = (key: string): boolean => {
+    if (!key || typeof key !== 'string') return false;
+    return /^(?:query|sql|querystring|sqlquery|customquery|customsql)$/i.test(key) || /query|sql/i.test(key);
+};
+
+export const normalizeSqlQuery = (
+    sql: string,
+    srcProject?: string | null,
+    tgtProject?: string | null
+): string => {
+    if (!sql || typeof sql !== 'string') return '';
+
+    let q = sql;
+
+    // 1. Remove single-line comments (-- and //) and multi-line comments (/* ... */)
+    q = q.replace(/--.*$/gm, '').replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+    // 2. Perform Source -> Target Project ID substitution
+    if (srcProject && tgtProject && srcProject !== tgtProject) {
+        q = q.split(srcProject).join(tgtProject);
+    }
+
+    // 3. Remove trailing semicolons and trailing whitespace
+    q = q.trim().replace(/;+\s*$/, '');
+
+    // 4. Normalize spaces around commas, parentheses, and comparison/arithmetic operators
+    q = q.replace(/\s*([,()=><])\s*/g, '$1');
+
+    // 5. Collapse all remaining whitespace (spaces, tabs, newlines) into a single space
+    q = q.replace(/\s+/g, ' ').trim();
+
+    return q;
+};
+
+export const minifySqlQuery = (sql: string): string => {
+    if (!sql || typeof sql !== 'string') return '';
+    const tokenRegex = /('(?:''|\\'|[^'])*'|"(?:""|\\"|[^"])*"|`[^`]*`|\{\{[^}]+\}\}|--.*$|\/\*[\s\S]*?\*\/|\d+(?:\.\d+)?|[A-Za-z_]\w*|\s+|[^\s\w'"`])/gm;
+    const rawTokens = sql.match(tokenRegex) || [sql];
+    let result = '';
+    for (let i = 0; i < rawTokens.length; i++) {
+        const tok = rawTokens[i];
+        if (tok.startsWith('--') || tok.startsWith('/*')) continue;
+        if (/^\s+$/.test(tok)) {
+            if (result.length > 0 && !result.endsWith(' ')) result += ' ';
+            continue;
+        }
+        result += tok;
+    }
+    return result.trim();
+};
+
+
+export const formatSqlQuery = (sql: string): string => {
+    if (!sql || typeof sql !== 'string') return '';
+
+    const rootKeywords = [
+        'WITH',
+        'SELECT',
+        'FROM',
+        'WHERE',
+        'GROUP BY',
+        'HAVING',
+        'ORDER BY',
+        'LIMIT',
+        'OFFSET',
+        'UNION ALL',
+        'UNION',
+        'LEFT JOIN',
+        'RIGHT JOIN',
+        'INNER JOIN',
+        'FULL JOIN',
+        'CROSS JOIN',
+        'JOIN',
+        'ON',
+        'AND',
+        'OR',
+        'INSERT INTO',
+        'VALUES',
+        'UPDATE',
+        'SET',
+        'DELETE FROM'
+    ];
+
+    const tokenRegex = /('(?:''|\\'|[^'])*'|"(?:""|\\"|[^"])*"|`[^`]*`|\{\{[^}]+\}\}|--.*$|\/\*[\s\S]*?\*\/|\d+(?:\.\d+)?|[A-Za-z_]\w*|\s+|[^\s\w'"`])/gm;
+
+    const keywordLookup = new Map<string, string>();
+    rootKeywords.forEach(kw => keywordLookup.set(kw.toUpperCase(), kw.toUpperCase()));
+
+    const rawTokens = sql.match(tokenRegex) || [sql];
+    const cleanedTokens: string[] = [];
+
+    for (let i = 0; i < rawTokens.length; i++) {
+        const t = rawTokens[i];
+        if (/^\s+$/.test(t)) {
+            if (cleanedTokens.length > 0 && cleanedTokens[cleanedTokens.length - 1] !== ' ') {
+                cleanedTokens.push(' ');
+            }
+        } else {
+            cleanedTokens.push(t);
+        }
+    }
+
+    let formatted = '';
+    let indentLevel = 0;
+    const indent = () => '  '.repeat(Math.max(0, indentLevel));
+
+    for (let i = 0; i < cleanedTokens.length; i++) {
+        const tok = cleanedTokens[i];
+        if (tok === ' ') {
+            if (formatted.endsWith('\n') || formatted.endsWith('  ')) continue;
+            formatted += ' ';
+            continue;
+        }
+
+        const upperTok = tok.toUpperCase();
+        const nextTok = (i + 2 < cleanedTokens.length && cleanedTokens[i + 1] === ' ') ? cleanedTokens[i + 2].toUpperCase() : '';
+        const twoWord = `${upperTok} ${nextTok}`;
+
+        if (keywordLookup.has(twoWord)) {
+            if (!formatted.endsWith('\n') && formatted.trim().length > 0) formatted = formatted.trimEnd() + '\n';
+            formatted += indent() + twoWord;
+            i += 2;
+            continue;
+        }
+
+        if (keywordLookup.has(upperTok)) {
+            if (upperTok === 'AND' || upperTok === 'OR') {
+                if (!formatted.endsWith('\n') && formatted.trim().length > 0) formatted = formatted.trimEnd() + '\n';
+                formatted += indent() + '  ' + upperTok;
+            } else {
+                if (!formatted.endsWith('\n') && formatted.trim().length > 0) formatted = formatted.trimEnd() + '\n';
+                formatted += indent() + upperTok;
+            }
+            continue;
+        }
+
+        if (tok === '(') {
+            formatted += '(';
+            indentLevel++;
+            continue;
+        }
+        if (tok === ')') {
+            indentLevel = Math.max(0, indentLevel - 1);
+            formatted += ')';
+            continue;
+        }
+        if (tok === ',') {
+            formatted = formatted.trimEnd() + ', ';
+            continue;
+        }
+        if (tok === ';') {
+            formatted = formatted.trimEnd() + ';';
+            continue;
+        }
+
+        formatted += tok;
+    }
+
+    return formatted.trim();
+};
+
+export type QueryEqualityResult = {
+    match: boolean;
+    type: 'identical' | 'project_mapped' | 'modified';
+};
+
+export const isQuerySemanticallyEqual = (
+    srcQuery: string,
+    tgtQuery: string,
+    srcProject?: string | null,
+    tgtProject?: string | null
+): QueryEqualityResult => {
+    if (typeof srcQuery !== 'string' || typeof tgtQuery !== 'string') {
+        return { match: false, type: 'modified' };
+    }
+
+    if (srcQuery === tgtQuery) {
+        return { match: true, type: 'identical' };
+    }
+
+    const normSrc = normalizeSqlQuery(srcQuery, srcProject, tgtProject);
+    const normTgt = normalizeSqlQuery(tgtQuery, null, null);
+
+    if (normSrc && normSrc === normTgt) {
+        return { match: true, type: 'project_mapped' };
+    }
+
+    return { match: false, type: 'modified' };
+};
+
+
+

@@ -210,17 +210,58 @@ export const UI = {
         if (!tmpl) return;
         const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
 
-        const select = fragment.querySelector('.filter-prop') as HTMLSelectElement;
-        if (select) {
+        const propSelect = fragment.querySelector('.filter-prop') as HTMLSelectElement;
+        const opSelect = fragment.querySelector('.filter-op') as HTMLSelectElement;
+        const typeSelect = fragment.querySelector('.filter-type') as HTMLSelectElement;
+        const valContainer = fragment.querySelector('.filter-val-container') as HTMLElement;
+
+        if (propSelect) {
             const properties = State.ds.properties;
             const props = ['__key__', ...properties.filter((p: string) => p !== '__key__')];
-            select.replaceChildren();
+            propSelect.replaceChildren();
             props.forEach(property => {
                 const option = document.createElement('option');
                 option.value = property;
                 option.textContent = property === '__key__' ? '__key__ (ID / Name)' : property;
-                select.appendChild(option);
+                propSelect.appendChild(option);
             });
+        }
+
+        const updateValInput = () => {
+            if (!valContainer || !typeSelect) return;
+            const selectedType = typeSelect.value;
+            if (selectedType === 'boolean') {
+                valContainer.innerHTML = `
+                    <select class="inp filter-val text-xs filter-val-width">
+                        <option value="true">true</option>
+                        <option value="false">false</option>
+                    </select>
+                `;
+            } else if (selectedType === 'null') {
+                valContainer.innerHTML = `
+                    <input class="inp filter-val text-xs filter-val-width" value="null" disabled style="opacity:0.6">
+                `;
+            } else if (selectedType === 'timestamp') {
+                valContainer.innerHTML = `
+                    <input class="inp filter-val text-xs filter-val-width" placeholder="2026-08-19T00:00:00Z">
+                `;
+            } else if (selectedType === 'integer') {
+                valContainer.innerHTML = `
+                    <input class="inp filter-val text-xs filter-val-width" type="number" step="1" placeholder="e.g. 100">
+                `;
+            } else if (selectedType === 'double') {
+                valContainer.innerHTML = `
+                    <input class="inp filter-val text-xs filter-val-width" type="number" step="any" placeholder="e.g. 99.95">
+                `;
+            } else {
+                valContainer.innerHTML = `
+                    <input class="inp filter-val text-xs filter-val-width" placeholder="Value">
+                `;
+            }
+        };
+
+        if (typeSelect) {
+            typeSelect.onchange = updateValInput;
         }
 
         const removeBtn = fragment.querySelector('.btn-remove-filter') as HTMLButtonElement;

@@ -19,7 +19,7 @@ export interface QueryComparison {
 export interface DsResult {
     keyStr: string;
     rawKey: any;
-    status: 'different' | 'missing' | 'identical';
+    status: 'different' | 'missing' | 'identical' | 'mapped';
     diff?: any[];
     diffSum: string;
     srcEntity: any | null;
@@ -68,6 +68,7 @@ export interface StateType {
             identical: number;
             different: number;
             missing: number;
+            mapped: number;
             total: number;
         };
         page: number;
@@ -123,7 +124,7 @@ export const State: StateType = {
         modReplace: '',
         results: [],
         filtered: [],
-        stats: { identical: 0, different: 0, missing: 0, total: 0 },
+        stats: { identical: 0, different: 0, missing: 0, mapped: 0, total: 0 },
         page: 1,
         perPage: 50,
         filterStatus: 'all',

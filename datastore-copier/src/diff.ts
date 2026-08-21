@@ -3,12 +3,22 @@ import {
     cleanJsonToDatastore,
     datastoreToCleanJson,
     deepEqual,
+    formatSqlQuery,
     isJsonString,
-    minifyJsonProperties
+    isQueryKey,
+    isQuerySemanticallyEqual,
+    minifyJsonProperties,
+    minifySqlQuery,
+    normalizeSqlQuery
 } from './datastore-utils';
 
 export const Diff = {
     isJsonString,
+    isQueryKey,
+    normalizeSqlQuery,
+    formatSqlQuery,
+    minifySqlQuery,
+    isQuerySemanticallyEqual,
     areValuesEqual: deepEqual,
     getJsonDiffHtml: (obj1: any, obj2: any): string => {
         if (Diff.areValuesEqual(obj1, obj2)) {
@@ -83,28 +93,62 @@ export const Diff = {
         return html;
     },
 
-    openJsonEditorModal: async (row: HTMLElement, propKey: string, srcInput: HTMLInputElement | HTMLTextAreaElement | null, tgtInput: HTMLInputElement | HTMLTextAreaElement | null) => {
-        let srcRaw = srcInput ? srcInput.value.trim() : '';
-        let tgtRaw = tgtInput ? tgtInput.value.trim() : '';
+    openJsonEditorModal: async (
+        row: HTMLElement,
+        propKey: string,
+        srcInput: HTMLInputElement | HTMLTextAreaElement | null,
+        tgtInput: HTMLInputElement | HTMLTextAreaElement | null,
+        srcProject?: string | null,
+        tgtProject?: string | null
+    ) => {
+        let srcRaw = srcInput ? srcInput.value : '';
+        let tgtRaw = tgtInput ? tgtInput.value : '';
 
-        if (!srcRaw) srcRaw = '{}';
-        if (!tgtRaw) tgtRaw = '{}';
+        const isQuery = isQueryKey(propKey);
+        const isJson = !isQuery && (isJsonString(srcRaw) || isJsonString(tgtRaw));
+        const mode: 'sql' | 'json' | 'text' = isQuery ? 'sql' : isJson ? 'json' : 'text';
 
-        try { srcRaw = JSON.stringify(JSON.parse(srcRaw), null, 2); } catch(e) {}
-        try { tgtRaw = JSON.stringify(JSON.parse(tgtRaw), null, 2); } catch(e) {}
+        if (isJson) {
+            if (isJsonString(srcRaw)) {
+                try { srcRaw = JSON.stringify(JSON.parse(srcRaw.trim()), null, 2); } catch(e) {}
+            }
+            if (isJsonString(tgtRaw)) {
+                try { tgtRaw = JSON.stringify(JSON.parse(tgtRaw.trim()), null, 2); } catch(e) {}
+            }
+        }
 
         const tmpl = Utils.$('template-json-editor-modal') as HTMLTemplateElement;
         if (!tmpl) return;
         const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
 
-        // Set property key
+        // Set property key & dynamic modal title
         const propKeySpan = fragment.querySelector('.prop-key-span') as HTMLElement;
         if (propKeySpan) propKeySpan.textContent = propKey;
 
+        const titlePrefix = fragment.querySelector('.modal-title-prefix') as HTMLElement;
+        const titleIcon = fragment.querySelector('.modal-title-icon') as HTMLElement;
+        const srcColHeader = fragment.querySelector('.src-col-header') as HTMLElement;
+        const tgtColHeader = fragment.querySelector('.tgt-col-header') as HTMLElement;
+
+        if (mode === 'sql') {
+            if (titlePrefix) titlePrefix.textContent = 'SQL Query Diff & Editor';
+            if (titleIcon) titleIcon.className = 'modal-title-icon fa-solid fa-terminal text-cyan-400';
+            if (srcColHeader) srcColHeader.textContent = 'SOURCE QUERY (SQL)';
+            if (tgtColHeader) tgtColHeader.textContent = 'TARGET QUERY (SQL)';
+        } else if (mode === 'json') {
+            if (titlePrefix) titlePrefix.textContent = 'JSON Diff & Editor';
+            if (titleIcon) titleIcon.className = 'modal-title-icon fa-solid fa-code text-indigo-400';
+            if (srcColHeader) srcColHeader.textContent = 'SOURCE VALUE (JSON)';
+            if (tgtColHeader) tgtColHeader.textContent = 'TARGET VALUE (JSON)';
+        } else {
+            if (titlePrefix) titlePrefix.textContent = 'Text Diff & Editor';
+            if (titleIcon) titleIcon.className = 'modal-title-icon fa-solid fa-file-lines text-amber-400';
+            if (srcColHeader) srcColHeader.textContent = 'SOURCE VALUE (Text)';
+            if (tgtColHeader) tgtColHeader.textContent = 'TARGET VALUE (Text)';
+        }
+
         const srcArea = fragment.querySelector('.json-src-area') as HTMLTextAreaElement;
         const tgtArea = fragment.querySelector('.json-tgt-area') as HTMLTextAreaElement;
-        const srcStatus = fragment.querySelector('.json-src-status') as HTMLElement;
-        const tgtStatus = fragment.querySelector('.json-tgt-status') as HTMLElement;
         const diffCont = fragment.querySelector('.json-diff-container') as HTMLElement;
 
         srcArea.value = srcRaw;
@@ -122,7 +166,55 @@ export const Diff = {
         const applyBtn = document.querySelector('.btn-json-save-apply') as HTMLButtonElement;
 
         const validateAndDiff = () => {
-            let srcVal = null, tgtVal = null;
+            const rawSrc = liveSrcArea.value;
+            const rawTgt = liveTgtArea.value;
+
+            if (mode === 'sql') {
+                const queryEquality = isQuerySemanticallyEqual(rawSrc, rawTgt, srcProject, tgtProject);
+                if (queryEquality.type === 'identical') {
+                    liveSrcStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Exact Query Match';
+                    liveSrcStatus.style.color = 'var(--ok)';
+                    liveTgtStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Exact Query Match';
+                    liveTgtStatus.style.color = 'var(--ok)';
+                    liveDiffCont.innerHTML = `<div class="p-2 text-xs font-semibold" style="color:var(--ok)"><i class="fa-solid fa-circle-check"></i> Queries are fully identical.</div>`;
+                } else if (queryEquality.type === 'project_mapped') {
+                    liveSrcStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Source Project Query';
+                    liveSrcStatus.style.color = 'var(--ok)';
+                    liveTgtStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Project ID Mapped (Semantic Match)';
+                    liveTgtStatus.style.color = 'var(--ok)';
+                    liveDiffCont.innerHTML = `
+                        <div class="p-2 mb-2 text-xs font-semibold rounded" style="background:var(--ok-dim); border-left: 3px solid var(--ok); color:var(--ok);">
+                            <i class="fa-solid fa-circle-check mr-1"></i> Semantic Match: Query logic and {{variables}} match perfectly after Project ID substitution.
+                        </div>
+                        <div class="text-xs mono" style="color:var(--muted)">
+                            <div><strong>Source (${Utils.escapeHtml(srcProject || 'Source')}):</strong> ${Utils.escapeHtml(rawSrc)}</div>
+                            <div class="mt-1"><strong>Target (${Utils.escapeHtml(tgtProject || 'Target')}):</strong> ${Utils.escapeHtml(rawTgt)}</div>
+                        </div>
+                    `;
+                } else {
+                    liveSrcStatus.innerHTML = '<i class="fa-solid fa-terminal"></i> Source Query';
+                    liveSrcStatus.style.color = 'var(--muted)';
+                    liveTgtStatus.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Query Differs';
+                    liveTgtStatus.style.color = 'var(--warn)';
+                    liveDiffCont.innerHTML = `
+                        <div class="p-2 mb-2 text-xs font-semibold rounded" style="background:var(--warn-dim); border-left: 3px solid var(--warn); color:var(--warn);">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> Query Differences: Columns, conditions, or {{variables}} differ between Source and Target.
+                        </div>
+                        <div class="text-xs mono" style="color:var(--fg)">
+                            <div style="background:var(--danger-dim); padding: 4px 8px; border-radius: 4px; margin-bottom: 4px;">
+                                <strong style="color:var(--danger)">- Source:</strong> ${Utils.escapeHtml(rawSrc)}
+                            </div>
+                            <div style="background:var(--ok-dim); padding: 4px 8px; border-radius: 4px;">
+                                <strong style="color:var(--ok)">+ Target:</strong> ${Utils.escapeHtml(rawTgt)}
+                            </div>
+                        </div>
+                    `;
+                }
+                applyBtn.removeAttribute('disabled');
+                return;
+            }
+
+            let srcVal: any = null, tgtVal: any = null;
             let srcOk = true, tgtOk = true;
 
             const parseInput = (valStr: string) => {
@@ -143,11 +235,10 @@ export const Diff = {
             };
 
             try {
-                const raw = liveSrcArea.value;
-                if (raw.trim()) {
-                    srcVal = parseInput(raw);
-                    liveSrcStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Valid JSON';
-                    liveSrcStatus.style.color = 'var(--ok)';
+                if (rawSrc.trim()) {
+                    srcVal = parseInput(rawSrc);
+                    liveSrcStatus.innerHTML = isJsonString(rawSrc) ? '<i class="fa-solid fa-circle-check"></i> Valid JSON' : 'Plain Text';
+                    liveSrcStatus.style.color = isJsonString(rawSrc) ? 'var(--ok)' : 'var(--muted)';
                 } else {
                     liveSrcStatus.innerHTML = 'Empty Value';
                     liveSrcStatus.style.color = 'var(--muted)';
@@ -159,11 +250,10 @@ export const Diff = {
             }
 
             try {
-                const raw = liveTgtArea.value;
-                if (raw.trim()) {
-                    tgtVal = parseInput(raw);
-                    liveTgtStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Valid JSON';
-                    liveTgtStatus.style.color = 'var(--ok)';
+                if (rawTgt.trim()) {
+                    tgtVal = parseInput(rawTgt);
+                    liveTgtStatus.innerHTML = isJsonString(rawTgt) ? '<i class="fa-solid fa-circle-check"></i> Valid JSON' : 'Plain Text';
+                    liveTgtStatus.style.color = isJsonString(rawTgt) ? 'var(--ok)' : 'var(--muted)';
                 } else {
                     liveTgtStatus.innerHTML = 'Empty Value';
                     liveTgtStatus.style.color = 'var(--muted)';
@@ -183,45 +273,76 @@ export const Diff = {
             }
         };
 
-        liveSrcArea.oninput = validateAndDiff;
-        liveTgtArea.oninput = validateAndDiff;
+        // 150ms debounced live diffing for smooth 5000+ lines editing
+        let debounceTimer: any = null;
+        const debouncedValidateAndDiff = () => {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                validateAndDiff();
+            }, 150);
+        };
+
+        liveSrcArea.oninput = debouncedValidateAndDiff;
+        liveTgtArea.oninput = debouncedValidateAndDiff;
 
         const globalQuery = (sel: string) => document.querySelector(sel) as HTMLElement;
 
+        // Configure format / minify action handlers
         globalQuery('.btn-fmt-src').onclick = () => {
-            try {
-                liveSrcArea.value = JSON.stringify(JSON.parse(liveSrcArea.value), null, 2);
+            if (mode === 'sql') {
+                liveSrcArea.value = formatSqlQuery(liveSrcArea.value);
                 validateAndDiff();
-            } catch(e) { alert("Invalid Source JSON"); }
+            } else {
+                try {
+                    liveSrcArea.value = JSON.stringify(JSON.parse(liveSrcArea.value), null, 2);
+                    validateAndDiff();
+                } catch(e) { alert("Invalid Source JSON"); }
+            }
         };
         globalQuery('.btn-min-src').onclick = () => {
-            try {
-                liveSrcArea.value = JSON.stringify(JSON.parse(liveSrcArea.value));
+            if (mode === 'sql') {
+                liveSrcArea.value = minifySqlQuery(liveSrcArea.value);
                 validateAndDiff();
-            } catch(e) { alert("Invalid Source JSON"); }
+            } else {
+                try {
+                    liveSrcArea.value = JSON.stringify(JSON.parse(liveSrcArea.value));
+                    validateAndDiff();
+                } catch(e) { alert("Invalid Source JSON"); }
+            }
         };
 
         globalQuery('.btn-fmt-tgt').onclick = () => {
-            try {
-                liveTgtArea.value = JSON.stringify(JSON.parse(liveTgtArea.value), null, 2);
+            if (mode === 'sql') {
+                liveTgtArea.value = formatSqlQuery(liveTgtArea.value);
                 validateAndDiff();
-            } catch(e) { alert("Invalid Target JSON"); }
+            } else {
+                try {
+                    liveTgtArea.value = JSON.stringify(JSON.parse(liveTgtArea.value), null, 2);
+                    validateAndDiff();
+                } catch(e) { alert("Invalid Target JSON"); }
+            }
         };
         globalQuery('.btn-min-tgt').onclick = () => {
-            try {
-                liveTgtArea.value = JSON.stringify(JSON.parse(liveTgtArea.value));
+            if (mode === 'sql') {
+                liveTgtArea.value = minifySqlQuery(liveTgtArea.value);
                 validateAndDiff();
-            } catch(e) { alert("Invalid Target JSON"); }
+            } else {
+                try {
+                    liveTgtArea.value = JSON.stringify(JSON.parse(liveTgtArea.value));
+                    validateAndDiff();
+                } catch(e) { alert("Invalid Target JSON"); }
+            }
         };
 
         // Copy utilities
+        const labelType = mode === 'sql' ? 'Query' : mode === 'json' ? 'JSON' : 'Text';
         globalQuery('.btn-copy-src').onclick = () => {
             navigator.clipboard.writeText(liveSrcArea.value);
-            Utils.toast("Copied Source JSON to clipboard", "ok");
+            Utils.toast(`Copied Source ${labelType} to clipboard`, "ok");
         };
         globalQuery('.btn-copy-tgt').onclick = () => {
             navigator.clipboard.writeText(liveTgtArea.value);
-            Utils.toast("Copied Target JSON to clipboard", "ok");
+            Utils.toast(`Copied Target ${labelType} to clipboard`, "ok");
         };
 
         globalQuery('.btn-json-close').onclick = () => UI.closeModal();
@@ -230,12 +351,15 @@ export const Diff = {
         applyBtn.onclick = () => {
             try {
                 const getAppliedVal = (val: string) => {
-                    val = val.trim();
-                    try {
-                        return JSON.stringify(JSON.parse(val));
-                    } catch(e) {
-                        return val;
+                    if (mode === 'json') {
+                        val = val.trim();
+                        try {
+                            return JSON.stringify(JSON.parse(val));
+                        } catch(e) {
+                            return val;
+                        }
                     }
+                    return val;
                 };
 
                 const cleanSrc = getAppliedVal(liveSrcArea.value);
@@ -261,9 +385,9 @@ export const Diff = {
                 }
 
                 UI.closeModal();
-                Utils.toast("Applied JSON edits to properties table.", "ok");
+                Utils.toast(`Applied ${labelType} edits to properties table.`, "ok");
             } catch(e) {
-                alert("Please ensure both JSONs are syntax-valid before applying changes.");
+                alert(`Please ensure the values are valid before applying changes.`);
             }
         };
 
@@ -274,3 +398,4 @@ export const Diff = {
     cleanJsonToDatastore,
     minifyJsonProperties
 };
+

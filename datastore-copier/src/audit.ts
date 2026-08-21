@@ -52,7 +52,7 @@ export const AuditLog = {
     canPersistPrevState: (prevState: any): boolean => {
         return AuditLog.getPrevStateSize(prevState) <= MAX_AUDIT_PREV_STATE_BYTES;
     },
-    addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null): Promise<string | null> => {
+    addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null, skipRender = false): Promise<string | null> => {
         try {
             if (!State.token) return null;
             if (prevState && !AuditLog.canPersistPrevState(prevState)) {
@@ -66,14 +66,16 @@ export const AuditLog = {
                 details: details || '',
                 prevState
             });
-            await AuditLog.renderLogs();
+            if (!skipRender) {
+                await AuditLog.renderLogs();
+            }
             return typeof result.id === 'string' ? result.id : null;
         } catch(e) {
             console.error("Failed to add audit log:", e);
             return null;
         }
     },
-    updateLog: async (id: string, status: string, details: string, prevState?: any): Promise<boolean> => {
+    updateLog: async (id: string, status: string, details: string, prevState?: any, skipRender = false): Promise<boolean> => {
         try {
             const body: Record<string, any> = { id, status, details };
             if (prevState !== undefined) {
@@ -83,7 +85,9 @@ export const AuditLog = {
                 body.prevState = prevState;
             }
             await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, body);
-            await AuditLog.renderLogs();
+            if (!skipRender) {
+                await AuditLog.renderLogs();
+            }
             return true;
         } catch (error) {
             console.error('Failed to update audit log:', error);

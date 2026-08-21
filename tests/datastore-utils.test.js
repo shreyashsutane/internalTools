@@ -19,10 +19,13 @@ compiled.paths = module.paths;
 compiled._compile(build.outputFiles[0].text, entry);
 const {
     cloneDatastoreValue,
+    compressJsonToBase64,
+    decompressJsonFromBase64,
     deepEqual,
     editorTextToDatastoreValue,
     getDatastoreEditorType,
     datastoreValueToEditorText,
+    mapConcurrent,
     minifyJsonProperties,
     replaceDatastoreField
 } = compiled.exports;
@@ -179,3 +182,101 @@ test('invalid JSON-like strings are left unchanged', () => {
     minifyJsonProperties(properties);
     assert.equal(properties.invalid.stringValue, '{ not-json }');
 });
+
+test('semantic JSON comparison normalizes key order, whitespace, and numbers without false positives', () => {
+    // 1. Re-ordered keys in JSON string
+    const jsonStrA = '{"user": "alice", "roles": ["admin", "editor"], "active": true}';
+    const jsonStrB = '{\n  "active": true,\n  "user": "alice",\n  "roles": [\n    "admin",\n    "editor"\n  ]\n}';
+    assert.equal(deepEqual(jsonStrA, jsonStrB), true);
+
+    // 2. Datastore stringValue wrapper containing JSON
+    const dsA = { stringValue: jsonStrA };
+    const dsB = { stringValue: jsonStrB };
+    assert.equal(deepEqual(dsA, dsB), true);
+
+    // 3. Array order inside JSON is preserved
+    const jsonDiffOrderA = '{"items": [1, 2]}';
+    const jsonDiffOrderB = '{"items": [2, 1]}';
+    assert.equal(deepEqual(jsonDiffOrderA, jsonDiffOrderB), false);
+
+    // 4. Datastore empty array variants compare as equal
+    const emptyArr1 = { arrayValue: {} };
+    const emptyArr2 = { arrayValue: { values: [] } };
+    assert.equal(deepEqual(emptyArr1, emptyArr2), true);
+
+    // 5. Datastore excludeFromIndexes metadata normalization
+    const propWithIndex = { stringValue: 'hello', excludeFromIndexes: false };
+    const propWithoutIndex = { stringValue: 'hello' };
+    assert.equal(deepEqual(propWithIndex, propWithoutIndex), true);
+
+    // 6. Datastore timestamp ISO normalization
+    const ts1 = { timestampValue: '2026-08-20T10:00:00Z' };
+    const ts2 = { timestampValue: '2026-08-20T10:00:00.000Z' };
+    assert.equal(deepEqual(ts1, ts2), true);
+});
+
+test('compressJsonToBase64 and decompressJsonFromBase64 preserve 100% data fidelity losslessly', async () => {
+    const complexData = {
+        type: 'DATASTORE_COPY',
+        kind: 'TestKind',
+        backupData: [
+            {
+                keyStr: 'Kind:1',
+                action: 'upsert',
+                prevEntity: {
+                    key: { path: [{ kind: 'TestKind', id: '1' }] },
+                    properties: {
+                        integer: { integerValue: '9223372036854775807' },
+                        jsonStr: { stringValue: '{"nested": [1, 2, 3], "flag": true}' }
+                    }
+                }
+            }
+        ]
+    };
+
+    const compressed = await compressJsonToBase64(complexData);
+    assert.equal(typeof compressed, 'string');
+    assert.ok(compressed.length > 0);
+
+    const decompressed = await decompressJsonFromBase64(compressed);
+    assert.deepEqual(decompressed, complexData);
+});
+
+test('mapConcurrent executes tasks in parallel within bounded concurrency limit', async () => {
+    const items = [10, 20, 30, 40, 50];
+    let activeWorkers = 0;
+    let maxObservedWorkers = 0;
+
+    const results = await mapConcurrent(items, 3, async (item) => {
+        activeWorkers++;
+        if (activeWorkers > maxObservedWorkers) maxObservedWorkers = activeWorkers;
+        await new Promise(r => setTimeout(r, 10));
+        activeWorkers--;
+        return item * 2;
+    });
+
+    assert.deepEqual(results, [20, 40, 60, 80, 100]);
+    assert.ok(maxObservedWorkers <= 3, 'Observed concurrency exceeded max allowed');
+});
+
+test('deepEqual normalizes CRLF line endings, Datastore meaning metadata, blob padding, and key values', () => {
+    // 1. CRLF vs LF in plain strings
+    assert.equal(deepEqual('line1\r\nline2', 'line1\nline2'), true);
+
+    // 2. Datastore internal meaning metadata field
+    const propWithMeaning = { stringValue: 'test', meaning: 18 };
+    const propWithoutMeaning = { stringValue: 'test' };
+    assert.equal(deepEqual(propWithMeaning, propWithoutMeaning), true);
+
+    // 3. Blob base64 padding difference
+    const blob1 = { blobValue: 'dGVzdA==' };
+    const blob2 = { blobValue: 'dGVzdA' };
+    assert.equal(deepEqual(blob1, blob2), true);
+
+    // 4. KeyValue cross-project partition reference
+    const keyRefA = { keyValue: { partitionId: { projectId: 'proj-a' }, path: [{ kind: 'User', id: '123' }] } };
+    const keyRefB = { keyValue: { partitionId: { projectId: 'proj-b' }, path: [{ kind: 'User', id: '123' }] } };
+    assert.equal(deepEqual(keyRefA, keyRefB), true);
+});
+
+

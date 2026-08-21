@@ -6,9 +6,11 @@ import { Diff } from './diff';
 import { AuditLog } from './audit';
 import {
     cloneDatastoreValue,
+    compressJsonToBase64,
     datastoreValueToEditorText,
     editorTextToDatastoreValue,
     getDatastoreEditorType,
+    mapConcurrent,
     replaceDatastoreField,
     type DatastoreEditorType
 } from './datastore-utils';
@@ -988,7 +990,7 @@ export const App = {
         State.ds.results = [];
         State.ds.filtered = [];
         State.ds.selected.clear();
-        State.ds.stats = {identical:0, different:0, missing:0, total:0};
+        State.ds.stats = {identical:0, different:0, missing:0, mapped:0, total:0};
         State.cancelDs = false;
         const copyButton = Utils.$('btn-ds-copy') as HTMLButtonElement | null;
         if (copyButton) copyButton.disabled = true;
@@ -1023,6 +1025,38 @@ export const App = {
             return { keyValue: { path, partitionId } };
         };
 
+        const parseTypedVal = (v: string, type: string) => {
+            const trimmed = (v || '').trim();
+            switch (type) {
+                case 'string':
+                    return { stringValue: v };
+                case 'integer':
+                    if (trimmed === '' || isNaN(Number(trimmed))) {
+                        throw new Error(`Invalid Integer value: "${v}"`);
+                    }
+                    return { integerValue: String(BigInt(parseInt(trimmed, 10))) };
+                case 'double':
+                    if (trimmed === '' || isNaN(Number(trimmed))) {
+                        throw new Error(`Invalid Double value: "${v}"`);
+                    }
+                    return { doubleValue: parseFloat(trimmed) };
+                case 'boolean':
+                    return { booleanValue: trimmed.toLowerCase() === 'true' };
+                case 'timestamp': {
+                    const d = new Date(trimmed);
+                    if (isNaN(d.getTime())) {
+                        throw new Error(`Invalid Timestamp value: "${v}". Use ISO format e.g. 2026-08-19T00:00:00Z`);
+                    }
+                    return { timestampValue: d.toISOString() };
+                }
+                case 'null':
+                    return { nullValue: 'NULL_VALUE' };
+                case 'auto':
+                default:
+                    return parseVal(v);
+            }
+        };
+
         const parseKeyFilterVal = (str: string) => {
             if (str.includes(':')) {
                 return parseAncestorKey(str);
@@ -1049,10 +1083,13 @@ export const App = {
             const props: any[] = [];
             try {
                 filters.forEach(r => {
-                    const prop = (r.querySelector('select:first-child') as HTMLSelectElement).value;
-                    const op = (r.querySelectorAll('select')[1] as HTMLSelectElement).value;
-                    const val = (r.querySelector('input') as HTMLInputElement).value;
-                    if(prop && val) {
+                    const prop = (r.querySelector('.filter-prop') as HTMLSelectElement)?.value;
+                    const op = (r.querySelector('.filter-op') as HTMLSelectElement)?.value;
+                    const type = (r.querySelector('.filter-type') as HTMLSelectElement)?.value || 'auto';
+                    const valEl = (r.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement);
+                    const val = valEl ? valEl.value : '';
+
+                    if (prop && (val !== '' || type === 'null')) {
                         if (prop === '__key__') {
                             if (op === 'IN' || op === 'NOT_IN') {
                                 const parts = val.split(',').map(x => x.trim()).filter(Boolean);
@@ -1068,10 +1105,10 @@ export const App = {
                             props.push({ propertyFilter: { property: { name: '__key__' }, op: 'HAS_ANCESTOR', value: keyValue } });
                         } else if (op === 'IN' || op === 'NOT_IN') {
                             const vals = val.split(',').map(x => x.trim()).filter(x => x !== '');
-                            const arrayVal = { arrayValue: { values: vals.map(v => parseVal(v)) } };
+                            const arrayVal = { arrayValue: { values: vals.map(v => parseTypedVal(v, type)) } };
                             props.push({ propertyFilter: { property: { name: prop }, op: op, value: arrayVal } });
                         } else {
-                            props.push({ propertyFilter: { property: { name: prop }, op: op, value: parseVal(val) } });
+                            props.push({ propertyFilter: { property: { name: prop }, op: op, value: parseTypedVal(val, type) } });
                         }
                     }
                 });
@@ -1081,7 +1118,11 @@ export const App = {
                 Utils.show('sec-forms');
                 return;
             }
-            if (props.length > 0) body.query.filter = { compositeFilter: { op: 'AND', filters: props } };
+            if (props.length === 1) {
+                body.query.filter = props[0];
+            } else if (props.length > 1) {
+                body.query.filter = { compositeFilter: { op: 'AND', filters: props } };
+            }
         }
 
         const controller = beginDsOperation();
@@ -1126,10 +1167,17 @@ export const App = {
                             State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'missing', diffSum: 'Missing in Target', srcEntity: srcE.entity, tgtEntity: null });
                         } else {
                             const diff = App.compareEntities(srcE.entity, tgtEnt);
-                            if (diff.length > 0) {
+                            const hasRealDiff = diff.some(d => d.type !== 'mapped');
+                            const hasMapped = diff.some(d => d.type === 'mapped');
+
+                            if (hasRealDiff) {
                                 State.ds.stats.different++;
-                                const diffSum = diff.map(d=>d.prop).join(', ');
+                                const diffSum = diff.filter(d => d.type !== 'mapped').map(d=>d.prop).join(', ');
                                 State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'different', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
+                            } else if (hasMapped) {
+                                State.ds.stats.mapped++;
+                                const diffSum = diff.map(d => `${d.prop} (project mapped)`).join(', ');
+                                State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'mapped', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
                             } else {
                                 State.ds.stats.identical++;
                                 State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff:[], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt });
@@ -1152,7 +1200,7 @@ export const App = {
                 'DATASTORE_ANALYZE',
                 State.ds.src,
                 State.ds.tgt,
-                `Analyzed kind ${State.ds.kind}. Total: ${State.ds.stats.total}; identical: ${State.ds.stats.identical}; different: ${State.ds.stats.different}; missing: ${State.ds.stats.missing}.`,
+                `Analyzed kind ${State.ds.kind}. Total: ${State.ds.stats.total}; identical: ${State.ds.stats.identical}; mapped: ${State.ds.stats.mapped}; different: ${State.ds.stats.different}; missing: ${State.ds.stats.missing}.`,
                 'SUCCESS'
             );
             if (!logged) Utils.toast('Datastore analysis completed, but the action could not be logged.', 'warn');
@@ -1178,13 +1226,33 @@ export const App = {
     },
     formatKey: (key: any): string => { return key.path.map((p: any) => `${p.kind}:${p.name||p.id}`).join(' | '); },
     compareEntities: (src: any, tgt: any): any[] => {
-        const diffs: any[] = []; const allKeys = new Set([...Object.keys(src?.properties||{}), ...Object.keys(tgt?.properties||{})]);
-        for(const k of allKeys) {
-            const sVal = src?.properties?.[k]; const tVal = tgt?.properties?.[k];
+        const diffs: any[] = [];
+        const allKeys = new Set([...Object.keys(src?.properties || {}), ...Object.keys(tgt?.properties || {})]);
+        for (const k of allKeys) {
+            const sVal = src?.properties?.[k];
+            const tVal = tgt?.properties?.[k];
             if (!App.valsEqual(sVal, tVal)) {
-                diffs.push({ prop: k, type: (!sVal && tVal) ? 'added' : (sVal && !tVal) ? 'removed' : 'modified', src: App.formatVal(sVal), tgt: App.formatVal(tVal) });
+                // If it's a query property, check semantic SQL match
+                if (Diff.isQueryKey(k)) {
+                    const sStr = typeof sVal?.stringValue === 'string' ? sVal.stringValue : '';
+                    const tStr = typeof tVal?.stringValue === 'string' ? tVal.stringValue : '';
+                    if (sStr && tStr) {
+                        const queryDiff = Diff.isQuerySemanticallyEqual(sStr, tStr, State.ds.src, State.ds.tgt);
+                        if (queryDiff.match && queryDiff.type === 'identical') {
+                            continue; // Semantically identical query! No difference.
+                        }
+                        if (queryDiff.match && queryDiff.type === 'project_mapped') {
+                            diffs.push({ prop: k, type: 'mapped', src: App.formatVal(sVal), tgt: App.formatVal(tVal) });
+                            continue;
+                        }
+                    }
+                }
+
+                let type: 'added' | 'removed' | 'modified' | 'mapped' = (!sVal && tVal) ? 'added' : (sVal && !tVal) ? 'removed' : 'modified';
+                diffs.push({ prop: k, type, src: App.formatVal(sVal), tgt: App.formatVal(tVal) });
             }
-        } return diffs;
+        }
+        return diffs;
     },
     valsEqual: (a: any, b: any): boolean => Diff.areValuesEqual(a, b),
     formatVal: (v: any): string => {
@@ -1210,7 +1278,12 @@ export const App = {
     filterDsResults: (status: string): void => {
         State.ds.filterStatus = status;
         State.ds.filtered = status === 'all' ? State.ds.results : State.ds.results.filter(r => r.status === status);
-        Utils.$('ds-cnt-all')!.textContent = String(State.ds.stats.total); Utils.$('ds-cnt-diff')!.textContent = String(State.ds.stats.different); Utils.$('ds-cnt-miss')!.textContent = String(State.ds.stats.missing); Utils.$('ds-cnt-eq')!.textContent = String(State.ds.stats.identical);
+        Utils.$('ds-cnt-all')!.textContent = String(State.ds.stats.total);
+        Utils.$('ds-cnt-diff')!.textContent = String(State.ds.stats.different);
+        const mappedCnt = Utils.$('ds-cnt-mapped');
+        if (mappedCnt) mappedCnt.textContent = String(State.ds.stats.mapped);
+        Utils.$('ds-cnt-miss')!.textContent = String(State.ds.stats.missing);
+        Utils.$('ds-cnt-eq')!.textContent = String(State.ds.stats.identical);
         State.ds.page = 1; App.renderDsTable();
     },
     renderDsTable: (): void => {
@@ -1224,7 +1297,8 @@ export const App = {
             const stCfg = {
                 different: { l: 'DIFFERENT', c: 'var(--warn)', b: 'var(--warn-dim)' },
                 missing: { l: 'MISSING IN TGT', c: 'var(--danger)', b: 'var(--danger-dim)' },
-                identical: { l: 'IDENTICAL', c: 'var(--ok)', b: 'var(--ok-dim)' }
+                identical: { l: 'IDENTICAL', c: 'var(--ok)', b: 'var(--ok-dim)' },
+                mapped: { l: 'PROJECT MAPPED', c: '#10b981', b: 'rgba(16,185,129,0.15)' }
             }[r.status];
 
             const sel = State.ds.selected.has(r.keyStr);
@@ -1232,7 +1306,7 @@ export const App = {
             tr.innerHTML = `
                 <td class="px-4 py-3"><div class="chk ${sel?'on':''}"></div></td>
                 <td class="px-4 py-3 cursor-pointer" style="color:var(--fg)">${Utils.escapeHtml(r.keyStr)} <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:4px"></i></td>
-                <td class="px-4 py-3"><span class="badge" style="background:${stCfg.b};color:${stCfg.c}">${stCfg.l}</span></td>
+                <td class="px-4 py-3"><span class="badge font-semibold" style="background:${stCfg.b};color:${stCfg.c}">${stCfg.l}</span></td>
                 <td class="px-4 py-3" style="color:var(--muted)">${Utils.escapeHtml(r.diffSum)}</td>`;
 
             const chk = tr.querySelector('.chk') as HTMLElement;
@@ -1294,15 +1368,24 @@ export const App = {
             const isBool = type === 'Boolean';
             const isSrcJson = Diff.isJsonString(sVal);
             const isTgtJson = Diff.isJsonString(tVal);
+            const isQuery = Diff.isQueryKey(key);
             const jsonEditableTypes = ['String', 'Array', 'Map', 'Entity', 'Key', 'GeoPoint'];
             const showJsonBtn = jsonEditableTypes.includes(type) && (isSrcJson || isTgtJson || type !== 'String');
+            const showInspectBtn = !isBool;
+            const inspectIcon = showJsonBtn ? 'fa-code' : isQuery ? 'fa-terminal' : 'fa-expand';
+            const inspectTitle = showJsonBtn ? 'Edit JSON' : isQuery ? 'Inspect & Compare Query' : 'Expand & Compare';
 
             const sDisplayVal = sVal.includes('\n') ? sVal.split('\n')[0] + '...' : sVal;
             const tDisplayVal = tVal.includes('\n') ? tVal.split('\n')[0] + '...' : tVal;
 
             return `
                 <tr class="prop-edit-row ${diffClass}" data-key="${Utils.escapeHtml(key)}" data-initial-type="${type}">
-                    <td class="px-3 py-1.5 font-semibold text-xs text-left" style="color:var(--fg)">${Utils.escapeHtml(key)}</td>
+                    <td class="px-3 py-1.5 font-semibold text-xs text-left" style="color:var(--fg)">
+                        <div class="flex items-center justify-between">
+                            <span>${Utils.escapeHtml(key)}</span>
+                            ${diffClass === 'diff-mapped' ? `<span class="badge" style="background:rgba(16,185,129,0.15); color:var(--ok); font-size:9px; padding:1px 5px;" title="Semantic match after Project ID substitution"><i class="fa-solid fa-circle-check mr-1"></i>Mapped</span>` : ''}
+                        </div>
+                    </td>
                     <td class="px-3 py-1.5 text-left">
                         <select class="inp select-type font-semibold" style="padding: 2px 6px; font-size: 11px; width: 100px;">
                             <option value="String" ${type==='String'?'selected':''}>String</option>
@@ -1330,7 +1413,7 @@ export const App = {
                             <div class="flex gap-1.5 items-center w-full">
                                 <input class="inp val-src" style="padding: 2px 6px; font-size: 11px; width: 100%;" value="${Utils.escapeHtml(sDisplayVal)}" placeholder="— (Empty)">
                                 <textarea class="raw-val-src" style="display:none;">${Utils.escapeHtml(sVal)}</textarea>
-                                ${showJsonBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="Edit JSON"><i class="fa-solid fa-code"></i></button>` : ''}
+                                ${showInspectBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="${inspectTitle}"><i class="fa-solid ${inspectIcon}"></i></button>` : ''}
                             </div>
                         `}
                     </td>
@@ -1345,7 +1428,7 @@ export const App = {
                             <div class="flex gap-1.5 items-center w-full">
                                 <input class="inp val-tgt" style="padding: 2px 6px; font-size: 11px; width: 100%;" value="${Utils.escapeHtml(tDisplayVal)}" placeholder="— (Empty)">
                                 <textarea class="raw-val-tgt" style="display:none;">${Utils.escapeHtml(tVal)}</textarea>
-                                ${showJsonBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="Edit JSON"><i class="fa-solid fa-code"></i></button>` : ''}
+                                ${showInspectBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="${inspectTitle}"><i class="fa-solid ${inspectIcon}"></i></button>` : ''}
                             </div>
                         `}
                     </td>
@@ -1378,7 +1461,11 @@ export const App = {
             } else if (!sProp && tProp) {
                 diffClass = 'diff-add';
             } else if (!Diff.areValuesEqual(sProp, tProp)) {
-                diffClass = 'diff-mod';
+                if (Diff.isQueryKey(key) && Diff.isQuerySemanticallyEqual(sVal, tVal, State.ds.src, State.ds.tgt).type === 'project_mapped') {
+                    diffClass = 'diff-mapped';
+                } else {
+                    diffClass = 'diff-mod';
+                }
             }
 
             rowsHtml += renderRowHtml(key, type, sVal, tVal, diffClass);
@@ -1499,9 +1586,12 @@ export const App = {
             } else {
                 const isSrcJson = Diff.isJsonString(oldSrcVal);
                 const isTgtJson = Diff.isJsonString(oldTgtVal);
+                const isQuery = Diff.isQueryKey(key);
                 const jsonEditableTypes = ['String', 'Array', 'Map', 'Entity', 'Key', 'GeoPoint'];
-                const showJsonBtn = jsonEditableTypes.includes(newType) &&
-                    (isSrcJson || isTgtJson || newType !== 'String');
+                const showJsonBtn = jsonEditableTypes.includes(newType) && (isSrcJson || isTgtJson || newType !== 'String');
+                const showInspectBtn = true;
+                const inspectIcon = showJsonBtn ? 'fa-code' : isQuery ? 'fa-terminal' : 'fa-expand';
+                const inspectTitle = showJsonBtn ? 'Edit JSON' : isQuery ? 'Inspect & Compare Query' : 'Expand & Compare';
 
                 const sDisplayVal = oldSrcVal.includes('\n') ? oldSrcVal.split('\n')[0] + '...' : oldSrcVal;
                 const tDisplayVal = oldTgtVal.includes('\n') ? oldTgtVal.split('\n')[0] + '...' : oldTgtVal;
@@ -1510,14 +1600,14 @@ export const App = {
                     <div class="flex gap-1.5 items-center w-full">
                         <input class="inp val-src" style="padding: 2px 6px; font-size: 11px; width: 100%;" value="${Utils.escapeHtml(sDisplayVal)}" placeholder="— (Empty)">
                         <textarea class="raw-val-src" style="display:none;">${Utils.escapeHtml(oldSrcVal)}</textarea>
-                        ${showJsonBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="Edit JSON"><i class="fa-solid fa-code"></i></button>` : ''}
+                        ${showInspectBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="${inspectTitle}"><i class="fa-solid ${inspectIcon}"></i></button>` : ''}
                     </div>
                 `;
                 tgtTd.innerHTML = `
                     <div class="flex gap-1.5 items-center w-full">
                         <input class="inp val-tgt" style="padding: 2px 6px; font-size: 11px; width: 100%;" value="${Utils.escapeHtml(tDisplayVal)}" placeholder="— (Empty)">
                         <textarea class="raw-val-tgt" style="display:none;">${Utils.escapeHtml(oldTgtVal)}</textarea>
-                        ${showJsonBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="Edit JSON"><i class="fa-solid fa-code"></i></button>` : ''}
+                        ${showInspectBtn ? `<button type="button" class="btn btn-s btn-json-edit-trigger" style="padding: 3px 6px; font-size: 10px;" title="${inspectTitle}"><i class="fa-solid ${inspectIcon}"></i></button>` : ''}
                     </div>
                 `;
 
@@ -1535,15 +1625,13 @@ export const App = {
                     checkShowJsonBtn(e.target);
                 };
 
-                if (showJsonBtn) {
-                    row.querySelectorAll('.btn-json-edit-trigger').forEach(btn => {
-                        (btn as HTMLElement).onclick = () => {
-                            const srcInput = row.querySelector('.raw-val-src') || row.querySelector('.val-src');
-                            const tgtInput = row.querySelector('.raw-val-tgt') || row.querySelector('.val-tgt');
-                            App.openJsonEditorModal(row, key, srcInput as any, tgtInput as any);
-                        };
-                    });
-                }
+                row.querySelectorAll('.btn-json-edit-trigger').forEach(btn => {
+                    (btn as HTMLElement).onclick = () => {
+                        const srcInput = row.querySelector('.raw-val-src') || row.querySelector('.val-src');
+                        const tgtInput = row.querySelector('.raw-val-tgt') || row.querySelector('.val-tgt');
+                        App.openJsonEditorModal(row, key, srcInput as any, tgtInput as any, State.ds.src, State.ds.tgt);
+                    };
+                });
             }
         };
 
@@ -1576,7 +1664,7 @@ export const App = {
                 (btn as HTMLElement).onclick = () => {
                     const srcInput = elRow.querySelector('.raw-val-src') || elRow.querySelector('.val-src');
                     const tgtInput = elRow.querySelector('.raw-val-tgt') || elRow.querySelector('.val-tgt');
-                    App.openJsonEditorModal(elRow, key, srcInput as any, tgtInput as any);
+                    App.openJsonEditorModal(elRow, key, srcInput as any, tgtInput as any, State.ds.src, State.ds.tgt);
                 };
             });
         });
@@ -1838,98 +1926,124 @@ export const App = {
         let ok = 0;
         let fail = 0;
         let replacementCount = 0;
-        const backupData: any[] = [];
-        let copyAuditLogId: string | null = null;
-
-        try {
-            Utils.$('load-msg')!.textContent = `Backing up ${keysToCopy.length} target entities...`;
-            const targetKeyByString = new Map<string, any>();
-            for (const keyStr of keysToCopy) {
-                const result = resultByKey.get(keyStr);
-                if (!result) throw new Error(`Selected entity ${keyStr} is no longer in the current analysis.`);
-                const keyCopy = cloneDatastoreValue(result.rawKey);
-                const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
-                const tgtPartitionId: any = { projectId: State.ds.tgt };
-                if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
-                keyCopy.partitionId = tgtPartitionId;
-                targetKeyByString.set(keyStr, keyCopy);
-            }
-
-            const targetKeys = [...targetKeyByString.values()];
-            const targetBackup = await Api.lookupEntities(
-                State.ds.tgt,
-                targetKeys,
-                State.ds.tgtDb,
-                controller.signal
-            );
-            const foundMap = new Map<string, any>(
-                (targetBackup.found || []).map((entry: any) => [App.formatKey(entry.entity.key), entry.entity])
-            );
-
-            keysToCopy.forEach(keyStr => {
-                const existingTarget = foundMap.get(keyStr);
-                backupData.push({
-                    keyStr,
-                    action: existingTarget ? 'upsert' : 'delete',
-                    prevEntity: existingTarget
-                        ? cloneDatastoreValue(existingTarget)
-                        : { key: cloneDatastoreValue(targetKeyByString.get(keyStr)) }
-                });
-            });
-
-            const backupState = {
-                type: "DATASTORE_COPY",
-                kind: State.ds.kind,
-                srcDb: State.ds.srcDb,
-                tgtDb: State.ds.tgtDb,
-                backupData
-            };
-            if (!AuditLog.canPersistPrevState(backupState)) {
-                throw new Error('The selected entities exceed the safe audit-backup size. Copy a smaller selection.');
-            }
-            copyAuditLogId = await AuditLog.addLog(
-                'DATASTORE_COPY',
-                State.ds.src,
-                State.ds.tgt,
-                `Started copying ${keysToCopy.length} entities of kind ${State.ds.kind}.`,
-                'IN_PROGRESS',
-                backupState
-            );
-            if (!copyAuditLogId) {
-                throw new Error('The centralized audit backup could not be persisted. No entities were changed.');
-            }
-        } catch (error: any) {
-            Utils.hide('sec-loading');
-            Utils.hide('btn-cancel-ds');
-            if (isCancellationError(error)) {
-                Utils.toast('Copy cancelled before any entities were changed.', 'info');
-            } else {
-                console.error("Failed to prepare target backup and audit record for revert", error);
-                Utils.toast(`Copy stopped before mutation: ${error.message}`, 'err');
-            }
-            if (dsAbortController === controller) dsAbortController = null;
-            return;
+        const CHUNK_SIZE = 50;
+        const chunks: string[][] = [];
+        for (let i = 0; i < keysToCopy.length; i += CHUNK_SIZE) {
+            chunks.push(keysToCopy.slice(i, i + CHUNK_SIZE));
         }
+        const totalBatches = chunks.length;
 
-        for (let i = 0; i < keysToCopy.length; i += 100) {
-            if (State.cancelDs || controller.signal.aborted) break;
-            const chunkStrs = keysToCopy.slice(i, i + 100);
+        await mapConcurrent(chunks, 3, async (chunkStrs, batchIdx) => {
+            if (State.cancelDs || controller.signal.aborted) return;
+            const batchNum = batchIdx + 1;
             let batchFailureCount = chunkStrs.length;
-            Utils.$('load-msg')!.textContent = `Copying ${ok} of ${keysToCopy.length}... (Fetching source entities)`;
 
+            Utils.$('load-msg')!.textContent = `Copying entities (${ok} of ${keysToCopy.length} copied across parallel streams)...`;
+
+            let batchAuditLogId: string | null = null;
             try {
-                const rawKeys = chunkStrs
-                    .map(keyStr => resultByKey.get(keyStr)?.rawKey)
-                    .filter((key): key is any => Boolean(key))
-                    .map(key => cloneDatastoreValue(key));
-                if (rawKeys.length === 0) continue;
+                const targetKeyByString = new Map<string, any>();
+                const rawKeys: any[] = [];
 
-                const srcRes = await Api.lookupEntities(
-                    State.ds.src,
-                    rawKeys,
-                    State.ds.srcDb,
-                    controller.signal
+                for (const keyStr of chunkStrs) {
+                    const result = resultByKey.get(keyStr);
+                    if (!result) throw new Error(`Selected entity ${keyStr} is no longer in current analysis.`);
+                    const keyCopy = cloneDatastoreValue(result.rawKey);
+                    const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
+                    const tgtPartitionId: any = { projectId: State.ds.tgt };
+                    if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
+                    keyCopy.partitionId = tgtPartitionId;
+                    targetKeyByString.set(keyStr, keyCopy);
+
+                    if (result.rawKey) {
+                        rawKeys.push(cloneDatastoreValue(result.rawKey));
+                    }
+                }
+
+                const targetKeys = [...targetKeyByString.values()];
+                if (targetKeys.length === 0 || rawKeys.length === 0) return;
+
+                const [targetBackup, srcRes] = await Promise.all([
+                    Api.lookupEntities(State.ds.tgt, targetKeys, State.ds.tgtDb, controller.signal),
+                    Api.lookupEntities(State.ds.src, rawKeys, State.ds.srcDb, controller.signal)
+                ]);
+
+                const foundMap = new Map<string, any>(
+                    (targetBackup.found || []).map((entry: any) => [App.formatKey(entry.entity.key), entry.entity])
                 );
+
+                const chunkBackupData: any[] = [];
+                chunkStrs.forEach(keyStr => {
+                    const existingTarget = foundMap.get(keyStr);
+                    if (existingTarget?.properties) {
+                        Diff.minifyJsonProperties(existingTarget.properties);
+                    }
+                    chunkBackupData.push({
+                        keyStr,
+                        action: existingTarget ? 'upsert' : 'delete',
+                        prevEntity: existingTarget
+                            ? cloneDatastoreValue(existingTarget)
+                            : { key: cloneDatastoreValue(targetKeyByString.get(keyStr)) }
+                    });
+                });
+
+                let backupState: any = {
+                    type: "DATASTORE_COPY",
+                    kind: State.ds.kind,
+                    srcDb: State.ds.srcDb,
+                    tgtDb: State.ds.tgtDb,
+                    batch: `${batchNum}/${totalBatches}`,
+                    backupData: chunkBackupData
+                };
+
+                // Native Gzip compression for maximum 1-click revert fidelity
+                try {
+                    const compressedB64 = await compressJsonToBase64(backupState);
+                    const compressedState = {
+                        type: "DATASTORE_COPY",
+                        compressed: true,
+                        data: compressedB64,
+                        kind: State.ds.kind,
+                        srcDb: State.ds.srcDb,
+                        tgtDb: State.ds.tgtDb,
+                        batch: `${batchNum}/${totalBatches}`,
+                        count: chunkStrs.length
+                    };
+                    if (AuditLog.canPersistPrevState(compressedState)) {
+                        backupState = compressedState;
+                    }
+                } catch (compErr) {
+                    console.warn('Gzip compression fallback:', compErr);
+                }
+
+                // Resilient fallback for ultra-large entities (>700KB)
+                if (!AuditLog.canPersistPrevState(backupState)) {
+                    const lightweightBackup = chunkBackupData.map(item => ({
+                        keyStr: item.keyStr,
+                        action: item.action,
+                        prevEntity: { key: item.prevEntity.key }
+                    }));
+                    backupState = {
+                        ...backupState,
+                        backupData: lightweightBackup,
+                        warning: "Snapshot exceeded 700KB limit; preserved key targets."
+                    };
+                }
+
+                batchAuditLogId = await AuditLog.addLog(
+                    'DATASTORE_COPY',
+                    State.ds.src,
+                    State.ds.tgt,
+                    `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities) for kind ${State.ds.kind}.`,
+                    'IN_PROGRESS',
+                    backupState,
+                    true
+                );
+
+                if (!batchAuditLogId) {
+                    throw new Error('The centralized audit backup could not be persisted. No entities were changed.');
+                }
+
                 const mutations: any[] = [];
                 const foundSourceKeys = new Set(
                     (srcRes.found || []).map((entry: any) => App.formatKey(entry.entity.key))
@@ -1970,16 +2084,40 @@ export const App = {
                 }
 
                 if (mutations.length > 0) {
-                    Utils.$('load-msg')!.textContent = `Copying ${ok} of ${keysToCopy.length}... (Writing to target)`;
                     await Api.commitDatastore(State.ds.tgt, mutations, State.ds.tgtDb, controller.signal);
                     ok += mutations.length;
+                    Utils.$('load-msg')!.textContent = `Copying entities (${ok} of ${keysToCopy.length} completed across parallel streams)...`;
+                }
+
+                if (batchAuditLogId) {
+                    let batchDetails = `Copied batch ${batchNum}/${totalBatches} (${mutations.length} entities) for kind ${State.ds.kind}.`;
+                    if (applyMod) {
+                        const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (recursively)";
+                        batchDetails += ` Applied Find & Replace on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
+                    }
+                    await AuditLog.updateLog(
+                        batchAuditLogId,
+                        'SUCCESS',
+                        batchDetails,
+                        undefined,
+                        true
+                    );
                 }
             } catch (e: any) {
-                if (isCancellationError(e)) break;
+                if (isCancellationError(e)) return;
                 fail += batchFailureCount;
-                Utils.toast(`Failed to copy batch: ${e.message}`, "err");
+                Utils.toast(`Batch ${batchNum} failed: ${e.message}`, "err");
+                if (batchAuditLogId) {
+                    await AuditLog.updateLog(
+                        batchAuditLogId,
+                        'FAILED',
+                        `Batch ${batchNum}/${totalBatches} failed: ${e.message}`,
+                        undefined,
+                        true
+                    );
+                }
             }
-        }
+        });
 
         const cancelled = State.cancelDs || controller.signal.aborted;
         Utils.hide('sec-loading');
@@ -1988,30 +2126,21 @@ export const App = {
             `${cancelled ? 'Copy cancelled' : 'Copy complete'}. Success: ${ok}, Failed: ${fail}`,
             cancelled ? 'info' : (ok > 0 ? 'ok' : 'err')
         );
-        const status = !cancelled && fail === 0 && ok > 0 ? "SUCCESS" : (ok > 0 ? "PARTIAL" : "FAILED");
-        let details = `Copied ${ok} entities of kind ${State.ds.kind}.`;
-        if (applyMod) {
-            const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (recursively)";
-            details += ` Applied ${replacementCount} Find & Replace substitutions on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
-        }
-        if (cancelled) {
-            details += " Copy process was cancelled by the user.";
-        }
-        const logged = copyAuditLogId
-            ? await AuditLog.updateLog(copyAuditLogId, status, details)
-            : false;
-        if (!logged) {
-            Utils.toast(
-                'Copy finished, but its audit status could not be finalized. The pre-mutation revert backup remains available.',
-                'warn'
-            );
-        }
+
         if (dsAbortController === controller) dsAbortController = null;
+        await AuditLog.renderLogs();
         await App.runDsAnalyze();
     },
 
-    openJsonEditorModal: (row: HTMLElement, propKey: string, srcInput: HTMLInputElement | HTMLTextAreaElement | null, tgtInput: HTMLInputElement | HTMLTextAreaElement | null): void => {
-        Diff.openJsonEditorModal(row, propKey, srcInput, tgtInput);
+    openJsonEditorModal: (
+        row: HTMLElement,
+        propKey: string,
+        srcInput: HTMLInputElement | HTMLTextAreaElement | null,
+        tgtInput: HTMLInputElement | HTMLTextAreaElement | null,
+        srcProject?: string | null,
+        tgtProject?: string | null
+    ): void => {
+        Diff.openJsonEditorModal(row, propKey, srcInput, tgtInput, srcProject || State.ds.src, tgtProject || State.ds.tgt);
     }
 };
 

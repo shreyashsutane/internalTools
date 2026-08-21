@@ -2,5 +2,11 @@ node_modules/
 .firebase/
 *.log
 .tempmediaStorage/
-.DS_Store
 firebase-config.js
+graphify-out/
+.env*
+*.pem
+*.key
+*service-account*.json
+.DS_Store
+

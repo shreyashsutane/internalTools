@@ -208,3 +208,42 @@ test('failed scheduled-query restore recreates the copied config and reports fai
         ['create', 'Current']
     ]);
 });
+
+test('compressed Datastore revert snapshot decompresses and executes exact revert plan losslessly', async () => {
+    const previous = entity(100);
+    const rawState = {
+        type: 'DATASTORE_COPY',
+        tgtDb: 'target-db',
+        backupData: [
+            { action: 'upsert', prevEntity: previous },
+            { action: 'delete', prevEntity: { key: key(200) } }
+        ]
+    };
+
+    // Compress rawState
+    const zlib = require('node:zlib');
+    const compressedB64 = zlib.gzipSync(Buffer.from(JSON.stringify(rawState))).toString('base64');
+
+    const compressedLogState = {
+        type: 'DATASTORE_COPY',
+        compressed: true,
+        data: compressedB64
+    };
+
+    const committedMutations = [];
+    const api = {
+        commitDatastore: async (projectId, mutations, databaseId) => {
+            committedMutations.push({ projectId, mutations, databaseId });
+            return { mutationResults: [] };
+        }
+    };
+
+    const result = await executeDatastoreRevert(api, 'target-project', compressedLogState);
+
+    assert.equal(result.restored, 1);
+    assert.equal(result.deleted, 1);
+    assert.equal(result.skippedDeletes, 0);
+    assert.equal(committedMutations.length, 2);
+    assert.equal(committedMutations[0].mutations[0].upsert.key.partitionId.projectId, 'target-project');
+    assert.equal(committedMutations[0].mutations[0].upsert.properties.integer.integerValue, '9223372036854775807');
+});

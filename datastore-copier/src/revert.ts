@@ -1,4 +1,4 @@
-import { cloneDatastoreValue, minifyJsonProperties } from './datastore-utils';
+import { cloneDatastoreValue, decompressJsonFromBase64, minifyJsonProperties } from './datastore-utils';
 
 export interface DatastoreCommitApi {
     commitDatastore: (
@@ -131,7 +131,10 @@ export const executeDatastoreRevert = async (
     state: any,
     chunkSize = 400
 ): Promise<DatastoreRevertResult> => {
-    const plan = buildDatastoreRevertPlan(state, targetProject);
+    const rawState = state?.compressed && state?.data
+        ? await decompressJsonFromBase64(state.data)
+        : state;
+    const plan = buildDatastoreRevertPlan(rawState, targetProject);
     const restored = await commitChunks(
         api,
         targetProject,

@@ -307,10 +307,19 @@ export const Api = {
     commitDatastore: async (pid: string, mutations: any[], databaseId?: string, signal?: AbortSignal): Promise<any> => {
         const db = cleanDatabaseId(databaseId);
         const url = CONFIG.DATASTORE_COMMIT_URL(pid, db);
-        return Api.fetch(url, {
-            method: 'POST',
-            body: JSON.stringify({ mode: "NON_TRANSACTIONAL", mutations }),
-            signal
-        });
+        const MAX_MUTATIONS_PER_COMMIT = 250;
+        const results: any[] = [];
+
+        for (let i = 0; i < mutations.length; i += MAX_MUTATIONS_PER_COMMIT) {
+            throwIfAborted(signal);
+            const chunk = mutations.slice(i, i + MAX_MUTATIONS_PER_COMMIT);
+            const res = await Api.fetch(url, {
+                method: 'POST',
+                body: JSON.stringify({ mode: "NON_TRANSACTIONAL", mutations: chunk }),
+                signal
+            });
+            results.push(res);
+        }
+        return results.length === 1 ? results[0] : { mutationResults: results.flatMap(r => r.mutationResults || []) };
     }
 };

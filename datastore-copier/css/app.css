@@ -445,6 +445,8 @@ h1, h2, h3 {
 .diff-add { background: var(--ok-dim); border-left: 4px solid var(--ok); }
 .diff-rem { background: var(--danger-dim); border-left: 4px solid var(--danger); }
 .diff-mod { background: var(--warn-dim); border-left: 4px solid var(--warn); }
+.diff-mapped { background: rgba(16, 185, 129, 0.10); border-left: 4px solid var(--ok); }
+
 
 .filter-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
 .filter-row .inp { flex: 1; }
@@ -576,15 +578,23 @@ h1, h2, h3 {
     white-space: pre-wrap;
 }
 .filter-prop-width {
-    width: 32%;
-    padding: 4px 8px;
-}
-.filter-op-width {
     width: 28%;
     padding: 4px 8px;
 }
+.filter-op-width {
+    width: 20%;
+    padding: 4px 8px;
+}
+.filter-type-width {
+    width: 18%;
+    padding: 4px 8px;
+}
+.filter-val-container {
+    flex: 1;
+    min-width: 0;
+}
 .filter-val-width {
-    width: 40%;
+    width: 100%;
     padding: 4px 8px;
 }
 .btn-trash-padding {

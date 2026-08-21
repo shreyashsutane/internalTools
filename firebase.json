@@ -40,7 +40,8 @@
       "datastore-copier/README.md",
       "datastore-copier/script.js",
       "datastore-copier/src/**",
-      "datastore-copier/js/*.map"
+      "datastore-copier/js/*.map",
+      "graphify-out/**"
     ],
     "rewrites": [
       {

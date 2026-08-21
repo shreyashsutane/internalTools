@@ -130,8 +130,8 @@ const updateOwnAuditLog = async (identity, payload) => {
 
 exports.auditApi = onRequest({
     region: 'us-central1',
-    timeoutSeconds: 30,
-    memory: '256MiB',
+    timeoutSeconds: 60,
+    memory: '512MiB',
     maxInstances: 10,
     concurrency: 40,
     invoker: 'public',
