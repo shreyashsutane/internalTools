@@ -176,7 +176,8 @@ export const Api = {
         projectId: string,
         query: string,
         signal?: AbortSignal,
-        onProgress?: (loadedRows: number) => void
+        onInitialData?: (initialResults: BigQueryResults, totalExpected: number) => void,
+        onChunk?: (newRows: any[][], totalLoaded: number, totalExpected: number) => void
     ): Promise<BigQueryResults> => {
         const startTime = performance.now();
         const url = `${BASE_BIGQUERY}/${projectId}/queries`;
@@ -185,7 +186,7 @@ export const Api = {
             query,
             useLegacySql: false,
             timeoutMs: 30000,
-            maxResults: 50000
+            maxResults: 20000
         };
 
         const res = await fetch(url, {
@@ -211,6 +212,7 @@ export const Api = {
         const allRows: any[][] = [];
         let totalBytesBilled = data.totalBytesBilled || data.totalBytesProcessed || '0';
         const cacheHit = Boolean(data.cacheHit);
+        const totalExpectedRows = Number(data.totalRows || 0);
 
         const parseRow = (rowObj: any): any[] => {
             if (!rowObj || !Array.isArray(rowObj.f)) return [];
@@ -220,57 +222,96 @@ export const Api = {
             });
         };
 
-        // Ingest first batch
+        // Ingest initial batch
         if (Array.isArray(data.rows)) {
             for (const r of data.rows) {
                 allRows.push(parseRow(r));
             }
-            if (onProgress) onProgress(allRows.length);
+        }
+
+        // Trigger INSTANT first render so user sees data in < 300ms!
+        if (onInitialData) {
+            onInitialData({
+                schema,
+                rows: allRows,
+                totalRows: totalExpectedRows || allRows.length,
+                executionTimeMs: Math.round(performance.now() - startTime),
+                totalBytesBilled: Utils.formatBytes(Number(totalBytesBilled)),
+                cacheHit
+            }, totalExpectedRows);
         }
 
         let pageToken = data.pageToken;
         let jobComplete = data.jobComplete;
 
-        // Poll / paginate if job incomplete or more pages exist
-        while (!jobComplete || pageToken) {
-            if (signal?.aborted) throw new DOMException('Query Cancelled', 'AbortError');
-            
-            // Only delay when polling for job completion, not when next page is immediately available
-            if (!jobComplete) {
-                await new Promise(r => setTimeout(r, 250));
+        // If job is complete and we have remaining rows, use parallel concurrent startIndex fetching!
+        if (jobComplete && totalExpectedRows > allRows.length && jobId) {
+            const chunkSize = 25000;
+            const startOffsets: number[] = [];
+            for (let offset = allRows.length; offset < totalExpectedRows; offset += chunkSize) {
+                startOffsets.push(offset);
             }
 
-            const getResultsUrl = location
-                ? `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?location=${location}${pageToken ? `&pageToken=${pageToken}` : ''}&maxResults=50000`
-                : `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?${pageToken ? `pageToken=${pageToken}` : ''}&maxResults=50000`;
+            const MAX_CONCURRENT = 4;
+            const fetchChunk = async (startIndex: number) => {
+                if (signal?.aborted) return [];
+                const chunkUrl = location
+                    ? `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?location=${location}&startIndex=${startIndex}&maxResults=${chunkSize}`
+                    : `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?startIndex=${startIndex}&maxResults=${chunkSize}`;
 
-            const pageRes = await fetch(getResultsUrl, {
-                headers: { Authorization: `Bearer ${State.token}` },
-                signal
-            });
+                const cRes = await fetch(chunkUrl, {
+                    headers: { Authorization: `Bearer ${State.token}` },
+                    signal
+                });
+                if (!cRes.ok) return [];
+                const cData = await cRes.json();
+                if (!Array.isArray(cData.rows)) return [];
+                return cData.rows.map(parseRow);
+            };
 
-            if (!pageRes.ok) {
-                const errData = await pageRes.json().catch(() => ({}));
-                throw new Error(errData?.error?.message || `Failed to fetch query results page (HTTP ${pageRes.status})`);
-            }
-
-            const pageData = await pageRes.json();
-            jobComplete = pageData.jobComplete;
-            pageToken = pageData.pageToken;
-
-            if (pageData.schema?.fields) schema = pageData.schema.fields;
-            if (pageData.totalBytesBilled) totalBytesBilled = pageData.totalBytesBilled;
-
-            if (Array.isArray(pageData.rows)) {
-                for (const r of pageData.rows) {
-                    allRows.push(parseRow(r));
+            for (let i = 0; i < startOffsets.length; i += MAX_CONCURRENT) {
+                const batch = startOffsets.slice(i, i + MAX_CONCURRENT);
+                const chunkResults = await Promise.all(batch.map(fetchChunk));
+                for (const chunkRows of chunkResults) {
+                    for (const row of chunkRows) {
+                        allRows.push(row);
+                    }
+                    if (onChunk) onChunk(chunkRows, allRows.length, totalExpectedRows);
                 }
-                if (onProgress) onProgress(allRows.length);
+            }
+        } else {
+            // Sequential fallback
+            while (!jobComplete || pageToken) {
+                if (signal?.aborted) throw new DOMException('Query Cancelled', 'AbortError');
+                if (!jobComplete) await new Promise(r => setTimeout(r, 200));
+
+                const getResultsUrl = location
+                    ? `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?location=${location}${pageToken ? `&pageToken=${pageToken}` : ''}&maxResults=30000`
+                    : `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?${pageToken ? `pageToken=${pageToken}` : ''}&maxResults=30000`;
+
+                const pageRes = await fetch(getResultsUrl, {
+                    headers: { Authorization: `Bearer ${State.token}` },
+                    signal
+                });
+
+                if (!pageRes.ok) break;
+
+                const pageData = await pageRes.json();
+                jobComplete = pageData.jobComplete;
+                pageToken = pageData.pageToken;
+
+                if (pageData.schema?.fields) schema = pageData.schema.fields;
+                if (pageData.totalBytesBilled) totalBytesBilled = pageData.totalBytesBilled;
+
+                if (Array.isArray(pageData.rows)) {
+                    const chunkRows = pageData.rows.map(parseRow);
+                    for (const r of chunkRows) allRows.push(r);
+                    if (onChunk) onChunk(chunkRows, allRows.length, totalExpectedRows);
+                }
             }
         }
 
-        const endTime = performance.now();
-        const executionTimeMs = Math.round(endTime - startTime);
+        const executionTimeMs = Math.round(performance.now() - startTime);
 
         return {
             schema,

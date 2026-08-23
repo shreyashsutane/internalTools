@@ -472,7 +472,7 @@ export const App = {
     executeLiveQuery: async (resolvedSql: string) => {
         const btnRun = Utils.$('btn-run-query') as HTMLButtonElement;
         btnRun.disabled = true;
-        btnRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Executing BigQuery...';
+        btnRun.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Querying BigQuery...';
         Utils.show('btn-cancel-query');
 
         activeAbortController = new AbortController();
@@ -482,14 +482,37 @@ export const App = {
                 State.projectId,
                 resolvedSql,
                 activeAbortController.signal,
-                (loadedCount) => {
-                    btnRun.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Streaming ${loadedCount.toLocaleString()} rows...`;
+                // Instant first render callback (< 300ms)
+                (initialResults, totalExpected) => {
+                    State.bqResults = initialResults;
+                    State.currentPage = 1;
+                    State.resultsFilter = '';
+                    Utils.show('sec-results-panel');
+                    App.renderResultsHeader();
+                    App.renderResultsTable();
+
+                    if (totalExpected > initialResults.rows.length) {
+                        btnRun.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Streaming ${initialResults.rows.length.toLocaleString()} / ${totalExpected.toLocaleString()} rows...`;
+                    }
+                },
+                // Background parallel chunk arrival callback
+                (_chunkRows, totalLoaded, totalExpected) => {
+                    const pct = totalExpected > 0 ? Math.round((totalLoaded / totalExpected) * 100) : 0;
+                    btnRun.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Streaming ${totalLoaded.toLocaleString()} / ${totalExpected.toLocaleString()} rows (${pct}%)...`;
+                    if (State.bqResults) {
+                        State.bqResults.totalRows = totalLoaded;
+                        App.renderResultsHeader();
+                        // Update table pagination info
+                        const totalPages = Math.ceil(totalLoaded / State.rowsPerPage) || 1;
+                        const pageInfo = Utils.$('page-info');
+                        if (pageInfo && !State.resultsFilter) {
+                            pageInfo.textContent = `Page ${State.currentPage} of ${totalPages} (${totalLoaded.toLocaleString()} rows)`;
+                        }
+                    }
                 }
             );
-            State.bqResults = results;
-            State.currentPage = 1;
-            State.resultsFilter = '';
 
+            State.bqResults = results;
             btnRun.disabled = false;
             btnRun.innerHTML = '<i class="fa-solid fa-play mr-1.5"></i> Run Query on BigQuery';
             Utils.hide('btn-cancel-query');
@@ -498,7 +521,7 @@ export const App = {
             App.renderResultsHeader();
             App.renderResultsTable();
 
-            Utils.toast(`BigQuery executed successfully! (${results.totalRows.toLocaleString()} rows in ${results.executionTimeMs}ms)`, 'ok');
+            Utils.toast(`BigQuery completed! (${results.totalRows.toLocaleString()} rows loaded in ${results.executionTimeMs}ms)`, 'ok');
             void Api.recordAudit('BIGQUERY_EXECUTE', `Executed query on ${State.projectId}: ${results.totalRows} rows returned in ${results.executionTimeMs}ms. Billed: ${results.totalBytesBilled}`);
         } catch (e: any) {
             btnRun.disabled = false;
@@ -658,9 +681,9 @@ export const App = {
         if (!State.bqResults) return;
         const headers = State.bqResults.schema.map(f => f.name);
         const rows = App.getFilteredRows();
-        const filename = `${State.selectedQuestion?.referenceName || 'bigquery_results'}_${Date.now()}`;
+        const filename = `${State.selectedQuestion?.referenceName || 'bigquery_full_sheet'}_${Date.now()}`;
         Utils.exportCsv(filename, headers, rows);
-        Utils.toast(`Exported ${rows.length} rows to CSV!`, 'ok');
+        Utils.toast(`Downloaded whole sheet (${rows.length.toLocaleString()} rows) as CSV!`, 'ok');
     },
 
     handleExportJson: () => {
@@ -674,9 +697,9 @@ export const App = {
             });
             return obj;
         });
-        const filename = `${State.selectedQuestion?.referenceName || 'bigquery_results'}_${Date.now()}`;
+        const filename = `${State.selectedQuestion?.referenceName || 'bigquery_full_sheet'}_${Date.now()}`;
         Utils.exportJson(filename, jsonData);
-        Utils.toast(`Exported ${rows.length} rows to JSON!`, 'ok');
+        Utils.toast(`Downloaded ${rows.length.toLocaleString()} rows as JSON!`, 'ok');
     },
 
     handleSaveToDatastore: async () => {
