@@ -478,7 +478,14 @@ export const App = {
         activeAbortController = new AbortController();
 
         try {
-            const results = await Api.executeBigQuery(State.projectId, resolvedSql, activeAbortController.signal);
+            const results = await Api.executeBigQuery(
+                State.projectId,
+                resolvedSql,
+                activeAbortController.signal,
+                (loadedCount) => {
+                    btnRun.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> Streaming ${loadedCount.toLocaleString()} rows...`;
+                }
+            );
             State.bqResults = results;
             State.currentPage = 1;
             State.resultsFilter = '';
@@ -534,12 +541,30 @@ export const App = {
 
     getFilteredRows: (): any[][] => {
         if (!State.bqResults) return [];
-        const filter = State.resultsFilter.toLowerCase().trim();
+        const filter = State.resultsFilter;
         if (!filter) return State.bqResults.rows;
 
-        return State.bqResults.rows.filter(row =>
-            row.some(cell => String(cell).toLowerCase().includes(filter))
-        );
+        const lowerFilter = filter.toLowerCase();
+        const rows = State.bqResults.rows;
+        const total = rows.length;
+        const matched: any[][] = [];
+
+        for (let i = 0; i < total; i++) {
+            const row = rows[i];
+            if (!row) continue;
+            const cols = row.length;
+            let hasMatch = false;
+            for (let j = 0; j < cols; j++) {
+                const cell = row[j];
+                if (cell !== null && cell !== undefined && String(cell).toLowerCase().includes(lowerFilter)) {
+                    hasMatch = true;
+                    break;
+                }
+            }
+            if (hasMatch) matched.push(row);
+        }
+
+        return matched;
     },
 
     renderResultsTable: () => {
@@ -564,17 +589,18 @@ export const App = {
         `;
 
         // Pagination calculations
-        const totalPages = Math.ceil(allFilteredRows.length / State.rowsPerPage) || 1;
+        const totalRowsCount = allFilteredRows.length;
+        const totalPages = Math.ceil(totalRowsCount / State.rowsPerPage) || 1;
         if (State.currentPage > totalPages) State.currentPage = totalPages;
 
         const startIdx = (State.currentPage - 1) * State.rowsPerPage;
-        const endIdx = startIdx + State.rowsPerPage;
+        const endIdx = Math.min(startIdx + State.rowsPerPage, totalRowsCount);
         const pageRows = allFilteredRows.slice(startIdx, endIdx);
 
         // Update page text
         const pageInfo = Utils.$('page-info');
         if (pageInfo) {
-            pageInfo.textContent = `Page ${State.currentPage} of ${totalPages} (${allFilteredRows.length.toLocaleString()} rows)`;
+            pageInfo.textContent = `Page ${State.currentPage} of ${totalPages} (${totalRowsCount.toLocaleString()} rows)`;
         }
 
         const prevBtn = Utils.$('btn-prev-page') as HTMLButtonElement;
@@ -593,30 +619,39 @@ export const App = {
             return;
         }
 
-        tbody.innerHTML = pageRows.map((row, idx) => {
-            const rowNumber = startIdx + idx + 1;
-            return `
-                <tr class="hover:bg-opacity-50 transition-all border-b border-[var(--brd2)]">
-                    <td class="p-2 text-xs font-mono" style="color:var(--muted)">${rowNumber}</td>
-                    ${row.map(cell => {
-                        if (cell === null || cell === undefined) {
-                            return `<td class="p-2 text-xs font-mono" style="color:var(--muted)"><em>null</em></td>`;
-                        }
-                        if (typeof cell === 'object') {
-                            const str = JSON.stringify(cell);
-                            return `<td class="p-2 text-xs font-mono truncate max-w-[200px]" title="${Utils.escapeHtml(str)}"><span class="badge-pill">{JSON}</span> ${Utils.escapeHtml(str)}</td>`;
-                        }
-                        return `<td class="p-2 text-xs truncate max-w-[250px]" title="${Utils.escapeHtml(String(cell))}">${Utils.escapeHtml(String(cell))}</td>`;
-                    }).join('')}
-                </tr>
-            `;
-        }).join('');
+        const rowsHtml: string[] = [];
+        for (let i = 0; i < pageRows.length; i++) {
+            const row = pageRows[i];
+            if (!row) continue;
+            const rowNumber = startIdx + i + 1;
+            let cellsHtml = `<td class="p-2 text-xs font-mono" style="color:var(--muted)">${rowNumber}</td>`;
+            for (let j = 0; j < row.length; j++) {
+                const cell = row[j];
+                if (cell === null || cell === undefined) {
+                    cellsHtml += `<td class="p-2 text-xs font-mono" style="color:var(--muted)"><em>null</em></td>`;
+                } else if (typeof cell === 'object') {
+                    const str = JSON.stringify(cell);
+                    cellsHtml += `<td class="p-2 text-xs font-mono truncate max-w-[200px]" title="${Utils.escapeHtml(str)}"><span class="badge-pill">{JSON}</span> ${Utils.escapeHtml(str)}</td>`;
+                } else {
+                    const s = String(cell);
+                    cellsHtml += `<td class="p-2 text-xs truncate max-w-[250px]" title="${Utils.escapeHtml(s)}">${Utils.escapeHtml(s)}</td>`;
+                }
+            }
+            rowsHtml.push(`<tr class="hover:bg-opacity-50 transition-all border-b border-[var(--brd2)]">${cellsHtml}</tr>`);
+        }
+
+        tbody.innerHTML = rowsHtml.join('');
     },
 
+    searchDebounceTimer: null as any,
     handleFilterResults: (e: Event) => {
-        State.resultsFilter = (e.target as HTMLInputElement).value || '';
-        State.currentPage = 1;
-        App.renderResultsTable();
+        const val = ((e.target as HTMLInputElement).value || '').trim();
+        clearTimeout(App.searchDebounceTimer);
+        App.searchDebounceTimer = setTimeout(() => {
+            State.resultsFilter = val;
+            State.currentPage = 1;
+            App.renderResultsTable();
+        }, 150);
     },
 
     handleExportCsv: () => {

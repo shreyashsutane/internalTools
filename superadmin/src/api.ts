@@ -175,7 +175,8 @@ export const Api = {
     executeBigQuery: async (
         projectId: string,
         query: string,
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        onProgress?: (loadedRows: number) => void
     ): Promise<BigQueryResults> => {
         const startTime = performance.now();
         const url = `${BASE_BIGQUERY}/${projectId}/queries`;
@@ -184,7 +185,7 @@ export const Api = {
             query,
             useLegacySql: false,
             timeoutMs: 30000,
-            maxResults: 10000
+            maxResults: 50000
         };
 
         const res = await fetch(url, {
@@ -224,6 +225,7 @@ export const Api = {
             for (const r of data.rows) {
                 allRows.push(parseRow(r));
             }
+            if (onProgress) onProgress(allRows.length);
         }
 
         let pageToken = data.pageToken;
@@ -233,10 +235,14 @@ export const Api = {
         while (!jobComplete || pageToken) {
             if (signal?.aborted) throw new DOMException('Query Cancelled', 'AbortError');
             
-            await new Promise(r => setTimeout(r, 400));
+            // Only delay when polling for job completion, not when next page is immediately available
+            if (!jobComplete) {
+                await new Promise(r => setTimeout(r, 250));
+            }
+
             const getResultsUrl = location
-                ? `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?location=${location}${pageToken ? `&pageToken=${pageToken}` : ''}&maxResults=10000`
-                : `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?${pageToken ? `pageToken=${pageToken}` : ''}&maxResults=10000`;
+                ? `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?location=${location}${pageToken ? `&pageToken=${pageToken}` : ''}&maxResults=50000`
+                : `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?${pageToken ? `pageToken=${pageToken}` : ''}&maxResults=50000`;
 
             const pageRes = await fetch(getResultsUrl, {
                 headers: { Authorization: `Bearer ${State.token}` },
@@ -259,6 +265,7 @@ export const Api = {
                 for (const r of pageData.rows) {
                     allRows.push(parseRow(r));
                 }
+                if (onProgress) onProgress(allRows.length);
             }
         }
 

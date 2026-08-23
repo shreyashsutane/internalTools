@@ -44,18 +44,25 @@ export const Utils = {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     },
     exportCsv: (filename: string, headers: string[], rows: any[][]) => {
-        const csvContent = [
-            headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(','),
-            ...rows.map(row =>
+        const parts: string[] = [];
+        parts.push(headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\n');
+
+        const total = rows.length;
+        const chunkSize = 10000;
+
+        for (let i = 0; i < total; i += chunkSize) {
+            const chunk = rows.slice(i, i + chunkSize);
+            const chunkLines = chunk.map(row =>
                 row.map(cell => {
                     if (cell === null || cell === undefined) return '""';
                     if (typeof cell === 'object') return `"${JSON.stringify(cell).replace(/"/g, '""')}"`;
                     return `"${String(cell).replace(/"/g, '""')}"`;
                 }).join(',')
-            )
-        ].join('\n');
+            );
+            parts.push(chunkLines.join('\n') + '\n');
+        }
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const blob = new Blob(parts, { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
@@ -66,7 +73,7 @@ export const Utils = {
         URL.revokeObjectURL(url);
     },
     exportJson: (filename: string, data: any) => {
-        const jsonContent = JSON.stringify(data, null, 2);
+        const jsonContent = JSON.stringify(data);
         const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
