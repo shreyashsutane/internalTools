@@ -114,6 +114,15 @@
         ]
       },
       {
+        "source": "/superadmin/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          }
+        ]
+      },
+      {
         "source": "/admin.html",
         "headers": [
           {
