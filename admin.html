@@ -816,7 +816,31 @@
             });
         }
 
-        function toggleLogExpand(tr, logId) {
+        async function decompressJsonFromBase64(base64Str) {
+            if (!base64Str) return null;
+            const binary = atob(base64Str);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            if (typeof DecompressionStream !== 'undefined') {
+                try {
+                    const stream = new Response(
+                        new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+                    );
+                    const text = await stream.text();
+                    return JSON.parse(text);
+                } catch(e) {
+                    const text = new TextDecoder().decode(bytes);
+                    return JSON.parse(text);
+                }
+            }
+            const text = new TextDecoder().decode(bytes);
+            return JSON.parse(text);
+        }
+
+        async function toggleLogExpand(tr, logId) {
             const existingNext = tr.nextElementSibling;
             if (existingNext && existingNext.classList.contains('expand-row')) {
                 existingNext.remove();
@@ -844,11 +868,20 @@
                     console.error("Failed to parse prevState", e);
                 }
 
+                if (state && state.compressed && state.data) {
+                    try {
+                        state = await decompressJsonFromBase64(state.data);
+                    } catch(e) {
+                        console.error("Failed to decompress backup state", e);
+                    }
+                }
+
                 if (state && typeof state === 'object') {
                     stateDetailsHtml += `
                         <div style="margin-top: 20px; border-top: 1px solid var(--brd2); padding-top: 15px;">
-                            <div style="font-weight: 600; font-size: 11px; margin-bottom: 12px; color: var(--accent); display: flex; align-items: center; gap: 6px;">
-                                <i class="bi bi-arrow-left-right"></i> Backup State Changes (Revert Data)
+                            <div style="font-weight: 600; font-size: 11px; margin-bottom: 12px; color: var(--accent); display: flex; align-items: center; justify-content: space-between;">
+                                <span style="display: flex; align-items: center; gap: 6px;"><i class="bi bi-arrow-left-right"></i> Backup State Changes & Copied Entities</span>
+                                ${state.kind ? `<span class="badge badge-op" style="font-size: 10px;">Kind: ${escapeHtml(state.kind)} (${(state.backupData || []).length} entities)</span>` : ''}
                             </div>
                     `;
 
@@ -895,41 +928,45 @@
                         }).join('');
                         stateDetailsHtml += `<div>${rows}</div>`;
                     } else if (state.type === 'DATASTORE_COPY') {
-                        const rows = (state.backupData || []).map(item => {
+                        const items = state.backupData || [];
+                        const rows = items.map((item, idx) => {
                             const prevStr = item.prevEntity ? JSON.stringify(item.prevEntity.properties || item.prevEntity, null, 2) : '—';
-                            const newStr = item.newEntity ? JSON.stringify(item.newEntity.properties || item.newEntity, null, 2) : '—';
+                            const actionColor = item.action === 'upsert' ? '#f59e0b' : '#10b981';
+                            const actionLabel = item.action === 'upsert' ? 'OVERWRITTEN (Restorable)' : 'NEW ENTITY (Deletable on Revert)';
                             return `
-                                <div style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
-                                    <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Entity Key: ${escapeHtml(item.keyStr)} (${item.action})</div>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                                        <div>
-                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS STATE:</div>
-                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
+                                <div style="margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                        <div style="font-weight: 600; color: var(--fg); font-size: 11px; font-family: var(--font-mono);">
+                                            #${idx + 1}. Entity Key: <span style="color: #60a5fa;">${escapeHtml(item.keyStr)}</span>
                                         </div>
+                                        <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); color: ${actionColor}; font-weight: 600;">
+                                            ${actionLabel}
+                                        </span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
                                         <div>
-                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">NEW STATE:</div>
-                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
+                                            <div style="font-size: 9px; color: var(--muted); margin-bottom: 2px;">ENTITY SNAPSHOT & PROPERTIES:</div>
+                                            <pre style="padding: 8px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
                                         </div>
                                     </div>
                                 </div>
                             `;
                         }).join('');
-                        stateDetailsHtml += `<div>${rows}</div>`;
+                        stateDetailsHtml += `
+                            <div style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
+                                ${items.length > 0 ? rows : '<div style="color:var(--muted); font-size:11px; padding:8px 0;">No entity changes recorded in this batch.</div>'}
+                            </div>
+                        `;
                     } else if (state.type === 'DATASTORE_EDIT') {
                         const prevStr = state.prevEntity ? JSON.stringify(state.prevEntity.properties || state.prevEntity, null, 2) : '—';
-                        const newStr = state.newEntity ? JSON.stringify(state.newEntity.properties || state.newEntity, null, 2) : '—';
                         stateDetailsHtml += `
                             <div style="margin-bottom: 15px; padding-bottom: 10px;">
-                                <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Entity Key: ${escapeHtml(state.keyStr)}</div>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                                    <div>
-                                        <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS STATE:</div>
-                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">NEW STATE:</div>
-                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
-                                    </div>
+                                <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px; font-size: 11px; font-family: var(--font-mono);">
+                                    Entity Key: <span style="color: #60a5fa;">${escapeHtml(state.keyStr)}</span>
+                                </div>
+                                <div>
+                                    <div style="font-size: 9px; color: var(--muted); margin-bottom: 4px;">PREVIOUS STATE PROPERTIES:</div>
+                                    <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
                                 </div>
                             </div>
                         `;

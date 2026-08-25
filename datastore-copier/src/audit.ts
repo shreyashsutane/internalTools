@@ -3,6 +3,7 @@ import { Utils } from './utils';
 import { Api } from './api';
 import { CONFIG } from './config';
 import { executeDatastoreRevert, executeScheduledQueryRevert } from './revert';
+import { decompressJsonFromBase64 } from './datastore-utils';
 
 const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
 
@@ -301,7 +302,7 @@ export const AuditLog = {
             container.appendChild(fragment);
         });
     },
-    toggleLogExpand: (tr: HTMLElement, logId: string, logs: any[]) => {
+    toggleLogExpand: async (tr: HTMLElement, logId: string, logs: any[]) => {
         const existingNext = tr.nextElementSibling;
         if (existingNext && existingNext.classList.contains('expand-row')) {
             existingNext.remove();
@@ -327,11 +328,20 @@ export const AuditLog = {
                 try { state = JSON.parse(state); } catch(e) {}
             }
 
+            if (state && state.compressed && state.data) {
+                try {
+                    state = await decompressJsonFromBase64(state.data);
+                } catch (e) {
+                    console.error("Failed to decompress backup data", e);
+                }
+            }
+
             if (state && typeof state === 'object') {
                 stateDetailsHtml += `
                     <div style="margin-top: 20px; border-top: 1px solid var(--brd); padding-top: 18px;">
-                        <div style="font-weight: 700; font-size: 11px; margin-bottom: 14px; color: var(--accent2); display: flex; align-items: center; gap: 6px;">
-                            <i class="fa-solid fa-arrows-left-right"></i> Backup State Changes (Revert Data)
+                        <div style="font-weight: 700; font-size: 11px; margin-bottom: 14px; color: var(--accent2); display: flex; align-items: center; justify-content: space-between;">
+                            <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-arrows-left-right"></i> Backup State Changes & Copied Entities</span>
+                            ${state.kind ? `<span class="badge" style="background:var(--brd2); color:var(--accent2); font-size:10px;">Kind: ${Utils.escapeHtml(state.kind)} (${(state.backupData || []).length} entities)</span>` : ''}
                         </div>
                 `;
 
@@ -373,21 +383,35 @@ export const AuditLog = {
                     }).join('');
                     stateDetailsHtml += `<div>${rows}</div>`;
                 } else if (state.type === 'DATASTORE_COPY') {
-                    const rows = (state.backupData || []).map((item: any) => {
+                    const items = state.backupData || [];
+                    const rows = items.map((item: any, idx: number) => {
                         const prevStr = item.prevEntity ? JSON.stringify(item.prevEntity.properties || item.prevEntity, null, 2) : '—';
+                        const actionColor = item.action === 'upsert' ? 'var(--warn)' : 'var(--ok)';
+                        const actionLabel = item.action === 'upsert' ? 'OVERWRITTEN (Restorable)' : 'NEW ENTITY (Deletable on Revert)';
                         return `
-                            <div style="margin-bottom: 18px; border-bottom: 1px solid var(--brd); padding-bottom: 14px;">
-                                <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px; font-size: 11px;">Entity Key: ${Utils.escapeHtml(item.keyStr)} (${item.action})</div>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                            <div style="margin-bottom: 12px; border-bottom: 1px solid var(--brd); padding-bottom: 10px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                    <div style="font-weight: 600; color: var(--fg); font-size: 11px; font-family: var(--font-mono);">
+                                        #${idx + 1}. Entity Key: <span style="color: var(--accent2);">${Utils.escapeHtml(item.keyStr)}</span>
+                                    </div>
+                                    <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--bg); color: ${actionColor}; font-weight: 600; border: 1px solid var(--brd);">
+                                        ${actionLabel}
+                                    </span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
                                     <div>
-                                        <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 5px;">PREVIOUS STATE:</div>
-                                        <pre style="padding: 10px; border-radius: 8px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: var(--bg); color: var(--ok); border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(prevStr)}</pre>
+                                        <div style="font-size: 9px; color: var(--muted); margin-bottom: 2px;">ENTITY SNAPSHOT & PROPERTIES:</div>
+                                        <pre style="padding: 8px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: var(--ok); border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(prevStr)}</pre>
                                     </div>
                                 </div>
                             </div>
                         `;
                     }).join('');
-                    stateDetailsHtml += `<div>${rows}</div>`;
+                    stateDetailsHtml += `
+                        <div style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
+                            ${items.length > 0 ? rows : '<div style="color:var(--muted); font-size:11px; padding:8px 0;">No entity changes recorded in this batch.</div>'}
+                        </div>
+                    `;
                 } else if (state.type === 'DATASTORE_EDIT') {
                     const prevStr = state.prevEntity ? JSON.stringify(state.prevEntity.properties || state.prevEntity, null, 2) : '—';
                     stateDetailsHtml += `
