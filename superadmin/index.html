@@ -47,6 +47,9 @@
             </div>
             <div class="flex items-center gap-3">
                 <div id="header-user-badge"></div>
+                <button id="btn-view-audit-logs" class="btn btn-s btn-sm text-xs" title="View Audit Logs (Who Changed What)">
+                    <i class="fa-solid fa-clock-rotate-left mr-1 text-emerald-400"></i> Activity Logs
+                </button>
                 <a href="docs.html" class="btn btn-s btn-sm text-xs" title="View Architecture & Technical Documentation">
                     <i class="fa-solid fa-book-open mr-1 text-amber-400"></i> Architecture & Docs
                 </a>
@@ -315,6 +318,39 @@
             <div class="p-3 border-t border-[var(--brd2)] flex items-center justify-end gap-2">
                 <button onclick="document.getElementById('modal-json-editor').style.display='none'" class="btn btn-s btn-sm text-xs">Cancel</button>
                 <button id="btn-apply-json" class="btn btn-p btn-sm text-xs"><i class="fa-solid fa-check mr-1"></i> Apply Changes</button>
+            </div>
+    <!-- Activity & Audit Logs Modal -->
+    <div id="modal-audit-logs" class="modal-overlay" style="display:none; z-index:3500;">
+        <div class="modal-card max-w-4xl w-full">
+            <div class="p-4 border-b border-[var(--brd2)] flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm text-white">Superadmin Activity & Change Audit Logs</h3>
+                        <p class="text-[11px] text-[var(--muted)]">Track who changed which question query, updated properties, and executed BigQuery operations.</p>
+                    </div>
+                </div>
+                <button id="btn-close-audit-modal" class="text-[var(--muted)] hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-4 border-b border-[var(--brd2)] flex items-center justify-between gap-3 bg-[var(--bg3)]">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-xs text-[var(--muted)]"></i>
+                    <input type="text" id="inp-search-audit-logs" class="inp pl-8 text-xs w-full" placeholder="Search by operator name, email, question name, or operation...">
+                </div>
+                <button id="btn-refresh-audit-logs" class="btn btn-s btn-sm text-xs">
+                    <i class="fa-solid fa-rotate mr-1"></i> Refresh
+                </button>
+            </div>
+            <div id="modal-audit-logs-body" class="p-4 overflow-y-auto max-h-[60vh] space-y-3">
+                <div class="text-center py-8 text-xs text-[var(--muted)]">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading activity logs...
+                </div>
+            </div>
+            <div class="p-3 border-t border-[var(--brd2)] flex items-center justify-between">
+                <div id="audit-logs-count-info" class="text-xs text-[var(--muted)]"></div>
+                <button onclick="document.getElementById('modal-audit-logs').style.display='none'" class="btn btn-s btn-sm text-xs">Close</button>
             </div>
         </div>
     </div>

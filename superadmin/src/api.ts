@@ -394,6 +394,25 @@ export const Api = {
         }
     },
 
+    fetchAuditLogs: async (limit = 100): Promise<any[]> => {
+        try {
+            const res = await fetch('/api/audit_logs/runQuery', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${State.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ limit })
+            });
+            if (!res.ok) return [];
+            const data = await res.json();
+            return Array.isArray(data.logs) ? data.logs : [];
+        } catch (e) {
+            console.warn('Failed to fetch audit logs:', e);
+            return [];
+        }
+    },
+
     recordAudit: async (
         operation: string,
         details: string,

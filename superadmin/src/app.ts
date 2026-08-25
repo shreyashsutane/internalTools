@@ -48,6 +48,15 @@ export const App = {
         Utils.$('btn-save-datastore')?.addEventListener('click', App.handleSaveToDatastore);
         Utils.$('btn-edit-properties')?.addEventListener('click', App.handleOpenPropertiesModal);
 
+        // Audit Logs Modal
+        Utils.$('btn-view-audit-logs')?.addEventListener('click', App.handleOpenAuditLogs);
+        Utils.$('btn-close-audit-modal')?.addEventListener('click', () => Utils.hide('modal-audit-logs'));
+        Utils.$('btn-refresh-audit-logs')?.addEventListener('click', App.handleOpenAuditLogs);
+        Utils.$('inp-search-audit-logs')?.addEventListener('input', (e: Event) => {
+            App.auditLogsFilter = (e.target as HTMLInputElement).value || '';
+            App.renderAuditLogsList();
+        });
+
         // Results grid controls
         Utils.$('inp-filter-results')?.addEventListener('input', App.handleFilterResults);
         Utils.$('btn-export-csv')?.addEventListener('click', App.handleExportCsv);
@@ -716,6 +725,9 @@ export const App = {
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Saving to Datastore...';
 
+        const prevProperties = JSON.parse(JSON.stringify(State.selectedQuestion.properties || {}));
+        const prevSql = State.selectedQuestion.queryString || State.rawSql;
+
         try {
             await Api.saveQuestionEntity(
                 State.projectId,
@@ -728,16 +740,150 @@ export const App = {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i> Save to Datastore';
 
-            Utils.toast(`Saved query to Datastore! updatedByName set to '${State.userName}'.`, 'ok');
+            Utils.toast(`Saved question '${State.selectedQuestion.referenceName}'! updatedByName set to '${State.userName}'.`, 'ok');
+
+            const prevState = {
+                type: 'UPDATE_QUESTION',
+                keyStr: State.selectedQuestion.keyStr,
+                referenceName: State.selectedQuestion.referenceName,
+                prevSql,
+                newSql,
+                prevProperties,
+                modifiedProperties: State.modifiedProperties,
+                changedBy: State.userName,
+                userEmail: State.userEmail,
+                timestamp: new Date().toISOString()
+            };
+
             void Api.recordAudit(
                 'UPDATE_QUESTION',
-                `Updated question '${State.selectedQuestion.referenceName}' (${State.selectedQuestion.keyStr}) in ${State.projectId}. updatedByName: ${State.userName}`
+                `Updated question '${State.selectedQuestion.referenceName}' (${State.selectedQuestion.keyStr}) in ${State.projectId} by ${State.userName} (${State.userEmail}).`,
+                'SUCCESS',
+                prevState
             );
         } catch (e: any) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i> Save to Datastore';
             Utils.toast(`Failed to save to Datastore: ${e.message}`, 'err');
         }
+    },
+
+    cachedAuditLogs: [] as any[],
+    auditLogsFilter: '',
+
+    handleOpenAuditLogs: async () => {
+        Utils.show('modal-audit-logs');
+        const bodyEl = Utils.$('modal-audit-logs-body');
+        if (bodyEl) {
+            bodyEl.innerHTML = `
+                <div class="text-center py-8 text-xs text-[var(--muted)]">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading activity logs...
+                </div>
+            `;
+        }
+
+        const logs = await Api.fetchAuditLogs(100);
+        App.cachedAuditLogs = logs;
+        App.renderAuditLogsList();
+    },
+
+    renderAuditLogsList: () => {
+        const bodyEl = Utils.$('modal-audit-logs-body');
+        const countInfo = Utils.$('audit-logs-count-info');
+        if (!bodyEl) return;
+
+        const filter = (App.auditLogsFilter || '').toLowerCase().trim();
+        const filtered = App.cachedAuditLogs.filter(log => {
+            if (!filter) return true;
+            const str = `${log.user} ${log.operation} ${log.details} ${log.srcProject} ${log.tgtProject} ${JSON.stringify(log.prevState || {})}`.toLowerCase();
+            return str.includes(filter);
+        });
+
+        if (countInfo) {
+            countInfo.textContent = `Showing ${filtered.length} of ${App.cachedAuditLogs.length} recent activity logs`;
+        }
+
+        if (filtered.length === 0) {
+            bodyEl.innerHTML = `
+                <div class="text-center py-10 text-xs text-[var(--muted)]">
+                    <i class="fa-solid fa-clock-rotate-left text-2xl mb-2 block"></i>
+                    No activity logs found matching the filter.
+                </div>
+            `;
+            return;
+        }
+
+        bodyEl.innerHTML = filtered.map(log => {
+            let state = log.prevState;
+            if (typeof state === 'string') {
+                try { state = JSON.parse(state); } catch {}
+            }
+
+            const isSuccess = log.status === 'SUCCESS';
+            const statusBadge = isSuccess
+                ? `<span class="badge-pill bg-emerald-950 text-emerald-300 border-emerald-800"><i class="fa-solid fa-check mr-1"></i> SUCCESS</span>`
+                : `<span class="badge-pill bg-red-950 text-red-300 border-red-800"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${Utils.escapeHtml(log.status)}</span>`;
+
+            let stateHtml = '';
+            if (state && typeof state === 'object') {
+                if (state.type === 'UPDATE_QUESTION' || state.type === 'QUESTION_EDIT') {
+                    const prevSql = state.prevSql || '—';
+                    const newSql = state.newSql || '—';
+                    const modProps = state.modifiedProperties && Object.keys(state.modifiedProperties).length > 0
+                        ? JSON.stringify(state.modifiedProperties, null, 2)
+                        : null;
+
+                    stateHtml = `
+                        <div class="mt-3 pt-3 border-t border-[var(--brd2)] text-xs">
+                            <div class="flex items-center justify-between text-[11px] font-semibold text-amber-400 mb-2">
+                                <span><i class="fa-solid fa-code-compare mr-1"></i> SQL Query & Property Changes:</span>
+                                <span class="font-mono text-muted text-[10px]">Target: ${Utils.escapeHtml(state.referenceName || state.keyStr)}</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <div class="text-[10px] text-[var(--muted)] font-semibold mb-1">PREVIOUS SQL:</div>
+                                    <pre class="p-2 rounded bg-black/40 text-red-400 font-mono text-[11px] max-h-32 overflow-y-auto border border-red-900/30 whitespace-pre-wrap">${Utils.escapeHtml(prevSql)}</pre>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-[var(--muted)] font-semibold mb-1">NEW SQL COMMITTED:</div>
+                                    <pre class="p-2 rounded bg-black/40 text-emerald-400 font-mono text-[11px] max-h-32 overflow-y-auto border border-emerald-900/30 whitespace-pre-wrap">${Utils.escapeHtml(newSql)}</pre>
+                                </div>
+                            </div>
+                            ${modProps ? `
+                                <div class="mt-2">
+                                    <div class="text-[10px] text-[var(--muted)] font-semibold mb-1">MODIFIED PROPERTIES:</div>
+                                    <pre class="p-2 rounded bg-black/40 text-cyan-400 font-mono text-[11px] max-h-24 overflow-y-auto border border-cyan-900/30 whitespace-pre-wrap">${Utils.escapeHtml(modProps)}</pre>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                } else if (state.backupData) {
+                    stateHtml = `
+                        <div class="mt-3 pt-2 border-t border-[var(--brd2)] text-xs">
+                            <span class="badge-pill">{Backup State Included} (${state.backupData.length} records)</span>
+                        </div>
+                    `;
+                }
+            }
+
+            return `
+                <div class="p-3.5 rounded-xl border border-[var(--brd2)] bg-[var(--bg2)] hover:border-amber-500/30 transition-all text-xs">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="badge-pill font-mono font-bold text-amber-400 bg-amber-950/40 border-amber-800/60">${Utils.escapeHtml(log.operation)}</span>
+                            <span class="font-semibold text-white">${Utils.escapeHtml(log.user || 'Unknown Operator')}</span>
+                            ${state?.changedBy ? `<span class="text-[11px] text-[var(--muted)]">(${Utils.escapeHtml(state.changedBy)})</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${statusBadge}
+                            <span class="text-[11px] font-mono text-[var(--muted)]">${new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="text-xs text-[var(--fg)] leading-relaxed">${Utils.escapeHtml(log.details)}</div>
+                    ${stateHtml}
+                </div>
+            `;
+        }).join('');
     },
 
     handleOpenPropertiesModal: () => {
@@ -771,40 +917,50 @@ export const App = {
                             valStr = String(propVal.booleanValue);
                         } else if (propVal?.timestampValue !== undefined) {
                             valStr = propVal.timestampValue;
-                        } else if (propVal) {
+                        } else if (typeof propVal === 'object') {
                             valStr = JSON.stringify(propVal);
                             isJson = true;
+                        } else {
+                            valStr = String(propVal);
                         }
 
                         return `
-                            <div class="prop-row p-3 rounded border border-[var(--brd2)] bg-[var(--bg2)]">
-                                <div class="flex items-center justify-between mb-1">
-                                    <span class="font-mono font-semibold text-xs" style="color:var(--fg)">${Utils.escapeHtml(propKey)}</span>
-                                    ${isJson ? `<button class="btn btn-sm btn-g btn-open-json-editor text-[11px]" data-key="${Utils.escapeHtml(propKey)}"><i class="fa-solid fa-code mr-1"></i> Edit in JSON Modal</button>` : ''}
+                            <div class="border border-[var(--brd2)] rounded-lg p-3 bg-[var(--bg3)]">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="font-mono text-xs font-semibold text-amber-400">${Utils.escapeHtml(propKey)}</label>
+                                    ${isJson ? `
+                                        <button class="btn btn-s btn-sm text-[11px] btn-open-json-editor" data-prop="${Utils.escapeHtml(propKey)}">
+                                            <i class="fa-solid fa-code mr-1 text-cyan-400"></i> Open in JSON Editor
+                                        </button>
+                                    ` : ''}
                                 </div>
-                                <input type="text" class="inp inp-sm w-full text-xs font-mono prop-field-input" data-key="${Utils.escapeHtml(propKey)}" value="${Utils.escapeHtml(valStr)}">
+                                <input type="text" class="inp w-full text-xs font-mono prop-input-field" 
+                                    data-prop="${Utils.escapeHtml(propKey)}" 
+                                    value="${Utils.escapeHtml(valStr)}" 
+                                    ${propKey === 'updatedByName' || propKey === 'updatedAt' ? 'placeholder="Auto-updated on save"' : ''}
+                                />
                             </div>
                         `;
                     }).join('')}
                 </div>
             `;
 
-            // Bind property inputs
-            bodyCont.querySelectorAll('.prop-field-input').forEach(inp => {
+            // Wire property inputs
+            bodyCont.querySelectorAll('.prop-input-field').forEach(inp => {
                 inp.addEventListener('input', (e: Event) => {
                     const target = e.target as HTMLInputElement;
-                    const k = target.getAttribute('data-key');
-                    if (k) {
-                        State.modifiedProperties[k] = { stringValue: target.value };
+                    const prop = target.getAttribute('data-prop');
+                    if (prop) {
+                        State.modifiedProperties[prop] = { stringValue: target.value };
                     }
                 });
             });
 
-            // Bind JSON editor modal triggers
+            // Wire JSON editor openers
             bodyCont.querySelectorAll('.btn-open-json-editor').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const k = btn.getAttribute('data-key');
-                    if (k) App.openJsonModal(k);
+                btn.addEventListener('click', (e: Event) => {
+                    const target = (e.currentTarget as HTMLElement).getAttribute('data-prop');
+                    if (target) App.openJsonModal(target);
                 });
             });
         }

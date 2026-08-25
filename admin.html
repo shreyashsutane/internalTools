@@ -957,21 +957,41 @@
                                 ${items.length > 0 ? rows : '<div style="color:var(--muted); font-size:11px; padding:8px 0;">No entity changes recorded in this batch.</div>'}
                             </div>
                         `;
-                    } else if (state.type === 'DATASTORE_EDIT') {
-                        const prevStr = state.prevEntity ? JSON.stringify(state.prevEntity.properties || state.prevEntity, null, 2) : '—';
+                    } else if (state.type === 'UPDATE_QUESTION' || state.type === 'QUESTION_EDIT') {
+                        const prevSql = state.prevSql || '—';
+                        const newSql = state.newSql || '—';
+                        const modPropsStr = state.modifiedProperties && Object.keys(state.modifiedProperties).length > 0
+                            ? JSON.stringify(state.modifiedProperties, null, 2)
+                            : null;
                         stateDetailsHtml += `
                             <div style="margin-bottom: 15px; padding-bottom: 10px;">
-                                <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px; font-size: 11px; font-family: var(--font-mono);">
-                                    Entity Key: <span style="color: #60a5fa;">${escapeHtml(state.keyStr)}</span>
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="font-weight: 600; color: var(--fg); font-size: 11px; font-family: var(--font-mono);">
+                                        Question: <span style="color: #60a5fa;">${escapeHtml(state.referenceName || state.keyStr)}</span> (${escapeHtml(state.keyStr || '')})
+                                    </div>
+                                    <div style="font-size: 10px; color: var(--muted);">
+                                        Changed By: <strong style="color: #f59e0b;">${escapeHtml(state.changedBy || log.user)}</strong> ${state.userEmail ? `(${escapeHtml(state.userEmail)})` : ''}
+                                    </div>
                                 </div>
-                                <div>
-                                    <div style="font-size: 9px; color: var(--muted); margin-bottom: 4px;">PREVIOUS STATE PROPERTIES:</div>
-                                    <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                                    <div>
+                                        <div style="font-size: 9px; color: var(--muted); margin-bottom: 4px; font-weight:600;">PREVIOUS SQL QUERY:</div>
+                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #f87171; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevSql)}</pre>
+                                    </div>
+                                    <div>
+                                        <div style="font-size: 9px; color: var(--muted); margin-bottom: 4px; font-weight:600;">NEW SQL QUERY:</div>
+                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #34d399; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newSql)}</pre>
+                                    </div>
                                 </div>
+                                ${modPropsStr ? `
+                                    <div style="margin-top: 10px;">
+                                        <div style="font-size: 9px; color: var(--muted); margin-bottom: 4px; font-weight:600;">MODIFIED ENTITY PROPERTIES:</div>
+                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #60a5fa; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(modPropsStr)}</pre>
+                                    </div>
+                                ` : ''}
                             </div>
                         `;
                     }
-                    stateDetailsHtml += `</div>`;
                 }
             }
 
