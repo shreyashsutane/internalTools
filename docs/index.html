@@ -620,11 +620,12 @@
             display: flex;
             flex-direction: column;
             gap: 24px;
-            margin-top: 30px;
+            margin-top: 20px;
         }
         @media(min-width: 992px) {
             .walkthrough-layout {
                 flex-direction: row;
+                align-items: flex-start;
             }
         }
         
@@ -634,46 +635,65 @@
             flex-direction: row;
             gap: 6px;
             overflow-x: auto;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         @media(min-width: 992px) {
             .walkthrough-sidebar {
-                width: 260px;
+                width: 250px;
                 flex-direction: column;
                 overflow-x: visible;
                 border-bottom: none;
-                border-right: 1px solid var(--border);
+                border-right: 1px solid rgba(255,255,255,0.1);
                 padding-bottom: 0;
-                padding-right: 16px;
+                padding-right: 14px;
+                position: sticky;
+                top: 80px;
             }
         }
 
         .subtab-btn {
             padding: 10px 14px;
             border-radius: 8px;
-            background: transparent;
-            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             color: var(--text-muted);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            font-family: var(--font-code);
             font-weight: 500;
             text-align: left;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             white-space: nowrap;
+            width: 100%;
+        }
+        .subtab-btn i {
+            width: 16px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            transition: color 0.2s;
         }
         .subtab-btn:hover {
             color: #fff;
-            background: rgba(255,255,255,0.03);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        .subtab-btn:hover i {
+            color: #38bdf8;
         }
         .subtab-btn.active {
-            color: var(--accent-teal);
-            background: rgba(0, 212, 255, 0.05);
-            border-color: rgba(0, 212, 255, 0.15);
-            font-weight: 600;
+            color: #00d4ff;
+            background: linear-gradient(90deg, rgba(0, 212, 255, 0.12), rgba(0, 212, 255, 0.02));
+            border-color: rgba(0, 212, 255, 0.4);
+            box-shadow: 0 0 16px rgba(0, 212, 255, 0.12);
+            font-weight: 700;
+        }
+        .subtab-btn.active i {
+            color: #00d4ff;
         }
 
         .walkthrough-content {
@@ -2134,23 +2154,24 @@ const auditId = await AuditLog.addLog(
                                         <div class="code-dot code-dot-yellow"></div>
                                         <div class="code-dot code-dot-green"></div>
                                     </div>
-                                    <div class="code-title">revert.ts — decompressed lossless restore</div>
+                                    <div class="code-title">revert.ts — decompressed lossless restore &amp; ordered cleanup</div>
                                 </div>
                                 <div class="code-container">
-                                    <pre><code>const rawState = state?.compressed
+                                    <pre><code>// 1. Lossless decompress from Gzip Base64
+const rawState = state?.compressed
     ? await decompressJsonFromBase64(state.data)
     : state;
 
 const plan = buildDatastoreRevertPlan(rawState, targetProject);
+
+// 2. Ordered execution: Restore upserts first, then delete cleanups
 const restored = await commitChunks(
-    api, targetProject, databaseId, upserts, 400
-);</code></pre>
-                                </div>
-                            </div>
-            targetProject,
-            deleteChunk,
-            databaseId
-        );
+    api, targetProject, databaseId, plan.upserts, 400
+);
+
+for (const deleteChunk of chunkArray(plan.deletes, 400)) {
+    try {
+        await api.deleteEntities(targetProject, deleteChunk, databaseId);
         deleted += deleteChunk.length;
     } catch (error) {
         if (!isPermissionDenied(error)) throw error;
