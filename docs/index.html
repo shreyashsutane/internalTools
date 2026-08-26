@@ -423,11 +423,20 @@
         /* Animated Mermaid Flowcharts classes */
         .mermaid {
             background: rgba(2, 6, 23, 0.6);
-            padding: 24px;
+            padding: 28px 24px 48px 24px;
             border-radius: 16px;
             margin: 24px 0;
             border: 1px solid var(--border);
             overflow-x: auto;
+            overflow-y: visible;
+        }
+        .mermaid svg {
+            max-width: 100%;
+            height: auto !important;
+            overflow: visible !important;
+            display: block;
+            margin: 0 auto;
+            padding-bottom: 20px;
         }
         /* Glowing Flowlines Animation */
         .mermaid svg .edgePath .path,
@@ -2468,7 +2477,14 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
         mermaid.initialize({
             startOnLoad: true,
             theme: 'dark',
-            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+            flowchart: { 
+                useMaxWidth: true, 
+                htmlLabels: true, 
+                curve: 'basis',
+                padding: 30,
+                nodeSpacing: 45,
+                rankSpacing: 45
+            },
             securityLevel: 'strict',
             themeVariables: {
                 fontFamily: 'Inter, sans-serif',
