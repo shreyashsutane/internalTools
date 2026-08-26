@@ -56,13 +56,13 @@
         .three-canvas-container {
             position: relative;
             width: 100%;
-            height: 380px;
-            border-radius: 12px;
+            height: 420px;
+            border-radius: 16px;
             overflow: hidden;
-            background: radial-gradient(circle at center, rgba(15, 23, 42, 0.7) 0%, rgba(2, 6, 23, 0.95) 100%);
-            border: 1px solid var(--border);
-            margin: 20px 0;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 10px 30px rgba(0,0,0,0.5);
+            background: radial-gradient(circle at center, rgba(15, 23, 42, 0.75) 0%, rgba(2, 6, 23, 0.98) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            margin: 24px 0;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.9), 0 20px 45px rgba(0,0,0,0.6);
         }
         .three-canvas-overlay {
             position: absolute;
@@ -71,8 +71,59 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 16px 20px;
+            padding: 20px 24px;
             z-index: 10;
+        }
+
+        /* FAANG Spotlight Stage */
+        .faang-spotlight-container {
+            background: rgba(11, 17, 32, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 28px;
+            margin: 20px 0;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .faang-spotlight-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr;
+            gap: 28px;
+            align-items: center;
+        }
+        @media (max-width: 860px) {
+            .faang-spotlight-grid { grid-template-columns: 1fr; }
+        }
+
+        .faang-tab-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-family: var(--font-code);
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .faang-tab-pill:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.25);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .faang-tab-pill.active {
+            background: rgba(0, 212, 255, 0.12);
+            border-color: #00d4ff;
+            color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
         }
 
         /* FAANG Bento Grid */
@@ -84,15 +135,16 @@
             perspective: 1200px;
         }
         .faang-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 16px;
             padding: 24px;
             position: relative;
             overflow: hidden;
             transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
             transform-style: preserve-3d;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
         }
         .faang-card::before {
             content: '';
@@ -102,11 +154,12 @@
             right: 0;
             height: 3px;
             background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent-teal)), transparent);
-            opacity: 0.8;
+            opacity: 0.9;
         }
         .faang-card:hover {
             border-color: var(--card-accent, var(--accent-teal));
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(var(--card-accent-rgb, 0, 212, 255), 0.2);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 30px rgba(var(--card-accent-rgb, 0, 212, 255), 0.25);
+            transform: translateY(-4px);
         }
         .faang-brand-badge {
             display: inline-flex;
@@ -130,38 +183,45 @@
             margin: 20px 0;
         }
         .kpi-metric-card {
-            background: rgba(2, 6, 23, 0.7);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 16px;
+            background: rgba(11, 17, 32, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 18px;
             text-align: center;
             border-left: 3px solid var(--accent-teal);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
         }
         .kpi-metric-num {
             font-family: var(--font-title);
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 700;
-            color: var(--text-main);
+            color: #fff;
             margin-bottom: 4px;
+            letter-spacing: -0.02em;
         }
 
         /* Comparison Slider */
         .compare-slider-container {
             position: relative;
-            border-radius: 12px;
+            border-radius: 14px;
             overflow: hidden;
-            border: 1px solid var(--border);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             background: var(--bg-code);
             margin: 25px 0;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
         }
         .compare-side {
-            padding: 20px;
+            padding: 24px;
         }
         .compare-grid-split {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1px;
-            background: var(--border);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        @media (max-width: 768px) {
+            .compare-grid-split { grid-template-columns: 1fr; }
         }
 
         /* Ambient glowing circles */
@@ -803,31 +863,52 @@
         <!-- TAB 1: GCP INFRASTRUCTURE MANAGER -->
         <!-- ========================================== -->
         <section class="section-content active" id="sec-copier">
-            <!-- 3D Three.js Hero Canvas -->
-            <div class="three-canvas-container" id="three-cloud-canvas-wrap">
+            <!-- Interactive Architecture Pipeline & Stream Simulation Stage -->
+            <div class="three-canvas-container" id="three-cloud-canvas-wrap" style="height:480px;">
                 <canvas id="three-cloud-canvas" style="width:100%; height:100%; display:block;"></canvas>
                 <div class="three-canvas-overlay">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="faang-brand-badge" style="background:rgba(0, 212, 255, 0.15); border-color:#00d4ff; color:#00d4ff;">
-                            <i class="fa-solid fa-cube"></i> Interactive 3D Cloud Topology &amp; Stream Canvas
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <span class="faang-brand-badge" style="background:rgba(0, 212, 255, 0.15); border-color:#00d4ff; color:#00d4ff; margin-bottom:0;">
+                            <i class="fa-solid fa-network-wired mr-1.5"></i> Interactive Live Architecture Pipeline &amp; Sync Engine
                         </span>
-                        <span style="font-size:10px; font-family:var(--font-code); color:var(--text-muted); background:rgba(0,0,0,0.5); padding:3px 8px; border-radius:4px; border:1px solid var(--border);">
-                            <i class="fa-solid fa-arrows-up-down-left-right mr-1"></i> Drag to Orbit 3D Globe
-                        </span>
+                        <!-- Interactive Simulation Control Buttons -->
+                        <div style="display:flex; gap:8px; pointer-events:auto;">
+                            <button id="btn-sim-sync" onclick="triggerPipelineSimulation('sync')" style="background:rgba(0,212,255,0.15); border:1px solid #00d4ff; color:#00d4ff; padding:6px 12px; border-radius:6px; font-size:11px; font-family:var(--font-code); font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-play"></i> Run Sync Pipeline
+                            </button>
+                            <button id="btn-sim-stream" onclick="triggerPipelineSimulation('stream')" style="background:rgba(0,129,251,0.15); border:1px solid #0081fb; color:#38bdf8; padding:6px 12px; border-radius:6px; font-size:11px; font-family:var(--font-code); font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-bolt"></i> 4x Stream Ingestion
+                            </button>
+                            <button id="btn-sim-revert" onclick="triggerPipelineSimulation('revert')" style="background:rgba(255,153,0,0.15); border:1px solid #ff9900; color:#fbbf24; padding:6px 12px; border-radius:6px; font-size:11px; font-family:var(--font-code); font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-rotate-left"></i> 1-Click Rollback
+                            </button>
+                        </div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+
+                    <!-- Pipeline Live Telemetry Status Console -->
+                    <div style="background:rgba(2,6,23,0.85); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:12px 18px; backdrop-filter:blur(12px); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                         <div>
-                            <div style="font-family:var(--font-title); font-size:1.1rem; font-weight:700; color:#fff; margin-bottom:2px;">
-                                Distributed Project Topology Grid
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="status-indicator live" id="sim-status-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></span>
+                                <span id="sim-status-title" style="font-family:var(--font-code); font-size:12px; font-weight:700; color:#fff;">PIPELINE STATUS: READY</span>
                             </div>
-                            <div style="font-size:11px; color:var(--text-muted);">
-                                Visualizing real-time atomic sync vectors across Google Cloud Projects
+                            <div id="sim-status-sub" style="font-size:11px; color:var(--text-muted); margin-top:2px;">
+                                Ready to simulate atomic data streams between Source and Target GCP environments
                             </div>
                         </div>
-                        <div style="display:flex; gap:10px;">
-                            <span class="badge" style="margin:0; font-size:10px; border-color:#10b981; color:#10b981; background:rgba(16,185,129,0.1);">
-                                <i class="fa-solid fa-circle-dot mr-1"></i> 4x Parallel Streams Active
-                            </span>
+                        <div style="display:flex; gap:16px; font-family:var(--font-code); font-size:11px;">
+                            <div>
+                                <span style="color:var(--text-muted); display:block; font-size:9px; text-transform:uppercase;">Stream Workers</span>
+                                <span id="sim-workers-val" style="color:#38bdf8; font-weight:700;">4 / 4 ACTIVE</span>
+                            </div>
+                            <div>
+                                <span style="color:var(--text-muted); display:block; font-size:9px; text-transform:uppercase;">AST Normalizer</span>
+                                <span id="sim-ast-val" style="color:#60a5fa; font-weight:700;">STRICT ENFORCED</span>
+                            </div>
+                            <div>
+                                <span style="color:var(--text-muted); display:block; font-size:9px; text-transform:uppercase;">Gzip Compression</span>
+                                <span id="sim-gzip-val" style="color:#fbbf24; font-weight:700;">90% LOSSLESS</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -875,43 +956,91 @@
                     </div>
                 </div>
 
-                <!-- Interactive Scrollytelling HUD Controller -->
-                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; padding:10px 14px; background:rgba(0,0,0,0.4); border:1px solid var(--border); border-radius:10px;">
-                    <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; display:flex; align-items:center; margin-right:6px;">
-                        <i class="fa-solid fa-compass mr-1.5 text-cyan-400"></i> Scrollytelling HUD:
+                <!-- Interactive Scrollytelling & Spotlight Tab Controller -->
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px; padding:12px 16px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); border-radius:12px; align-items:center;">
+                    <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; display:flex; align-items:center; margin-right:8px;">
+                        <i class="fa-solid fa-sparkles mr-1.5 text-cyan-400"></i> Spotlight Explorer:
                     </span>
-                    <button class="hud-step-btn" onclick="scrollToFaangCard(0)" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#fff; font-size:11px; font-family:var(--font-code); padding:4px 10px; border-radius:6px; cursor:pointer;">
-                        01 // Apple Enclave
+                    <button class="faang-tab-pill active" id="tab-pill-0" onclick="switchFaangSpotlight(0)">
+                        <svg width="14" height="14" viewBox="0 0 170 170" fill="none" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.08-7.83-8.1-12.44-15.06-6.61-9.98-11.89-21.73-15.82-35.25-3.93-13.52-5.9-26.07-5.9-37.66 0-14.54 3.63-26.7 10.9-36.47 7.27-9.77 16.64-14.78 28.12-15.04 4.74 0 10.12 1.25 16.14 3.76 6.02 2.51 9.94 3.84 11.77 3.99 2.01-.2 5.92-1.57 11.75-4.11 5.83-2.54 11.13-3.72 15.9-3.54 12.01.63 21.77 5.09 29.27 13.37-10.43 6.33-15.53 15.15-15.3 26.47.23 8.91 3.69 16.38 10.38 22.41 6.69 6.03 14.65 9.4 23.88 10.11-2.01 6.13-4.48 12.03-7.41 17.69zM119.22 33.04c0-7.39 2.66-14.41 7.98-21.05 5.32-6.64 12.07-11.02 20.25-13.14.35 1.15.53 2.37.53 3.66 0 7.42-2.73 14.6-8.19 21.54-5.46 6.94-12.28 11.39-20.46 13.35-.07-1.42-.11-2.87-.11-4.36z" fill="currentColor"/></svg>
+                        Apple Enclave
                     </button>
-                    <button class="hud-step-btn" onclick="scrollToFaangCard(1)" style="background:rgba(0,129,251,0.08); border:1px solid rgba(0,129,251,0.25); color:#38bdf8; font-size:11px; font-family:var(--font-code); padding:4px 10px; border-radius:6px; cursor:pointer;">
-                        02 // Meta 4x Streaming
+                    <button class="faang-tab-pill" id="tab-pill-1" onclick="switchFaangSpotlight(1)">
+                        <svg width="14" height="14" viewBox="0 0 512 512" fill="none" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path fill-rule="evenodd" clip-rule="evenodd" d="M256 0C114.615 0 0 114.615 0 256s114.615 256 256 256 256-114.615 256-256S397.385 0 256 0zm-35.328 358.4c-42.544 0-77.952-32.96-77.952-73.6 0-40.64 35.408-73.6 77.952-73.6 22.848 0 43.36 9.536 57.648 24.816 6.016 6.432 15.936 6.64 22.208.48 6.272-6.144 6.368-16.192.224-22.464C280.096 192.192 251.744 180 220.672 180c-59.52 0-108.672 47.168-108.672 104.8 0 57.632 49.152 104.8 108.672 104.8 33.728 0 64.224-14.432 85.088-37.472 6.144-6.784 5.632-17.152-.896-23.296-6.528-6.144-16.896-5.632-23.04 1.152-16.032 17.696-39.456 28.416-66.192 28.416zm105.984-147.2c-22.848 0-43.36 9.536-57.648 24.816-6.016 6.432-15.936 6.64-22.208.48-6.272-6.144-6.368-16.192-.224-22.464 20.656-21.44 49.008-33.632 80.08-33.632 59.52 0 108.672 47.168 108.672 104.8 0 57.632-49.152 104.8-108.672 104.8-33.728 0-64.224-14.432-85.088-37.472-6.144-6.784-5.632-17.152.896-23.296 6.528-6.144 16.896-5.632 23.04 1.152 16.032 17.696 39.456 28.416 66.192 28.416 42.544 0 77.952-32.96 77.952-73.6 0-40.64-35.408-73.6-77.952-73.6z" fill="currentColor"/></svg>
+                        Meta Streaming
                     </button>
-                    <button class="hud-step-btn" onclick="scrollToFaangCard(2)" style="background:rgba(255,153,0,0.08); border:1px solid rgba(255,153,0,0.25); color:#fbbf24; font-size:11px; font-family:var(--font-code); padding:4px 10px; border-radius:6px; cursor:pointer;">
-                        03 // AWS Reversible State
+                    <button class="faang-tab-pill" id="tab-pill-2" onclick="switchFaangSpotlight(2)">
+                        <svg width="14" height="14" viewBox="0 0 512 512" fill="none" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M125.8 288.6c-4.8 0-9.2-.5-13.3-1.6-4.1-1.1-7.7-2.9-10.8-5.3-3.1-2.5-5.6-5.8-7.3-10-1.7-4.2-2.6-9.5-2.6-15.8 0-6.1.9-11.2 2.7-15.4 1.8-4.2 4.4-7.5 7.7-10 3.3-2.5 7.4-4.2 12.1-5.3 4.7-1 10-1.6 15.8-1.6 4.9 0 9.7.4 14.5 1.1 4.8.7 9.4 1.8 13.8 3.2v-7.3c0-7.3-2.1-12.7-6.2-16.1-4.1-3.4-10.7-5.1-19.6-5.1-4.7 0-9.5.6-14.3 1.9-4.8 1.2-9.4 2.8-13.8 4.7l-4.7-15.3c5.3-2.4 11-4.3 17.2-5.7 6.1-1.4 12.5-2.1 19.1-2.1 14.7 0 25.4 3.2 32.1 9.7 6.7 6.5 10.1 16.5 10.1 30v64h-18.7v-13.6c-4.4 4.8-9.6 8.5-15.8 11.1-6.2 2.6-13.1 3.9-20.9 3.9zm5.5-16.7c5.1 0 10-.9 14.5-2.8 4.6-1.8 8.4-4.6 11.5-8.2v-16.3c-3.9-1.2-8-2-12.4-2.6-4.4-.5-8.8-.8-13.2-.8-8.5 0-14.8 1.4-18.9 4.3-4.1 2.8-6.1 7.2-6.1 13.1 0 4.2 1.3 7.4 4 9.6 2.7 2.4 7.6 3.7 14.6 3.7zm134.4 14.1l-27.9-97.9h20.5l17.7 70.3 17-70.3h20.2l17 70.8 18.2-70.8h20.2l-28.4 97.9h-19.9l-17.2-68.5-17 68.5h-20.4zm164.7 2.6c-8.9 0-17.1-1.4-24.6-4.3-7.5-2.9-13.5-7.3-18.1-13.2l12.4-13c3.6 4.6 8 8 13.2 10.2 5.2 2.2 11 3.3 17.4 3.3 6.3 0 11.1-1.1 14.3-3.4 3.2-2.3 4.9-5.4 4.9-9.4 0-3.9-1.4-6.9-4.3-9-2.9-2.1-7.8-3.9-14.8-5.4-9.6-2.1-17.1-4.8-22.4-8.2-5.4-3.4-8.1-8.9-8.1-16.5 0-8.2 3.3-14.8 9.9-19.7 6.6-4.9 15.6-7.4 27.1-7.4 7.5 0 14.6 1.1 21.1 3.4 6.6 2.3 12 5.8 16.3 10.4l-11.7 13.2c-3.3-3.4-7.2-6-11.8-7.7-4.6-1.7-9.3-2.5-14.3-2.5-5.3 0-9.4 1-12.4 3.1-3 2.1-4.5 4.9-4.5 8.5 0 3.7 1.4 6.5 4.2 8.4 2.8 1.9 7.6 3.6 14.4 5 10 2.2 17.6 5 22.8 8.4 5.2 3.4 7.8 8.8 7.8 16.2 0 8.7-3.4 15.6-10.1 20.6-6.7 4.9-16.2 7.4-28.5 7.4zm-336 84c-78.4-57.9-96.2-149.2-96.2-149.2s91.8 33.7 170.2 91.6c78.4 57.9 166.4 57.9 166.4 57.9s-162 57.6-240.4-.3z" fill="currentColor"/></svg>
+                        AWS Rollback
                     </button>
-                    <button class="hud-step-btn" onclick="scrollToFaangCard(3)" style="background:rgba(66,133,244,0.08); border:1px solid rgba(66,133,244,0.25); color:#60a5fa; font-size:11px; font-family:var(--font-code); padding:4px 10px; border-radius:6px; cursor:pointer;">
-                        04 // Google AST Scale
+                    <button class="faang-tab-pill" id="tab-pill-3" onclick="switchFaangSpotlight(3)">
+                        <svg width="14" height="14" viewBox="0 0 48 48" fill="none" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="currentColor"/></svg>
+                        Google Scale
                     </button>
-                    <button class="hud-step-btn" onclick="scrollToFaangCard(4)" style="background:rgba(229,9,20,0.08); border:1px solid rgba(229,9,20,0.25); color:#f87171; font-size:11px; font-family:var(--font-code); padding:4px 10px; border-radius:6px; cursor:pointer;">
-                        05 // Netflix Telemetry
+                    <button class="faang-tab-pill" id="tab-pill-4" onclick="switchFaangSpotlight(4)">
+                        <svg width="14" height="14" viewBox="0 0 111 200" fill="none" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M0 0H36V200H0V0Z" fill="currentColor"/><path d="M75 0H111V200H75V0Z" fill="currentColor"/><path d="M0 0L75 200H111L36 0H0Z" fill="currentColor"/></svg>
+                        Netflix Telemetry
                     </button>
                 </div>
 
-                <div class="faang-grid">
-                    <!-- 1. Apple Level -->
-                    <div class="faang-card" style="--card-accent: #ffffff; --card-accent-rgb: 255, 255, 255;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                            <span class="faang-brand-badge" style="border-color:rgba(255,255,255,0.4); background:rgba(255,255,255,0.08); color:#fff;">
-                                Apple-Grade Ephemeral Security &amp; Privacy
-                            </span>
-                            <!-- 100% Official Apple SVG Logo -->
-                            <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.08); border-radius:8px; border:1px solid rgba(255,255,255,0.15); box-shadow:0 0 12px rgba(255,255,255,0.2);">
-                                <svg width="20" height="20" viewBox="0 0 170 170" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.08-7.83-8.1-12.44-15.06-6.61-9.98-11.89-21.73-15.82-35.25-3.93-13.52-5.9-26.07-5.9-37.66 0-14.54 3.63-26.7 10.9-36.47 7.27-9.77 16.64-14.78 28.12-15.04 4.74 0 10.12 1.25 16.14 3.76 6.02 2.51 9.94 3.84 11.77 3.99 2.01-.2 5.92-1.57 11.75-4.11 5.83-2.54 11.13-3.72 15.9-3.54 12.01.63 21.77 5.09 29.27 13.37-10.43 6.33-15.53 15.15-15.3 26.47.23 8.91 3.69 16.38 10.38 22.41 6.69 6.03 14.65 9.4 23.88 10.11-2.01 6.13-4.48 12.03-7.41 17.69zM119.22 33.04c0-7.39 2.66-14.41 7.98-21.05 5.32-6.64 12.07-11.02 20.25-13.14.35 1.15.53 2.37.53 3.66 0 7.42-2.73 14.6-8.19 21.54-5.46 6.94-12.28 11.39-20.46 13.35-.07-1.42-.11-2.87-.11-4.36z" fill="#FFFFFF"/>
-                                </svg>
+                <!-- Live Spotlight Stage Card -->
+                <div class="faang-spotlight-container" id="faang-spotlight-card">
+                    <div class="faang-spotlight-grid">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                                <div id="spotlight-logo-wrap" style="width:54px; height:54px; border-radius:14px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; box-shadow:0 0 25px rgba(255,255,255,0.25);">
+                                    <svg width="28" height="28" viewBox="0 0 170 170" fill="none" id="spotlight-logo-svg"><path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.08-7.83-8.1-12.44-15.06-6.61-9.98-11.89-21.73-15.82-35.25-3.93-13.52-5.9-26.07-5.9-37.66 0-14.54 3.63-26.7 10.9-36.47 7.27-9.77 16.64-14.78 28.12-15.04 4.74 0 10.12 1.25 16.14 3.76 6.02 2.51 9.94 3.84 11.77 3.99 2.01-.2 5.92-1.57 11.75-4.11 5.83-2.54 11.13-3.72 15.9-3.54 12.01.63 21.77 5.09 29.27 13.37-10.43 6.33-15.53 15.15-15.3 26.47.23 8.91 3.69 16.38 10.38 22.41 6.69 6.03 14.65 9.4 23.88 10.11-2.01 6.13-4.48 12.03-7.41 17.69zM119.22 33.04c0-7.39 2.66-14.41 7.98-21.05 5.32-6.64 12.07-11.02 20.25-13.14.35 1.15.53 2.37.53 3.66 0 7.42-2.73 14.6-8.19 21.54-5.46 6.94-12.28 11.39-20.46 13.35-.07-1.42-.11-2.87-.11-4.36z" fill="#FFFFFF"/></svg>
+                                </div>
+                                <div>
+                                    <span id="spotlight-badge" class="badge" style="margin:0; font-size:10px; border-color:#fff; color:#fff; background:rgba(255,255,255,0.08);">
+                                        Apple Architecture Pillar
+                                    </span>
+                                    <h3 id="spotlight-title" style="font-size:1.35rem; margin:4px 0 0; color:#fff;">
+                                        Zero-Trust Ephemeral Memory Enclave
+                                    </h3>
+                                </div>
+                            </div>
+                            <blockquote id="spotlight-quote" style="border-left:2px solid var(--accent-teal); padding-left:12px; font-style:italic; font-size:0.85rem; color:#94a3b8; margin-bottom:14px;">
+                                "Zero plaintext credentials at rest on disk. Ephemeral tokens live strictly in transient execution RAM."
+                            </blockquote>
+                            <p id="spotlight-desc" style="font-size:0.85rem; color:var(--text-muted); line-height:1.7;">
+                                Built with strict defense-in-depth isolation: Bearer tokens are kept in transient closure memory (<code>State.token</code>), never touching <code>localStorage</code>, <code>sessionStorage</code>, cookies, or URL parameters. Outbound requests are validated against known Google API origins.
+                            </p>
+                        </div>
+                        <div>
+                            <div style="background:rgba(2,6,23,0.9); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:14px; font-family:var(--font-code); font-size:11px; overflow-x:auto;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px; margin-bottom:8px;">
+                                    <span id="spotlight-filename" style="color:var(--text-muted); font-size:10px;">// ephemeral-security-guard.ts</span>
+                                    <span style="font-size:9px; color:#10b981; background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:4px;">VERIFIED SAFE</span>
+                                </div>
+                                <pre id="spotlight-code" style="color:#38bdf8; margin:0; line-height:1.6; white-space:pre-wrap;">// Invariant: Memory-only token lifecycle
+class EphemeralMemoryEnclave {
+    private static token: string | null = null;
+    public static setToken(t: string): void {
+        this.token = Object.freeze(t);
+    }
+    public static purge(): void {
+        this.token = null; // Zeroized on tab close
+    }
+}</pre>
                             </div>
                         </div>
-                        <h3 style="font-size:1.15rem; margin-bottom:8px; color:#fff;">Zero-Trust Ephemeral Memory Enclave</h3>
+                    </div>
+                </div>
+
+                <div class="faang-grid">
+                    <!-- 1. Apple Level (Left Slide-in) -->
+                    <div class="faang-card faang-card-left" style="--card-accent: #ffffff; --card-accent-rgb: 255, 255, 255;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                            <span class="faang-brand-badge" style="border-color:rgba(255,255,255,0.4); background:rgba(255,255,255,0.08); color:#fff;">
+                                <i class="fa-solid fa-arrow-right mr-1"></i> Apple-Grade Ephemeral Security
+                            </span>
+                            <!-- Official Apple Wikimedia Logo -->
+                            <div style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.08); border-radius:10px; border:1px solid rgba(255,255,255,0.2); box-shadow:0 0 15px rgba(255,255,255,0.25);">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/3/31/Apple_logo_white.svg" alt="Apple Official Logo" style="width:22px; height:22px; object-fit:contain;">
+                            </div>
+                        </div>
+                        <h3 style="font-size:1.2rem; margin-bottom:8px; color:#fff;">Zero-Trust Ephemeral Memory Enclave</h3>
                         <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.65; margin-bottom:12px;">
                             Modeled after Apple's <strong>Secure Enclave Processor (SEP)</strong> and WebKit Ephemeral Session architecture: Google OAuth 2.0 Bearer tokens live <em>strictly in transient JavaScript V8 execution memory</em> (<code>State.token</code>). Credentials never touch <code>localStorage</code>, <code>sessionStorage</code>, cookies, or URL query parameters, mathematically preventing token extraction via browser restart inspection, XSS attacks, or proxy log leaks.
                         </p>
@@ -927,20 +1056,18 @@
                         </div>
                     </div>
 
-                    <!-- 2. Meta (Facebook) Level -->
-                    <div class="faang-card" style="--card-accent: #0081fb; --card-accent-rgb: 0, 129, 251;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <!-- 2. Meta (Facebook) Level (Right Slide-in) -->
+                    <div class="faang-card faang-card-right" style="--card-accent: #0081fb; --card-accent-rgb: 0, 129, 251;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                             <span class="faang-brand-badge" style="border-color:rgba(0,129,251,0.4); background:rgba(0,129,251,0.08); color:#0081fb;">
-                                Meta-Grade Progressive Streaming
+                                <i class="fa-solid fa-arrow-left mr-1"></i> Meta-Grade Progressive Streaming
                             </span>
-                            <!-- 100% Official Meta Infinity Loop SVG Logo -->
-                            <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:rgba(0,129,251,0.08); border-radius:8px; border:1px solid rgba(0,129,251,0.25); box-shadow:0 0 12px rgba(0,129,251,0.3);">
-                                <svg width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M256 0C114.615 0 0 114.615 0 256s114.615 256 256 256 256-114.615 256-256S397.385 0 256 0zm-35.328 358.4c-42.544 0-77.952-32.96-77.952-73.6 0-40.64 35.408-73.6 77.952-73.6 22.848 0 43.36 9.536 57.648 24.816 6.016 6.432 15.936 6.64 22.208.48 6.272-6.144 6.368-16.192.224-22.464C280.096 192.192 251.744 180 220.672 180c-59.52 0-108.672 47.168-108.672 104.8 0 57.632 49.152 104.8 108.672 104.8 33.728 0 64.224-14.432 85.088-37.472 6.144-6.784 5.632-17.152-.896-23.296-6.528-6.144-16.896-5.632-23.04 1.152-16.032 17.696-39.456 28.416-66.192 28.416zm105.984-147.2c-22.848 0-43.36 9.536-57.648 24.816-6.016 6.432-15.936 6.64-22.208.48-6.272-6.144-6.368-16.192-.224-22.464 20.656-21.44 49.008-33.632 80.08-33.632 59.52 0 108.672 47.168 108.672 104.8 0 57.632-49.152 104.8-108.672 104.8-33.728 0-64.224-14.432-85.088-37.472-6.144-6.784-5.632-17.152.896-23.296 6.528-6.144 16.896-5.632 23.04 1.152 16.032 17.696 39.456 28.416 66.192 28.416 42.544 0 77.952-32.96 77.952-73.6 0-40.64-35.408-73.6-77.952-73.6z" fill="#0081FB"/>
-                                </svg>
+                            <!-- Official Meta Wikimedia Logo -->
+                            <div style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(0,129,251,0.08); border-radius:10px; border:1px solid rgba(0,129,251,0.3); box-shadow:0 0 15px rgba(0,129,251,0.35);">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7b/Meta_Platforms_Inc._logo.svg" alt="Meta Official Logo" style="width:24px; height:24px; object-fit:contain;">
                             </div>
                         </div>
-                        <h3 style="font-size:1.15rem; margin-bottom:8px; color:#fff;">Non-Blocking 4x Parallel Streaming (60 FPS)</h3>
+                        <h3 style="font-size:1.2rem; margin-bottom:8px; color:#fff;">Non-Blocking 4x Parallel Streaming (60 FPS)</h3>
                         <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.65; margin-bottom:12px;">
                             Engineered on the principles of Meta’s <strong>GraphQL <code>@stream</code> and News Feed Virtualization</strong>: large 100,000+ row datasets mount the interactive UI table in <strong>&lt;300ms</strong> on the initial 20,000-row batch, while spawning <strong>4 concurrent background HTTP fetch workers</strong> via BigQuery <code>startIndex</code> slicing.
                         </p>
@@ -956,20 +1083,18 @@
                         </div>
                     </div>
 
-                    <!-- 3. Amazon (AWS) Level -->
-                    <div class="faang-card" style="--card-accent: #ff9900; --card-accent-rgb: 255, 153, 0;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <!-- 3. Amazon (AWS) Level (Left Slide-in) -->
+                    <div class="faang-card faang-card-left" style="--card-accent: #ff9900; --card-accent-rgb: 255, 153, 0;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                             <span class="faang-brand-badge" style="border-color:rgba(255,153,0,0.4); background:rgba(255,153,0,0.08); color:#ff9900;">
-                                Amazon AWS-Grade State Reversibility
+                                <i class="fa-solid fa-arrow-right mr-1"></i> Amazon AWS-Grade State Machine
                             </span>
-                            <!-- 100% Official AWS SVG Logo -->
-                            <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:rgba(255,153,0,0.08); border-radius:8px; border:1px solid rgba(255,153,0,0.25); box-shadow:0 0 12px rgba(255,153,0,0.25);">
-                                <svg width="22" height="22" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M125.8 288.6c-4.8 0-9.2-.5-13.3-1.6-4.1-1.1-7.7-2.9-10.8-5.3-3.1-2.5-5.6-5.8-7.3-10-1.7-4.2-2.6-9.5-2.6-15.8 0-6.1.9-11.2 2.7-15.4 1.8-4.2 4.4-7.5 7.7-10 3.3-2.5 7.4-4.2 12.1-5.3 4.7-1 10-1.6 15.8-1.6 4.9 0 9.7.4 14.5 1.1 4.8.7 9.4 1.8 13.8 3.2v-7.3c0-7.3-2.1-12.7-6.2-16.1-4.1-3.4-10.7-5.1-19.6-5.1-4.7 0-9.5.6-14.3 1.9-4.8 1.2-9.4 2.8-13.8 4.7l-4.7-15.3c5.3-2.4 11-4.3 17.2-5.7 6.1-1.4 12.5-2.1 19.1-2.1 14.7 0 25.4 3.2 32.1 9.7 6.7 6.5 10.1 16.5 10.1 30v64h-18.7v-13.6c-4.4 4.8-9.6 8.5-15.8 11.1-6.2 2.6-13.1 3.9-20.9 3.9zm5.5-16.7c5.1 0 10-.9 14.5-2.8 4.6-1.8 8.4-4.6 11.5-8.2v-16.3c-3.9-1.2-8-2-12.4-2.6-4.4-.5-8.8-.8-13.2-.8-8.5 0-14.8 1.4-18.9 4.3-4.1 2.8-6.1 7.2-6.1 13.1 0 4.2 1.3 7.4 4 9.6 2.7 2.4 7.6 3.7 14.6 3.7zm134.4 14.1l-27.9-97.9h20.5l17.7 70.3 17-70.3h20.2l17 70.8 18.2-70.8h20.2l-28.4 97.9h-19.9l-17.2-68.5-17 68.5h-20.4zm164.7 2.6c-8.9 0-17.1-1.4-24.6-4.3-7.5-2.9-13.5-7.3-18.1-13.2l12.4-13c3.6 4.6 8 8 13.2 10.2 5.2 2.2 11 3.3 17.4 3.3 6.3 0 11.1-1.1 14.3-3.4 3.2-2.3 4.9-5.4 4.9-9.4 0-3.9-1.4-6.9-4.3-9-2.9-2.1-7.8-3.9-14.8-5.4-9.6-2.1-17.1-4.8-22.4-8.2-5.4-3.4-8.1-8.9-8.1-16.5 0-8.2 3.3-14.8 9.9-19.7 6.6-4.9 15.6-7.4 27.1-7.4 7.5 0 14.6 1.1 21.1 3.4 6.6 2.3 12 5.8 16.3 10.4l-11.7 13.2c-3.3-3.4-7.2-6-11.8-7.7-4.6-1.7-9.3-2.5-14.3-2.5-5.3 0-9.4 1-12.4 3.1-3 2.1-4.5 4.9-4.5 8.5 0 3.7 1.4 6.5 4.2 8.4 2.8 1.9 7.6 3.6 14.4 5 10 2.2 17.6 5 22.8 8.4 5.2 3.4 7.8 8.8 7.8 16.2 0 8.7-3.4 15.6-10.1 20.6-6.7 4.9-16.2 7.4-28.5 7.4zm-336 84c-78.4-57.9-96.2-149.2-96.2-149.2s91.8 33.7 170.2 91.6c78.4 57.9 166.4 57.9 166.4 57.9s-162 57.6-240.4-.3z" fill="#FF9900"/>
-                                </svg>
+                            <!-- Official AWS Wikimedia Logo -->
+                            <div style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,153,0,0.08); border-radius:10px; border:1px solid rgba(255,153,0,0.3); box-shadow:0 0 15px rgba(255,153,0,0.3);">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg" alt="AWS Official Logo" style="width:24px; height:24px; object-fit:contain;">
                             </div>
                         </div>
-                        <h3 style="font-size:1.15rem; margin-bottom:8px; color:#fff;">CloudFormation-Style 1-Click Rollbacks</h3>
+                        <h3 style="font-size:1.2rem; margin-bottom:8px; color:#fff;">CloudFormation-Style 1-Click Rollbacks</h3>
                         <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.65; margin-bottom:12px;">
                             Built on <strong>AWS CloudFormation Stack Rollbacks &amp; DynamoDB Point-in-Time Recovery (PITR)</strong> semantics: every mutating sync or copy operation records a deterministic compensating transaction. Uses native browser <strong>Gzip WebStreams (<code>CompressionStream</code>)</strong> to compress deep entity snapshots by <strong>85%–90%</strong>, storing multi-entity backups within Firestore document limits without truncation.
                         </p>
@@ -985,23 +1110,18 @@
                         </div>
                     </div>
 
-                    <!-- 4. Google Level -->
-                    <div class="faang-card" style="--card-accent: #4285f4; --card-accent-rgb: 66, 133, 244;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <!-- 4. Google Level (Right Slide-in) -->
+                    <div class="faang-card faang-card-right" style="--card-accent: #4285f4; --card-accent-rgb: 66, 133, 244;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                             <span class="faang-brand-badge" style="border-color:rgba(66,133,244,0.4); background:rgba(66,133,244,0.08); color:#4285f4;">
-                                Google-Grade Analytical Scale
+                                <i class="fa-solid fa-arrow-left mr-1"></i> Google-Grade Analytical Scale
                             </span>
-                            <!-- 100% Official Google Quad-Color SVG Logo -->
-                            <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:rgba(66,133,244,0.08); border-radius:8px; border:1px solid rgba(66,133,244,0.25); box-shadow:0 0 12px rgba(66,133,244,0.25);">
-                                <svg width="22" height="22" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
-                                    <path d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
-                                    <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
-                                    <path d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
-                                </svg>
+                            <!-- Official Google "G" Wikimedia Logo -->
+                            <div style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(66,133,244,0.08); border-radius:10px; border:1px solid rgba(66,133,244,0.3); box-shadow:0 0 15px rgba(66,133,244,0.3);">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google Official Logo" style="width:22px; height:22px; object-fit:contain;">
                             </div>
                         </div>
-                        <h3 style="font-size:1.15rem; margin-bottom:8px; color:#fff;">Semantic AST Normalization &amp; BigQuery Scale</h3>
+                        <h3 style="font-size:1.2rem; margin-bottom:8px; color:#fff;">Semantic AST Normalization &amp; BigQuery Scale</h3>
                         <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.65; margin-bottom:12px;">
                             Engineered natively on Google Cloud's core REST APIs: features a custom SQL AST tokenizer that strips block comments (`/* ... */`), line comments (`-- ...`), trailing semicolons, and collapses variable whitespace to detect <strong>true logical equivalence vs superficial formatting differences</strong>.
                         </p>
@@ -1017,22 +1137,18 @@
                         </div>
                     </div>
 
-                    <!-- 5. Netflix Level -->
-                    <div class="faang-card" style="--card-accent: #e50914; --card-accent-rgb: 229, 9, 20;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <!-- 5. Netflix Level (Left Slide-in) -->
+                    <div class="faang-card faang-card-left" style="--card-accent: #e50914; --card-accent-rgb: 229, 9, 20;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                             <span class="faang-brand-badge" style="border-color:rgba(229,9,20,0.4); background:rgba(229,9,20,0.08); color:#e50914;">
-                                Netflix-Grade Chaos Governance
+                                <i class="fa-solid fa-arrow-right mr-1"></i> Netflix-Grade Chaos Governance
                             </span>
-                            <!-- 100% Official Netflix "N" Ribbon SVG Logo -->
-                            <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:rgba(229,9,20,0.08); border-radius:8px; border:1px solid rgba(229,9,20,0.25); box-shadow:0 0 12px rgba(229,9,20,0.3);">
-                                <svg width="18" height="22" viewBox="0 0 111 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M0 0H36V200H0V0Z" fill="#B1060F"/>
-                                    <path d="M75 0H111V200H75V0Z" fill="#B1060F"/>
-                                    <path d="M0 0L75 200H111L36 0H0Z" fill="#E50914"/>
-                                </svg>
+                            <!-- Official Netflix Wikimedia Logo -->
+                            <div style="width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(229,9,20,0.08); border-radius:10px; border:1px solid rgba(229,9,20,0.3); box-shadow:0 0 15px rgba(229,9,20,0.35);">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/75/Netflix_icon.svg" alt="Netflix Official Logo" style="width:18px; height:22px; object-fit:contain;">
                             </div>
                         </div>
-                        <h3 style="font-size:1.15rem; margin-bottom:8px; color:#fff;">Immutable Telemetry &amp; Server-Verified Identity</h3>
+                        <h3 style="font-size:1.2rem; margin-bottom:8px; color:#fff;">Immutable Telemetry &amp; Server-Verified Identity</h3>
                         <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.65; margin-bottom:12px;">
                             Modeled after Netflix's <strong>Spinnaker Deployment Audit Trails and Atlas Telemetry</strong>: records <strong>who changed what, down to exact character diffs</strong>. Backend Cloud Functions extract verified Google OpenID identities directly from cryptographic token headers and reject client-supplied email strings, guaranteeing tamper-resistant audit integrity for enterprise compliance.
                         </p>
@@ -2256,17 +2372,33 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
                 });
             });
 
-            // Stagger FAANG cards into view
-            gsap.from('.faang-card', {
-                scrollTrigger: {
-                    trigger: '.faang-grid',
-                    start: 'top 80%'
-                },
-                y: 40,
-                opacity: 0,
-                duration: 0.8,
-                stagger: 0.12,
-                ease: 'back.out(1.4)'
+            // Alternating Left / Right ScrollTrigger animation for FAANG cards
+            document.querySelectorAll('.faang-card-left').forEach(card => {
+                gsap.from(card, {
+                    scrollTrigger: {
+                        trigger: card,
+                        start: 'top 85%',
+                        toggleActions: 'play none none none'
+                    },
+                    x: -140,
+                    opacity: 0,
+                    duration: 0.9,
+                    ease: 'power3.out'
+                });
+            });
+
+            document.querySelectorAll('.faang-card-right').forEach(card => {
+                gsap.from(card, {
+                    scrollTrigger: {
+                        trigger: card,
+                        start: 'top 85%',
+                        toggleActions: 'play none none none'
+                    },
+                    x: 140,
+                    opacity: 0,
+                    duration: 0.9,
+                    ease: 'power3.out'
+                });
             });
         }
 
@@ -2292,103 +2424,85 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
         });
 
         // ====================================================
-        // 4. THREE.JS 3D GLOBAL TOPOLOGY CANVAS
+        // 4. THREE.JS 3D ARCHITECTURE PIPELINE & SIMULATION ENGINE
         // ====================================================
+        let simPacketList = [];
+        let pipelineScene = null;
+
         function initThreeCloudTopology() {
             const canvas = document.getElementById('three-cloud-canvas');
             const container = document.getElementById('three-cloud-canvas-wrap');
             if (!canvas || !container || typeof THREE === 'undefined') return;
 
             const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.set(0, 0, 18);
+            pipelineScene = scene;
+            const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 22);
 
             const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-            // Constellation Sphere
-            const globeGroup = new THREE.Group();
-            scene.add(globeGroup);
+            const pipelineGroup = new THREE.Group();
+            scene.add(pipelineGroup);
 
-            // Sphere Wireframe Particles
-            const particleCount = 450;
-            const particleGeo = new THREE.BufferGeometry();
-            const particlePos = new Float32Array(particleCount * 3);
-            const radius = 6.5;
-
-            for (let i = 0; i < particleCount; i++) {
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.acos(Math.random() * 2 - 1);
-                particlePos[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-                particlePos[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                particlePos[i * 3 + 2] = radius * Math.cos(phi);
-            }
-            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
-
-            const particleMat = new THREE.PointsMaterial({
-                color: 0x00d4ff,
-                size: 0.12,
-                transparent: true,
-                opacity: 0.65
-            });
-            const particles = new THREE.Points(particleGeo, particleMat);
-            globeGroup.add(particles);
-
-            // Project Nodes (Glowing Spheres)
-            const nodeGeo = new THREE.SphereGeometry(0.35, 16, 16);
-            const nodeColors = [0x00d4ff, 0x10b981, 0xc084fc, 0xfbbf24, 0x3b82f6];
-            const nodeMeshList = [];
-
-            const nodePositions = [
-                new THREE.Vector3(-4.5, 1.8, 3.5),   // Source Datastore
-                new THREE.Vector3(4.5, -1.2, 3.2),   // Target Datastore
-                new THREE.Vector3(-1.8, -4.2, 3.0),  // BigQuery Analytics
-                new THREE.Vector3(2.5, 4.0, 2.5),    // Audit Function
-                new THREE.Vector3(0, 0, 6.2)         // Client Orchestrator
+            // 6 Real Architectural Nodes with physical geometry
+            const nodes = [
+                { name: 'Source GCP', pos: new THREE.Vector3(-7.5, 1.8, 0), color: 0x00d4ff, geo: new THREE.BoxGeometry(2.2, 1.6, 1.2) },
+                { name: '4x Stream Engine', pos: new THREE.Vector3(-2.8, 2.6, 0), color: 0x38bdf8, geo: new THREE.CylinderGeometry(1.0, 1.0, 1.4, 16) },
+                { name: 'AST Normalizer', pos: new THREE.Vector3(1.8, 2.6, 0), color: 0x60a5fa, geo: new THREE.OctahedronGeometry(1.2) },
+                { name: 'Gzip PITR Vault', pos: new THREE.Vector3(-0.5, -2.4, 0), color: 0xfbbf24, geo: new THREE.BoxGeometry(2.0, 1.4, 1.0) },
+                { name: 'Target GCP Datastore', pos: new THREE.Vector3(7.5, 1.8, 0), color: 0x10b981, geo: new THREE.BoxGeometry(2.2, 1.6, 1.2) },
+                { name: 'Audit Ledger', pos: new THREE.Vector3(4.5, -2.4, 0), color: 0xf87171, geo: new THREE.DodecahedronGeometry(1.1) }
             ];
 
-            nodePositions.forEach((pos, idx) => {
-                const mat = new THREE.MeshBasicMaterial({ color: nodeColors[idx % nodeColors.length], wireframe: true });
-                const mesh = new THREE.Mesh(nodeGeo, mat);
-                mesh.position.copy(pos);
-                globeGroup.add(mesh);
-                nodeMeshList.push(mesh);
+            nodes.forEach(node => {
+                const mat = new THREE.MeshBasicMaterial({ color: node.color, transparent: true, opacity: 0.4, wireframe: false });
+                const mesh = new THREE.Mesh(node.geo, mat);
+                mesh.position.copy(node.pos);
+
+                const edgeGeo = new THREE.EdgesGeometry(node.geo);
+                const edgeMat = new THREE.LineBasicMaterial({ color: node.color, linewidth: 2 });
+                const edgeMesh = new THREE.LineSegments(edgeGeo, edgeMat);
+                mesh.add(edgeMesh);
+
+                pipelineGroup.add(mesh);
             });
 
-            // Glowing Spline Energy Arcs
-            const curveCurves = [
-                new THREE.QuadraticBezierCurve3(nodePositions[0], new THREE.Vector3(-1.5, 3.5, 5.5), nodePositions[4]),
-                new THREE.QuadraticBezierCurve3(nodePositions[4], new THREE.Vector3(2.5, 1.5, 5.5), nodePositions[1]),
-                new THREE.QuadraticBezierCurve3(nodePositions[4], new THREE.Vector3(0.5, 2.5, 5.0), nodePositions[3]),
-                new THREE.QuadraticBezierCurve3(nodePositions[4], new THREE.Vector3(-1.0, -2.5, 4.5), nodePositions[2])
+            // Architectural Data Pipelines (Highway Beams)
+            const pipelineSegments = [
+                { start: nodes[0].pos, end: nodes[1].pos, color: 0x00d4ff },
+                { start: nodes[1].pos, end: nodes[2].pos, color: 0x38bdf8 },
+                { start: nodes[2].pos, end: nodes[4].pos, color: 0x60a5fa },
+                { start: nodes[1].pos, end: nodes[3].pos, color: 0xfbbf24 },
+                { start: nodes[4].pos, end: nodes[5].pos, color: 0xf87171 }
             ];
 
-            const packetList = [];
-            curveCurves.forEach((curve, i) => {
-                const points = curve.getPoints(40);
+            pipelineSegments.forEach(seg => {
+                const points = [seg.start, seg.end];
                 const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-                const lineMat = new THREE.LineBasicMaterial({
-                    color: nodeColors[i % nodeColors.length],
-                    transparent: true,
-                    opacity: 0.4
-                });
+                const lineMat = new THREE.LineBasicMaterial({ color: seg.color, transparent: true, opacity: 0.35 });
                 const line = new THREE.Line(lineGeo, lineMat);
-                globeGroup.add(line);
-
-                // Animated Packet
-                const pktGeo = new THREE.SphereGeometry(0.18, 12, 12);
-                const pktMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-                const pkt = new THREE.Mesh(pktGeo, pktMat);
-                globeGroup.add(pkt);
-                packetList.push({ mesh: pkt, curve, progress: Math.random() });
+                pipelineGroup.add(line);
             });
 
-            // Mouse Drag Interaction
+            // Ambient background particle grid
+            const pCount = 150;
+            const pGeo = new THREE.BufferGeometry();
+            const pPos = new Float32Array(pCount * 3);
+            for (let i = 0; i < pCount; i++) {
+                pPos[i * 3] = (Math.random() - 0.5) * 35;
+                pPos[i * 3 + 1] = (Math.random() - 0.5) * 20;
+                pPos[i * 3 + 2] = (Math.random() - 0.5) * 15;
+            }
+            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            const pMat = new THREE.PointsMaterial({ color: 0x00d4ff, size: 0.08, transparent: true, opacity: 0.3 });
+            pipelineGroup.add(new THREE.Points(pGeo, pMat));
+
+            // Mouse Drag & Orbit
             let isDragging = false;
             let prevMouseX = 0;
             let prevMouseY = 0;
-            let autoRotateSpeed = 0.003;
 
             container.addEventListener('mousedown', (e) => {
                 isDragging = true;
@@ -2400,35 +2514,40 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
                 if (!isDragging) return;
                 const deltaX = e.clientX - prevMouseX;
                 const deltaY = e.clientY - prevMouseY;
-                globeGroup.rotation.y += deltaX * 0.005;
-                globeGroup.rotation.x += deltaY * 0.005;
+                pipelineGroup.rotation.y += deltaX * 0.004;
+                pipelineGroup.rotation.x += deltaY * 0.004;
                 prevMouseX = e.clientX;
                 prevMouseY = e.clientY;
             });
 
-            // Render loop with IntersectionObserver optimization
             let isVisible = true;
             const obs = new IntersectionObserver((entries) => {
                 isVisible = entries[0].isIntersecting;
             }, { threshold: 0.1 });
             obs.observe(container);
 
+            let clock = 0;
             function animate() {
                 requestAnimationFrame(animate);
                 if (!isVisible) return;
 
+                clock += 0.015;
                 if (!isDragging) {
-                    globeGroup.rotation.y += autoRotateSpeed;
-                    globeGroup.rotation.x += autoRotateSpeed * 0.4;
+                    pipelineGroup.rotation.y = Math.sin(clock * 0.3) * 0.12;
+                    pipelineGroup.rotation.x = Math.cos(clock * 0.2) * 0.08;
                 }
 
-                // Update packets along curves
-                packetList.forEach(item => {
-                    item.progress += 0.008;
-                    if (item.progress > 1) item.progress = 0;
-                    const pos = item.curve.getPoint(item.progress);
-                    item.mesh.position.copy(pos);
-                });
+                // Update active simulation packets
+                for (let i = simPacketList.length - 1; i >= 0; i--) {
+                    const pkt = simPacketList[i];
+                    pkt.progress += pkt.speed;
+                    if (pkt.progress >= 1) {
+                        pipelineGroup.remove(pkt.mesh);
+                        simPacketList.splice(i, 1);
+                    } else {
+                        pkt.mesh.position.lerpVectors(pkt.start, pkt.end, pkt.progress);
+                    }
+                }
 
                 renderer.render(scene, camera);
             }
@@ -2440,7 +2559,74 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
             });
+
+            window.pipelineGroupInstance = pipelineGroup;
+            window.pipelineNodes = nodes;
         }
+
+        // Trigger Interactive Architecture Simulation Flows
+        window.triggerPipelineSimulation = function(mode) {
+            if (!window.pipelineGroupInstance || !window.pipelineNodes) return;
+            const grp = window.pipelineGroupInstance;
+            const nds = window.pipelineNodes;
+
+            const statusDot = document.getElementById('sim-status-dot');
+            const statusTitle = document.getElementById('sim-status-title');
+            const statusSub = document.getElementById('sim-status-sub');
+
+            function spawnPacket(startVec, endVec, col, speed = 0.02) {
+                const pGeo = new THREE.SphereGeometry(0.24, 12, 12);
+                const pMat = new THREE.MeshBasicMaterial({ color: col });
+                const mesh = new THREE.Mesh(pGeo, pMat);
+                mesh.position.copy(startVec);
+                grp.add(mesh);
+                simPacketList.push({ mesh, start: startVec, end: endVec, progress: 0, speed });
+            }
+
+            if (mode === 'sync') {
+                if (statusDot) statusDot.style.background = '#00d4ff';
+                if (statusTitle) statusTitle.textContent = 'PIPELINE RUNNING: SOURCE ➔ TARGET ATOMIC SYNC';
+                if (statusSub) statusSub.textContent = '1. Slicing 100k rows into 4 streams ➔ 2. Normalizing AST ➔ 3. Gzip Snapshot (90%) ➔ 4. Atomic Target Upsert';
+
+                // Spawn sequential packet stages
+                spawnPacket(nds[0].pos, nds[1].pos, 0x00d4ff, 0.025);
+                setTimeout(() => spawnPacket(nds[1].pos, nds[2].pos, 0x38bdf8, 0.025), 600);
+                setTimeout(() => spawnPacket(nds[1].pos, nds[3].pos, 0xfbbf24, 0.02), 800);
+                setTimeout(() => spawnPacket(nds[2].pos, nds[4].pos, 0x10b981, 0.025), 1400);
+                setTimeout(() => spawnPacket(nds[4].pos, nds[5].pos, 0xf87171, 0.025), 2000);
+
+                setTimeout(() => {
+                    if (statusTitle) statusTitle.textContent = 'PIPELINE COMPLETE: ALL ENTITIES SYNCHRONIZED LOSSLESSLY';
+                    if (statusDot) statusDot.style.background = '#10b981';
+                }, 3200);
+
+            } else if (mode === 'stream') {
+                if (statusDot) statusDot.style.background = '#38bdf8';
+                if (statusTitle) statusTitle.textContent = 'PIPELINE STREAMING: 4X CONCURRENT WORKERS ACTIVE';
+                if (statusSub) statusSub.textContent = 'Worker 0 (0-25k) | Worker 1 (25k-50k) | Worker 2 (50k-75k) | Worker 3 (75k-100k) streaming concurrently at 60 FPS';
+
+                for (let i = 0; i < 4; i++) {
+                    setTimeout(() => {
+                        spawnPacket(nds[0].pos, nds[1].pos, 0x38bdf8, 0.035);
+                        setTimeout(() => spawnPacket(nds[1].pos, nds[2].pos, 0x60a5fa, 0.035), 400);
+                        setTimeout(() => spawnPacket(nds[2].pos, nds[4].pos, 0x10b981, 0.035), 800);
+                    }, i * 300);
+                }
+
+            } else if (mode === 'revert') {
+                if (statusDot) statusDot.style.background = '#fbbf24';
+                if (statusTitle) statusTitle.textContent = 'PIPELINE REVERT: 1-CLICK COMPENSATING ROLLBACK';
+                if (statusSub) statusSub.textContent = 'Decompressing Gzip backup stream ➔ Executing inverse delete & restore mutations on Target Datastore';
+
+                spawnPacket(nds[3].pos, nds[4].pos, 0xfbbf24, 0.025);
+                spawnPacket(nds[5].pos, nds[4].pos, 0xf87171, 0.025);
+
+                setTimeout(() => {
+                    if (statusTitle) statusTitle.textContent = 'ROLLBACK VERIFIED: TARGET RESTORED TO EXACT PRIOR STATE';
+                    if (statusDot) statusDot.style.background = '#10b981';
+                }, 2200);
+            }
+        };
 
         // ====================================================
         // 5. THREE.JS 3D ISOMETRIC ARCHITECTURE STACK
@@ -2485,7 +2671,6 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
                 layers.push(mesh);
             });
 
-            // Ambient floating animation
             let isVisible = true;
             const obs = new IntersectionObserver((entries) => {
                 isVisible = entries[0].isIntersecting;
