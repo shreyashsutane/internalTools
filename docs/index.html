@@ -607,6 +607,20 @@
             font-family: var(--font-code);
         }
 
+        /* Interactive Mermaid Flowchart Node Styles */
+        .mermaid svg .node, .mermaid .node {
+            cursor: pointer !important;
+            transition: all 0.2s ease;
+        }
+        .mermaid svg .node:hover rect,
+        .mermaid svg .node:hover polygon,
+        .mermaid svg .node:hover circle,
+        .mermaid svg .node:hover path {
+            filter: drop-shadow(0 0 10px #00d4ff) brightness(1.25) !important;
+            stroke: #00d4ff !important;
+            stroke-width: 2.5px !important;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             html { scroll-behavior: auto; }
             *, *::before, *::after {
@@ -1369,7 +1383,7 @@
                 </div>
 
                 <h3><i class="fa-solid fa-network-wired"></i> Dynamic Operation Flowchart</h3>
-                <p>The following live animated diagram visualizes the interactive modules communication loop and data relay vectors across the browser client, secured audit function, and official GCP REST APIs:</p>
+                <p>The following live animated diagram visualizes the interactive modules communication loop and data relay vectors across the browser client, secured audit function, and official GCP REST APIs. <strong style="color:#00d4ff;"><i class="fa-solid fa-arrow-pointer mr-1"></i>Click on any file name / node below to open its full source code in a live popup viewer:</strong></p>
                 
                 <div class="mermaid">
                 graph TD
@@ -1406,6 +1420,19 @@
                     PROXY -->|Verify identity; write as restricted service account| FIRE
                     UTILS -->|Catch & propagate boundary errors| AUDIT
                     CONFIG -->|Inject static parameters| API
+
+                    click CONFIG call openCodeFileModal("config.ts")
+                    click UTILS call openCodeFileModal("utils.ts")
+                    click STATE call openCodeFileModal("state.ts")
+                    click API call openCodeFileModal("api.ts")
+                    click DSUTIL call openCodeFileModal("datastore-utils.ts")
+                    click DIFF call openCodeFileModal("diff.ts")
+                    click AUDIT call openCodeFileModal("audit.ts")
+                    click UI call openCodeFileModal("ui.ts")
+                    click APP call openCodeFileModal("app.ts")
+                    click PROXY call openCodeFileModal("functions/auditApi")
+                    click GCP call openCodeFileModal("GCP Cloud APIs")
+                    click FIRE call openCodeFileModal("GCP Firestore")
                 </div>
             </div>
 
@@ -2941,11 +2968,584 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
             }
         };
 
-        // Initialize 3D engines once window loads
+        // ====================================================
+        // INTERACTIVE CODE FILE POPUP MODAL CONTROLLER & REPO
+        // ====================================================
+        const CODE_REPO = {
+            "config.ts": {
+                title: "config.ts",
+                path: "datastore-copier/src/config.ts",
+                lang: "TypeScript",
+                role: "Central Configuration & Dynamic GCP REST Endpoint Mappings",
+                subtab: "config",
+                code: `// datastore-copier/src/config.ts
+export const CONFIG = {
+    // Dynamic Google Cloud Datastore REST endpoints
+    DATASTORE_RUN_QUERY_URL: (pid: string, db?: string) => 
+        \`https://datastore.googleapis.com/v1/projects/\${pid}:runQuery\` + (db ? \`?databaseId=\${db}\` : ''),
+    DATASTORE_LOOKUP_URL: (pid: string, db?: string) => 
+        \`https://datastore.googleapis.com/v1/projects/\${pid}:lookup\` + (db ? \`?databaseId=\${db}\` : ''),
+    DATASTORE_COMMIT_URL: (pid: string, db?: string) => 
+        \`https://datastore.googleapis.com/v1/projects/\${pid}:commit\` + (db ? \`?databaseId=\${db}\` : ''),
+    
+    // Cloud Function verified same-origin audit URL
+    FIRESTORE_AUDIT_LOG_URL: "/api/audit_logs",
+    
+    // Batching & Concurrency constraints
+    BATCH_CHUNK_SIZE: 500,
+    MAX_CONCURRENT_STREAMS: 4
+};`
+            },
+            "state.ts": {
+                title: "state.ts",
+                path: "datastore-copier/src/state.ts",
+                lang: "TypeScript",
+                role: "Pub/Sub Reactive Observer & Transient Memory-Only Credential Store",
+                subtab: "state",
+                code: `// datastore-copier/src/state.ts
+const observers = new Map<string, Array<() => void>>();
+
+export interface DatastoreState {
+    src: string;
+    tgt: string;
+    kind: string;
+    results: any[];
+    selected: Set<string>;
+    properties: string[];
+}
+
+export const State = {
+    // Invariant: Memory-only OAuth 2.0 Bearer token (Zero disk/localStorage persistence)
+    token: '',
+    authEmail: '',
+    
+    ds: {
+        src: '',
+        tgt: '',
+        kind: '',
+        results: [],
+        selected: new Set<string>(),
+        properties: []
+    } as DatastoreState,
+
+    subscribe: (event: string, callback: () => void) => {
+        if (!observers.has(event)) observers.set(event, []);
+        observers.get(event)!.push(callback);
+    },
+    
+    notify: (event: string) => {
+        observers.get(event)?.forEach(callback => callback());
+    }
+};`
+            },
+            "utils.ts": {
+                title: "utils.ts",
+                path: "datastore-copier/src/utils.ts",
+                lang: "TypeScript",
+                role: "DOM Type-Safe Element Guard Rails & Centralized ErrorBoundary",
+                subtab: "utils",
+                code: `// datastore-copier/src/utils.ts
+export const Utils = {
+    getInput: (id: string): HTMLInputElement => {
+        const el = document.getElementById(id);
+        if (!el) throw new Error(\`Input element #\${id} not found\`);
+        return el as HTMLInputElement;
+    },
+    getButton: (id: string): HTMLButtonElement => {
+        const el = document.getElementById(id);
+        if (!el) throw new Error(\`Button element #\${id} not found\`);
+        return el as HTMLButtonElement;
+    },
+    toast: (msg: string, type: 'info' | 'err' | 'success') => {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const card = document.createElement('div');
+        card.className = \`toast-card toast-\${type}\`;
+        card.innerHTML = \`<i class="fa-solid \${type === 'err' ? 'fa-circle-xmark' : 'fa-circle-check'}"></i> <span>\${msg}</span>\`;
+        container.appendChild(card);
+        setTimeout(() => card.remove(), 4000);
+    }
+};
+
+export const ErrorBoundary = {
+    handle: async (error: Error, context: string): Promise<void> => {
+        console.error(\`[\${context}] Exception Captured:\`, error);
+        Utils.toast(error.message, 'err');
+        try {
+            const { AuditLog } = await import('./audit');
+            await AuditLog.addLog(\`EXCEPT_\${context.toUpperCase()}\`, "—", "—", error.message, "FAILED");
+        } catch(e) {}
+    }
+};`
+            },
+            "api.ts": {
+                title: "api.ts",
+                path: "datastore-copier/src/api.ts",
+                lang: "TypeScript",
+                role: "Authenticated Bounded GCP REST Client with AbortSignal & Exponential 429 Backoff",
+                subtab: "api",
+                code: `// datastore-copier/src/api.ts
+import { State } from './state';
+
+export const Api = {
+    fetch: async (url: string, options: RequestInit = {}): Promise<any> => {
+        // Enforce HTTPS and known Google API endpoints
+        if (!url.startsWith('https://datastore.googleapis.com/') && 
+            !url.startsWith('https://bigquery.googleapis.com/') &&
+            !url.startsWith('/api/')) {
+            throw new Error('Blocked unverified outbound destination');
+        }
+
+        const headers = new Headers(options.headers || {});
+        if (State.token) {
+            headers.set('Authorization', \`Bearer \${State.token}\`);
+        }
+        headers.set('Content-Type', 'application/json');
+
+        let attempts = 0;
+        while (attempts < 5) {
+            const res = await fetch(url, { ...options, headers });
+            if (res.status === 429) {
+                // Exponential backoff
+                await new Promise(r => setTimeout(r, Math.pow(2, attempts++) * 500));
+                continue;
+            }
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+                throw new Error(err.error?.message || \`HTTP \${res.status}\`);
+            }
+            return res.json();
+        }
+        throw new Error('Rate limit retries exhausted');
+    },
+
+    lookupEntities: async (pid: string, keys: any[], db?: string, signal?: AbortSignal) => {
+        const found: any[] = [];
+        const missing: any[] = [];
+        for (let offset = 0; offset < keys.length; offset += 1000) {
+            let pending = keys.slice(offset, offset + 1000);
+            while (pending.length > 0) {
+                const url = \`https://datastore.googleapis.com/v1/projects/\${pid}:lookup\` + (db ? \`?databaseId=\${db}\` : '');
+                const res = await Api.fetch(url, { method: 'POST', body: JSON.stringify({ keys: pending }), signal });
+                found.push(...(res.found || []));
+                missing.push(...(res.missing || []));
+                pending = res.deferred || [];
+            }
+        }
+        return { found, missing, deferred: [] };
+    }
+};`
+            },
+            "datastore-utils.ts": {
+                title: "datastore-utils.ts",
+                path: "datastore-copier/src/datastore-utils.ts",
+                lang: "TypeScript",
+                role: "64-Bit Integer Preservation, Native Type Wrappers & Nested AST Property Replacements",
+                subtab: "datastore-utils",
+                code: `// datastore-copier/src/datastore-utils.ts
+export const isJsonString = (str: string): boolean => {
+    try { const o = JSON.parse(str); return !!o && typeof o === 'object'; } 
+    catch { return false; }
+};
+
+export const minifyDatastoreValue = (value: any): void => {
+    if (typeof value?.stringValue === 'string' && isJsonString(value.stringValue)) {
+        value.stringValue = JSON.stringify(JSON.parse(value.stringValue));
+    }
+    value.arrayValue?.values?.forEach(minifyDatastoreValue);
+    if (value.mapValue?.properties) minifyJsonProperties(value.mapValue.properties);
+    if (value.entityValue?.properties) minifyJsonProperties(value.entityValue.properties);
+};
+
+export const minifyJsonProperties = (props: Record<string, any>): void => {
+    for (const key of Object.keys(props)) {
+        minifyDatastoreValue(props[key]);
+    }
+};
+
+export const replaceDatastoreField = (properties: any, fieldPath: string, target: string, replacement: string) => {
+    if (!fieldPath || fieldPath === '*') {
+        return replaceEveryString(properties, target, replacement);
+    }
+    return replaceAtPath(properties, fieldPath.split('.'), target, replacement);
+};`
+            },
+            "diff.ts": {
+                title: "diff.ts",
+                path: "datastore-copier/src/diff.ts",
+                lang: "TypeScript",
+                role: "Semantic JSON AST Normalization & Character-Level Visual Difference Matrix",
+                subtab: "diff",
+                code: `// datastore-copier/src/diff.ts
+import { isJsonString, minifyJsonProperties } from './datastore-utils';
+
+export const Diff = {
+    areValuesEqual: (a: any, b: any): boolean => {
+        if (a === b) return true;
+        if (typeof a !== typeof b) return false;
+        if (typeof a === 'object' && a !== null && b !== null) {
+            const keysA = Object.keys(a);
+            const keysB = Object.keys(b);
+            if (keysA.length !== keysB.length) return false;
+            return keysA.every(k => Diff.areValuesEqual(a[k], b[k]));
+        }
+        return false;
+    },
+
+    getJsonDiffHtml: (source: any, target: any): string => {
+        if (Diff.areValuesEqual(source, target)) {
+            return '<div class="diff-identical"><i class="fa-solid fa-check"></i> Exact Match (0 diffs)</div>';
+        }
+        return renderChangedBranches(source, target);
+    }
+};`
+            },
+            "audit.ts": {
+                title: "audit.ts",
+                path: "datastore-copier/src/audit.ts",
+                lang: "TypeScript",
+                role: "Gzip Stream Snapshot Compression & Centralized Reversible Telemetry",
+                subtab: "audit",
+                code: `// datastore-copier/src/audit.ts
+import { CONFIG } from './config';
+import { Api } from './api';
+
+export async function compressJsonToBase64(data: any): Promise<string> {
+    const jsonStr = JSON.stringify(data);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const stream = blob.stream().pipeThrough(new CompressionStream('gzip'));
+    const compressedResponse = new Response(stream);
+    const buffer = await compressedResponse.arrayBuffer();
+    return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
+export const AuditLog = {
+    addLog: async (action: string, src: string, tgt: string, details: string, status = 'SUCCESS', backupState?: any) => {
+        let compressedPayload = null;
+        if (backupState) {
+            compressedPayload = await compressJsonToBase64(backupState);
+        }
+        const body = { action, source: src, target: tgt, details, status, backup: compressedPayload };
+        const res = await Api.fetch(CONFIG.FIRESTORE_AUDIT_LOG_URL, {
+            method: 'POST',
+            body: JSON.stringify(body)
+        });
+        return res.id;
+    }
+};`
+            },
+            "revert.ts": {
+                title: "revert.ts",
+                path: "datastore-copier/src/revert.ts",
+                lang: "TypeScript",
+                role: "Lossless Decompression & Permission-Aware 1-Click Rollback State Machine",
+                subtab: "revert",
+                code: `// datastore-copier/src/revert.ts
+export async function decompressJsonFromBase64(base64: string): Promise<any> {
+    const binary = atob(base64);
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const decompressed = await new Response(stream).text();
+    return JSON.parse(decompressed);
+}
+
+export async function executeDatastoreRevert(api: any, backupStateB64: string, targetProject: string, db?: string) {
+    const rawState = await decompressJsonFromBase64(backupStateB64);
+    const plan = buildDatastoreRevertPlan(rawState, targetProject);
+
+    // 1. Restore upserts committed first
+    const restored = await commitChunks(api, targetProject, db, plan.upserts, 400);
+
+    // 2. Delete cleanups attempted with permission-aware degradation
+    let deleted = 0;
+    for (const chunk of chunkArray(plan.deletes, 400)) {
+        try {
+            await api.deleteEntities(targetProject, chunk, db);
+            deleted += chunk.length;
+        } catch (e: any) {
+            if (e.message?.includes('PERMISSION_DENIED') || e.status === 403) break;
+            throw e;
+        }
+    }
+    return { restored, deleted };
+}`
+            },
+            "ui.ts": {
+                title: "ui.ts",
+                path: "datastore-copier/src/ui.ts",
+                lang: "TypeScript",
+                role: "Virtual Table Scroller, Filter Pipelines & Side-by-Side Diff Modals",
+                subtab: "ui",
+                code: `// datastore-copier/src/ui.ts
+import { State } from './state';
+
+export const UI = {
+    renderEntitiesTable: (container: HTMLElement, items: any[], onSelect: (id: string) => void) => {
+        // High-throughput 60 FPS DOM slice rendering
+        const fragment = document.createDocumentFragment();
+        const slice = items.slice(0, 500); // Initial 500 row view
+        slice.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = \`<td><input type="checkbox" data-id="\${item.key.path[0].id || item.key.path[0].name}"></td>
+                            <td>\${item.key.path[0].kind}</td>
+                            <td>\${item.key.path[0].id || item.key.path[0].name}</td>\`;
+            fragment.appendChild(tr);
+        });
+        container.innerHTML = '';
+        container.appendChild(fragment);
+    }
+};`
+            },
+            "app.ts": {
+                title: "app.ts",
+                path: "datastore-copier/src/app.ts",
+                lang: "TypeScript",
+                role: "System Orchestrator, Multi-Step Copy Workflow & Defensive Validation",
+                subtab: "ui",
+                code: `// datastore-copier/src/app.ts
+import { State } from './state';
+import { Api } from './api';
+import { AuditLog } from './audit';
+import { Utils, ErrorBoundary } from './utils';
+
+export async function runDatastoreCopyWorkflow() {
+    try {
+        const src = State.ds.src;
+        const tgt = State.ds.tgt;
+        const selected = Array.from(State.ds.selected);
+        
+        Utils.toast(\`Initiating sync of \${selected.length} entities...\`, 'info');
+        
+        // Persist IN_PROGRESS revert backup before mutating GCP
+        const auditId = await AuditLog.addLog('DATASTORE_COPY', src, tgt, 'Copy started', 'IN_PROGRESS');
+        
+        // Execute atomic chunked upserts
+        await commitEntities(tgt, selected);
+        
+        Utils.toast('Datastore Copy Completed Losslessly!', 'success');
+    } catch(err: any) {
+        ErrorBoundary.handle(err, 'DatastoreCopy');
+    }
+}`
+            },
+            "functions/auditApi": {
+                title: "functions/index.js",
+                path: "functions/index.js",
+                lang: "JavaScript (Node.js 20)",
+                role: "Server-Verified Google OpenID Identity Extraction & Firestore Audit Storage",
+                subtab: "server",
+                code: `// functions/index.js
+const { onRequest } = require('firebase-functions/v2/https');
+const { verifyGoogleIdentity, normalizeAuditPayload, createAuditLog } = require('./lib/audit-core');
+
+exports.auditApi = onRequest({ cors: ['https://gcp-tools-portal.web.app'] }, async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.replace(/^Bearer\\s+/i, '');
+        
+        // Verify Google OpenID token cryptographic signature
+        const identity = await verifyGoogleIdentity(token);
+        
+        if (req.method === 'POST') {
+            const payload = normalizeAuditPayload(req.body);
+            // Derive email from server token (ignore client-supplied email strings)
+            const logId = await createAuditLog(identity, payload);
+            return res.status(201).json({ ok: true, id: logId });
+        }
+        res.status(405).json({ error: 'Method not allowed' });
+    } catch(err) {
+        res.status(401).json({ error: err.message });
+    }
+});`
+            },
+            "GCP Cloud APIs": {
+                title: "GCP Cloud APIs Specification",
+                path: "Official Google Cloud REST Endpoints",
+                lang: "REST / HTTP JSON Specification",
+                role: "Google Cloud Platform Datastore & BigQuery API Contracts",
+                subtab: "api",
+                code: `// Google Cloud Platform REST API Contracts
+// 1. Datastore RunQuery Endpoint
+POST https://datastore.googleapis.com/v1/projects/{projectId}:runQuery
+Authorization: Bearer {google_oauth_token}
+Content-Type: application/json
+{
+  "query": { "kind": [{ "name": "{kindName}" }], "limit": 1000 }
+}
+
+// 2. Datastore Atomic Commit Endpoint
+POST https://datastore.googleapis.com/v1/projects/{projectId}:commit
+Authorization: Bearer {google_oauth_token}
+{
+  "mode": "NON_TRANSACTIONAL",
+  "mutations": [
+    { "upsert": { "key": { "partitionId": { "projectId": "{targetProject}" } }, "properties": { ... } } }
+  ]
+}
+
+// 3. BigQuery Jobs Insert (Dry Run Estimation)
+POST https://bigquery.googleapis.com/bigquery/v2/projects/{projectId}/jobs
+{
+  "configuration": {
+    "query": { "query": "SELECT ...", "dryRun": true, "useLegacySql": false }
+  }
+}`
+            },
+            "GCP Firestore": {
+                title: "Firestore Security Rules & Schema",
+                path: "firestore.rules & audit_logs schema",
+                lang: "Firestore Rules / JSON Schema",
+                role: "Tamper-Resistant Immutable Audit Storage & Admin Access Rules",
+                subtab: "server",
+                code: `// firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Immutable Audit Logs Collection
+    match /audit_logs/{logId} {
+      // Browser clients CANNOT write directly to Firestore (all writes routed via Cloud Function)
+      allow write: if false;
+      
+      // Users can only read their OWN audit logs based on verified auth token email
+      allow read: if request.auth != null && request.auth.token.email == resource.data.user_email;
+      
+      // Superadmins have global read visibility
+      allow read: if request.auth != null && request.auth.token.email in ['shreyashsutane@gmail.com'];
+    }
+  }
+}`
+            }
+        };
+
+        window.currentModalSubtab = 'config';
+
+        window.openCodeFileModal = function(fileKey) {
+            const data = CODE_REPO[fileKey] || CODE_REPO["config.ts"];
+            const modal = document.getElementById('code-file-modal');
+            const title = document.getElementById('modal-file-title');
+            const badge = document.getElementById('modal-file-badge');
+            const path = document.getElementById('modal-file-path');
+            const role = document.getElementById('modal-role-text');
+            const code = document.getElementById('modal-code-content');
+            const copyText = document.getElementById('modal-copy-text');
+
+            if (title) title.textContent = data.title;
+            if (badge) badge.textContent = data.lang;
+            if (path) path.textContent = data.path;
+            if (role) role.textContent = data.role;
+            if (code) code.textContent = data.code;
+            if (copyText) copyText.textContent = 'Copy Code';
+
+            window.currentModalSubtab = data.subtab || 'config';
+
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        };
+
+        window.closeCodeFileModal = function() {
+            const modal = document.getElementById('code-file-modal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        };
+
+        window.copyModalCode = function() {
+            const code = document.getElementById('modal-code-content');
+            const copyText = document.getElementById('modal-copy-text');
+            if (code) {
+                navigator.clipboard.writeText(code.textContent || '');
+                if (copyText) copyText.textContent = 'Copied!';
+                setTimeout(() => { if (copyText) copyText.textContent = 'Copy Code'; }, 2000);
+            }
+        };
+
+        window.jumpToWalkthroughFromModal = function() {
+            closeCodeFileModal();
+            const subtab = window.currentModalSubtab || 'config';
+            if (typeof switchSubTab === 'function') {
+                switchSubTab(subtab);
+            }
+            const sec4 = document.getElementById('ssec-' + subtab);
+            if (sec4) {
+                sec4.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        };
+
+        // Bind Esc key to close modal
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeCodeFileModal();
+        });
+
+        // Initialize 3D engines and Mermaid interactive click listeners once window loads
         window.addEventListener('DOMContentLoaded', () => {
             initThreeCloudTopology();
             initThreeArchitectureStack();
+
+            // Attach click listeners to Mermaid rendered nodes for 100% reliable interactive popups
+            setTimeout(() => {
+                document.querySelectorAll('.mermaid svg .node, .mermaid .node').forEach(nodeEl => {
+                    nodeEl.style.cursor = 'pointer';
+                    nodeEl.addEventListener('click', (e) => {
+                        const txt = nodeEl.textContent || '';
+                        for (const key of Object.keys(CODE_REPO)) {
+                            if (txt.includes(key.replace('.ts', '')) || txt.includes(key)) {
+                                openCodeFileModal(key);
+                                e.stopPropagation();
+                                return;
+                            }
+                        }
+                    });
+                });
+            }, 800);
         });
     </script>
+
+    <!-- ========================================== -->
+    <!-- INTERACTIVE CODE FILE VIEWER MODAL POPUP -->
+    <!-- ========================================== -->
+    <div id="code-file-modal" style="display:none; position:fixed; inset:0; z-index:99999; align-items:center; justify-content:center; padding:16px;">
+        <div id="code-file-backdrop" onclick="closeCodeFileModal()" style="position:absolute; inset:0; background:rgba(2,6,23,0.85); backdrop-filter:blur(8px);"></div>
+        <div id="code-file-dialog" style="position:relative; z-index:10; background:rgba(11,17,32,0.98); border:1px solid rgba(0,212,255,0.4); border-radius:14px; max-width:920px; width:100%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 25px 60px rgba(0,0,0,0.9), 0 0 35px rgba(0,212,255,0.2); overflow:hidden;">
+            <!-- Modal Header -->
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.02); flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <i class="fa-solid fa-file-code text-cyan-400" style="font-size:1.2rem;"></i>
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span id="modal-file-title" style="font-family:var(--font-code); font-weight:700; font-size:1rem; color:#fff;">config.ts</span>
+                            <span id="modal-file-badge" style="font-size:9px; font-family:var(--font-code); background:rgba(0,212,255,0.15); color:#00d4ff; border:1px solid rgba(0,212,255,0.3); padding:2px 6px; border-radius:4px;">TypeScript</span>
+                        </div>
+                        <span id="modal-file-path" style="font-size:11px; color:var(--text-muted); font-family:var(--font-code);">datastore-copier/src/config.ts</span>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button id="modal-copy-btn" onclick="copyModalCode()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#cbd5e1; padding:6px 12px; border-radius:6px; font-size:11px; font-family:var(--font-code); cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
+                        <i class="fa-solid fa-copy"></i> <span id="modal-copy-text">Copy Code</span>
+                    </button>
+                    <button id="modal-walkthrough-btn" onclick="jumpToWalkthroughFromModal()" style="background:rgba(0,212,255,0.15); border:1px solid #00d4ff; color:#00d4ff; padding:6px 12px; border-radius:6px; font-size:11px; font-family:var(--font-code); font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-book-open"></i> Section 4 Guide
+                    </button>
+                    <button onclick="closeCodeFileModal()" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); color:#f87171; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; margin-left:4px;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Role & Invariant Highlight Ribbon -->
+            <div id="modal-role-ribbon" style="padding:10px 20px; background:rgba(0,212,255,0.05); border-bottom:1px solid rgba(255,255,255,0.06); font-size:12px; color:#cbd5e1; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-shield-halved text-cyan-400"></i>
+                <span id="modal-role-text">Central Configuration &amp; REST URL Endpoints</span>
+            </div>
+
+            <!-- Code Viewer Container -->
+            <div style="flex:1; overflow-y:auto; padding:16px 20px; background:rgba(2,6,23,0.95); font-family:var(--font-code); font-size:12px; line-height:1.65;">
+                <pre style="margin:0; color:#cbd5e1; white-space:pre-wrap; word-break:break-all;"><code id="modal-code-content"></code></pre>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
