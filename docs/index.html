@@ -481,8 +481,9 @@
         .flow-shell {
             position: relative;
             margin: 28px 0 34px;
-            padding: 18px;
-            overflow: hidden;
+            padding: 24px;
+            overflow-x: auto;
+            overflow-y: visible;
             border: 1px solid rgba(0, 212, 255, 0.16);
             border-radius: 18px;
             background:
@@ -510,8 +511,11 @@
             position: relative;
             z-index: 1;
             margin: 0;
+            padding: 16px 12px 24px 12px;
             background: transparent;
             border: 0;
+            overflow-x: auto;
+            overflow-y: visible;
         }
         .flow-kicker {
             display: inline-flex;
@@ -1446,7 +1450,7 @@
                 <div class="flow-shell">
                     <span class="flow-kicker"><i class="fa-solid fa-shield-halved"></i> Credential and destination boundary</span>
                     <div class="mermaid">
-                    flowchart LR
+                    flowchart TD
                         AU1["Paste temporary bearer token"] --> AU2["Validate with Authorization header"]
                         AU2 --> AU3["Keep token in memory only"]
                         AU3 --> AU4["Build GCP API request"]
@@ -1455,16 +1459,16 @@
                         AU5 -->|Yes| AU6["Attach Authorization header"]
                         AU6 --> AU7["Send to official Google API"]
                         AU3 --> AU8["Page closes"]
-                        AU8 --> AU9["Token is discarded"]
+                        AU8 --> AU9["Token is purged from RAM"]
                     </div>
                 </div>
 
                 <div class="flow-shell">
                     <span class="flow-kicker"><i class="fa-solid fa-users-viewfinder"></i> Central audit ownership and revert flow</span>
                     <div class="mermaid">
-                    flowchart LR
+                    flowchart TD
                         LG1["Authenticated user performs action"] --> LG2["Browser sends bearer header to same-origin auditApi"]
-                        LG2 --> LG3{"Trusted origin and valid Google identity?"}
+                        LG2 --> LG3{"Trusted origin & valid Google identity?"}
                         LG3 -->|No| LGX["Reject without writing"]
                         LG3 -->|Yes| LG4["Derive verified email server-side"]
                         LG4 --> LG5["Validate size, status, operation, and backup shape"]
@@ -1594,12 +1598,12 @@ headers.set(
                 <div class="flow-shell">
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Read-only comparison</span>
                     <div class="mermaid">
-                    flowchart LR
+                    flowchart TD
                         BQ1["Select source and target"] --> BQ2["Fetch datasets and tables"]
                         BQ2 --> BQ3["Load both table schemas"]
                         BQ3 --> BQ4["Compare name, type and mode"]
                         BQ4 --> BQ5{"Schemas match?"}
-                        BQ5 -->|Yes| BQ6["Identical"]
+                        BQ5 -->|Yes| BQ6["Identical schemas confirmed"]
                         BQ5 -->|No| BQ7["Render field-level differences"]
                     </div>
                 </div>
@@ -1608,7 +1612,7 @@ headers.set(
                 <div class="flow-shell">
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Configuration migration</span>
                     <div class="mermaid">
-                    flowchart LR
+                    flowchart TD
                         Q1["Fetch transfer configs"] --> Q2["Compare query metadata"]
                         Q2 --> Q3["Select configurations"]
                         Q3 --> Q4["Capture previous target state"]
@@ -1705,7 +1709,7 @@ headers.set(
                 <div class="flow-shell">
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Cooperative cancellation</span>
                     <div class="mermaid">
-                    flowchart LR
+                    flowchart TD
                         CA1["Analyze or copy request"] --> CA2["Fetch / lookup / commit"]
                         CA2 --> CA3{"HTTP 429?"}
                         CA3 -->|Yes| CA4["Abortable exponential wait"]
@@ -1713,7 +1717,7 @@ headers.set(
                         CA5 -->|Yes| CA2
                         CA5 -->|No| CA6["Return bounded rate-limit error"]
                         CA3 -->|No| CA7["Continue operation"]
-                        CB1["User clicks Cancel"] --> CB2["Set cancel flag and abort signal"]
+                        CB1["User clicks Cancel"] --> CB2["Set cancel flag & abort signal"]
                         CB2 --> CA2
                         CB2 --> CA4
                         CA2 -->|AbortError| CB3["Stop current work unit"]
