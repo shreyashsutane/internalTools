@@ -423,20 +423,22 @@
         /* Animated Mermaid Flowcharts classes */
         .mermaid {
             background: rgba(2, 6, 23, 0.6);
-            padding: 28px 24px 48px 24px;
+            padding: 24px 20px 32px;
             border-radius: 16px;
-            margin: 24px 0;
+            margin: 20px 0;
             border: 1px solid var(--border);
             overflow-x: auto;
             overflow-y: visible;
+            text-align: center;
         }
-        .mermaid svg {
-            max-width: 100%;
+        .mermaid svg,
+        .flow-shell .mermaid svg {
+            max-width: 100% !important;
             height: auto !important;
             overflow: visible !important;
-            display: block;
-            margin: 0 auto;
-            padding-bottom: 20px;
+            display: inline-block !important;
+            margin: 0 auto !important;
+            vertical-align: middle;
         }
         /* Glowing Flowlines Animation */
         .mermaid svg .edgePath .path,
@@ -480,42 +482,26 @@
 
         .flow-shell {
             position: relative;
-            margin: 28px 0 34px;
-            padding: 24px;
+            margin: 24px 0 30px;
+            padding: 20px;
             overflow-x: auto;
             overflow-y: visible;
             border: 1px solid rgba(0, 212, 255, 0.16);
-            border-radius: 18px;
+            border-radius: 16px;
             background:
                 linear-gradient(135deg, rgba(0, 212, 255, 0.035), rgba(192, 132, 252, 0.035)),
                 rgba(2, 6, 23, 0.45);
-        }
-        .flow-shell::before {
-            content: "";
-            position: absolute;
-            inset: 0 auto 0 -35%;
-            width: 28%;
-            pointer-events: none;
-            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.07), transparent);
-            transform: skewX(-12deg);
-            animation: scanFlow 6s ease-in-out infinite;
-            animation-play-state: paused;
-        }
-        .flow-shell.is-visible::before {
-            animation-play-state: running;
-        }
-        .flow-shell:not(.is-visible) .flowchart-link {
-            animation-play-state: paused !important;
         }
         .flow-shell .mermaid {
             position: relative;
             z-index: 1;
             margin: 0;
-            padding: 16px 12px 24px 12px;
+            padding: 12px 8px 20px 8px;
             background: transparent;
             border: 0;
             overflow-x: auto;
             overflow-y: visible;
+            text-align: center;
         }
         .flow-kicker {
             display: inline-flex;
@@ -1401,32 +1387,40 @@
                     classDef server fill:#27272a,stroke:#71717a,stroke-width:2px,color:#fff;
                     classDef ext fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#fff;
 
-                    CONFIG["config.ts (App Config Settings)"]:::config
-                    UTILS["utils.ts (Safe DOM & ErrorBoundary)"]:::core
-                    STATE["state.ts (Pub/Sub Observer State)"]:::state
-                    API["api.ts (Authenticated REST client)"]:::core
-                    DSUTIL["datastore-utils.ts (Type fidelity & JSON rules)"]:::core
-                    DIFF["diff.ts (JSON Diff & Serializer)"]:::core
-                    AUDIT["audit.ts (Own-User Audit Client)"]:::core
-                    UI["ui.ts (Dropdowns, Modals, Views)"]:::ui
-                    APP["app.ts (System Entrypoint Orchestrator)"]:::ui
-                    PROXY["auditApi (Verified Central Audit Function)"]:::server
-                    GCP["GCP Cloud APIs (BigQuery / Datastore)"]:::ext
-                    FIRE["GCP Firestore (Audit Collection)"]:::ext
+                    subgraph FrontendLayer["Browser Presentation &amp; State Layer"]
+                        CONFIG["config.ts (App Config Settings)"]:::config
+                        STATE["state.ts (Pub/Sub Observer State)"]:::state
+                        APP["app.ts (System Entrypoint Orchestrator)"]:::ui
+                        UI["ui.ts (Dropdowns, Modals, Views)"]:::ui
+                    end
 
-                    APP -->|Boot & Bind event hooks| UTILS
+                    subgraph EngineLayer["Core Pipeline &amp; Comparison Engine"]
+                        UTILS["utils.ts (Safe DOM &amp; ErrorBoundary)"]:::core
+                        DIFF["diff.ts (JSON Diff &amp; Serializer)"]:::core
+                        DSUTIL["datastore-utils.ts (Type fidelity &amp; JSON rules)"]:::core
+                        AUDIT["audit.ts (Own-User Audit Client)"]:::core
+                        API["api.ts (Authenticated REST client)"]:::core
+                    end
+
+                    subgraph BackendLayer["Secured Serverless &amp; Google Cloud Endpoints"]
+                        PROXY["auditApi (Verified Central Audit Function)"]:::server
+                        GCP["GCP Cloud APIs (BigQuery / Datastore)"]:::ext
+                        FIRE["GCP Firestore (Audit Collection)"]:::ext
+                    end
+
+                    APP -->|Boot &amp; Bind event hooks| UTILS
                     APP -->|Inject authorization credentials| API
+                    CONFIG -->|Inject static parameters| API
                     STATE -->|Notify observer updates| UI
                     APP -->|Coordinate events| UI
                     UI -->|Call REST services| API
                     APP -->|Clone, validate, minify, replace| DSUTIL
-                    DIFF -->|Reuse deep comparison & minification| DSUTIL
+                    DIFF -->|Reuse deep comparison &amp; minification| DSUTIL
                     UI -->|Format visual differences| DIFF
                     AUDIT -->|Same-origin audited request| PROXY
                     API -->|Direct HTTPS calls| GCP
                     PROXY -->|Verify identity; write as restricted service account| FIRE
-                    UTILS -->|Catch & propagate boundary errors| AUDIT
-                    CONFIG -->|Inject static parameters| API
+                    UTILS -->|Catch &amp; propagate boundary errors| AUDIT
 
                     click CONFIG call openCodeFileModal("config.ts")
                     click UTILS call openCodeFileModal("utils.ts")
@@ -1451,15 +1445,21 @@
                     <span class="flow-kicker"><i class="fa-solid fa-shield-halved"></i> Credential and destination boundary</span>
                     <div class="mermaid">
                     flowchart TD
-                        AU1["Paste temporary bearer token"] --> AU2["Validate with Authorization header"]
-                        AU2 --> AU3["Keep token in memory only"]
-                        AU3 --> AU4["Build GCP API request"]
-                        AU4 --> AU5{"HTTPS origin allowlisted?"}
-                        AU5 -->|No| AUX["Block before sending credentials"]
-                        AU5 -->|Yes| AU6["Attach Authorization header"]
-                        AU6 --> AU7["Send to official Google API"]
-                        AU3 --> AU8["Page closes"]
-                        AU8 --> AU9["Token is purged from RAM"]
+                        subgraph Ingestion["1. Memory-Only Ingestion"]
+                            AU1["Paste temporary bearer token"] --> AU2["Validate Authorization header"]
+                            AU2 --> AU3["Store token in volatile memory"]
+                        end
+                        subgraph RequestPipeline["2. HTTPS Origin Allowlist &amp; Dispatch"]
+                            AU3 --> AU4["Build GCP REST request"]
+                            AU4 --> AU5{"HTTPS origin allowlisted?"}
+                            AU5 -->|No| AUX["Block before sending credentials"]
+                            AU5 -->|Yes| AU6["Attach Bearer header &amp; dispatch"]
+                            AU6 --> AU7["Send to official Google API"]
+                        end
+                        subgraph Purge["3. Session Lifecycle"]
+                            AU3 --> AU8["Tab / Browser closes"]
+                            AU8 --> AU9["Token purged immediately from RAM"]
+                        end
                     </div>
                 </div>
 
@@ -1565,21 +1565,66 @@ headers.set(
                 <table>
                     <thead>
                         <tr>
-                            <th>Action / Target</th>
-                            <th>Relative Client URL</th>
-                            <th>GCP Server Destination Endpoint</th>
+                            <th>Attack path</th>
+                            <th>Protected against</th>
+                            <th>Enforced mechanism</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td><span class="badge-method badge-post">POST</span> Dispatch log</td>
-                            <td><code>/api/audit_logs</code></td>
-                            <td><code>auditApi → Admin SDK → audit_logs</code></td>
+                            <td><strong>Credential extraction</strong></td>
+                            <td>Malicious browser extensions or persistent storage inspection</td>
+                            <td>Memory-only variables. Zero credentials written to <code>localStorage</code>, <code>sessionStorage</code>, cookies, or URL queries.</td>
                         </tr>
                         <tr>
-                            <td><span class="badge-method badge-post">POST</span> Retrieve history</td>
-                            <td><code>/api/audit_logs/runQuery</code></td>
-                            <td><code>auditApi → forced verified-email query</code></td>
+                            <td><strong>Token forgery / Impersonation</strong></td>
+                            <td>Spoofed client email payloads</td>
+                            <td>Cloud Function cryptographically validates the token via Google OpenID and derives the email directly from the identity payload.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Destructive bulk mutation</strong></td>
+                            <td>Accidental multi-entity overwrites</td>
+                            <td>Compensating snapshot stored before commit; restore upserts run before cleanups.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Denial of service / Resource burn</strong></td>
+                            <td>Automated high-frequency request loops</td>
+                            <td>Per-user rate limits; maximum 5 bounded retries with exponential backoff on HTTP 429.</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3><i class="fa-solid fa-route"></i> Endpoint Contracts</h3>
+                <p>The application interacts with these external routes:</p>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Route</th>
+                            <th>Destination</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge-method badge-get">GET</span> Run query</td>
+                            <td><code>https://datastore.googleapis.com/v1/projects/{id}:runQuery</code></td>
+                            <td>Source entity paginated stream</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-method badge-post">POST</span> Lookup</td>
+                            <td><code>https://datastore.googleapis.com/v1/projects/{id}:lookup</code></td>
+                            <td>Target existence &amp; deep diff comparison</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-method badge-post">POST</span> Commit</td>
+                            <td><code>https://datastore.googleapis.com/v1/projects/{id}:commit</code></td>
+                            <td>Non-transactional mutation batches (500 max)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge-method badge-post">POST</span> Audit write</td>
+                            <td><code>/api/audit_logs</code></td>
+                            <td><code>auditApi → Firestore audit_logs collection</code></td>
                         </tr>
                         <tr>
                             <td><span class="badge-method badge-post">POST</span> Finalize action</td>
@@ -1599,12 +1644,11 @@ headers.set(
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Read-only comparison</span>
                     <div class="mermaid">
                     flowchart TD
-                        BQ1["Select source and target"] --> BQ2["Fetch datasets and tables"]
-                        BQ2 --> BQ3["Load both table schemas"]
-                        BQ3 --> BQ4["Compare name, type and mode"]
-                        BQ4 --> BQ5{"Schemas match?"}
-                        BQ5 -->|Yes| BQ6["Identical schemas confirmed"]
-                        BQ5 -->|No| BQ7["Render field-level differences"]
+                        BQ1["Select source &amp; target tables"] --> BQ2["Fetch datasets and schemas"]
+                        BQ2 --> BQ3["Deep-compare field name, type &amp; mode"]
+                        BQ3 --> BQ4{"Schemas match exactly?"}
+                        BQ4 -->|Yes| BQ5["Render 'Identical Schemas' status"]
+                        BQ4 -->|No| BQ6["Render field-level difference matrix"]
                     </div>
                 </div>
 
@@ -1613,11 +1657,11 @@ headers.set(
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Configuration migration</span>
                     <div class="mermaid">
                     flowchart TD
-                        Q1["Fetch transfer configs"] --> Q2["Compare query metadata"]
-                        Q2 --> Q3["Select configurations"]
-                        Q3 --> Q4["Capture previous target state"]
-                        Q4 --> Q5["Create or replace target config"]
-                        Q5 --> Q6["Write audit result"]
+                        Q1["Fetch source transfer configs"] --> Q2["Compare SQL &amp; schedule parameters"]
+                        Q2 --> Q3["User selects configs to copy"]
+                        Q3 --> Q4["Capture pre-flight target state backup"]
+                        Q4 --> Q5["Create or update target config"]
+                        Q5 --> Q6["Write reversible audit telemetry"]
                     </div>
                 </div>
 
@@ -1628,20 +1672,26 @@ headers.set(
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Animated analysis lifecycle</span>
                     <div class="mermaid">
                     flowchart TD
-                        DS1["Start analysis"] --> DS2["Clear old results and selections"]
-                        DS2 --> DS3["Create AbortController"]
-                        DS3 --> DS4["Fetch source page with runQuery"]
-                        DS4 --> DS5["Split page into 100-entity work units"]
-                        DS5 --> DS6["Retarget key partitions for target lookup"]
-                        DS6 --> DS7["Lookup target entities"]
-                        DS7 --> DS8{"Deferred keys returned?"}
-                        DS8 -->|Yes| DS9["Retry deferred keys, maximum 5 rounds"]
-                        DS9 --> DS7
-                        DS8 -->|No| DS10["Deep-compare native value wrappers"]
-                        DS10 --> DS11["Store missing, different and identical rows"]
-                        DS11 --> DS12{"NO_MORE_RESULTS?"}
-                        DS12 -->|No| DS4
-                        DS12 -->|Yes| DS13["Render totals and complete property list"]
+                        subgraph Paginate["1. Query Pagination"]
+                            DS1["Start analysis"] --> DS2["Clear old state"]
+                            DS2 --> DS3["Create AbortController"]
+                            DS3 --> DS4["Fetch source page (runQuery)"]
+                            DS4 --> DS5["Split into 100-entity work units"]
+                        end
+                        subgraph TargetLookup["2. Parallel Target Lookup"]
+                            DS5 --> DS6["Retarget partition IDs"]
+                            DS6 --> DS7["Lookup target entities"]
+                            DS7 --> DS8{"Deferred keys?"}
+                            DS8 -->|Yes| DS9["Retry (max 5 rounds)"]
+                            DS9 --> DS7
+                        end
+                        subgraph DiffRender["3. AST Diff &amp; Retention"]
+                            DS8 -->|No| DS10["Deep-compare native wrappers"]
+                            DS10 --> DS11["Store diff / match / missing"]
+                            DS11 --> DS12{"NO_MORE_RESULTS?"}
+                            DS12 -->|No| DS4
+                            DS12 -->|Yes| DS13["Render totals &amp; properties"]
+                        end
                     </div>
                     <div class="flow-caption">
                         <span><strong>API limit:</strong> generic lookups are automatically partitioned into at most 1,000 keys.</span>
@@ -1660,21 +1710,26 @@ headers.set(
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Guarded write lifecycle</span>
                     <div class="mermaid">
                     flowchart TD
-                        CP1["Selected entity keys"] --> CP2["Build target-partition keys"]
-                        CP2 --> CP3["Lookup complete target backup"]
-                        CP3 --> CP4{"Backup complete?"}
-                        CP4 -->|No| CPX["Abort before any write"]
-                        CP4 -->|Yes| CP5{"Audit backup within safe size?"}
-                        CP5 -->|No| CPX
-                        CP5 -->|Yes| CP6["Lookup source entities"]
-                        CP6 --> CP7["Deep-clone native entities"]
-                        CP7 --> CP8["Change only key partitionId"]
-                        CP8 --> CP9["Optional string-only nested replacement"]
-                        CP9 --> CP10["Recursively minify JSON stringValue content"]
-                        CP10 --> CP11["Verify top-level value types are unchanged"]
-                        CP11 --> CP12["Commit target mutations"]
-                        CP12 --> CP13["Persist reversible audit record"]
-                        CP13 --> CP14["Re-analyze and clear selection"]
+                        subgraph Preflight["1. Pre-Flight Backup &amp; Verification"]
+                            CP1["Selected entity keys"] --> CP2["Build target partition keys"]
+                            CP2 --> CP3["Lookup target backup"]
+                            CP3 --> CP4{"Backup verified?"}
+                            CP4 -->|No| CPX["Abort before any write"]
+                            CP4 -->|Yes| CP5["Validate safe backup size"]
+                        end
+                        subgraph Transform["2. AST Transformation"]
+                            CP5 --> CP6["Lookup source entities"]
+                            CP6 --> CP7["Deep-clone native entities"]
+                            CP7 --> CP8["Change key partitionId"]
+                            CP8 --> CP9["Nested string replacement"]
+                            CP9 --> CP10["Minify JSON stringValues"]
+                            CP10 --> CP11["Verify top-level type fidelity"]
+                        end
+                        subgraph CommitAudit["3. Commit &amp; Audit Telemetry"]
+                            CP11 --> CP12["Atomic commit target mutations"]
+                            CP12 --> CP13["Persist reversible audit record"]
+                            CP13 --> CP14["Re-analyze &amp; clear selection"]
+                        end
                     </div>
                     <div class="flow-caption">
                         <span><strong>Backup first:</strong> a lookup or deferred-key failure prevents the copy.</span>
@@ -1688,19 +1743,19 @@ headers.set(
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Value conversion rules</span>
                     <div class="mermaid">
                     flowchart TD
-                        JE1["Read native Datastore value wrapper"] --> JE2["Display exact type and lossless editor text"]
+                        JE1["Read native Datastore value wrapper"] --> JE2["Display exact type &amp; lossless editor text"]
                         JE2 --> JE3{"Value changed?"}
                         JE3 -->|No| JE4["Clone original wrapper"]
                         JE3 -->|Yes| JE5["Validate selected native type"]
                         JE5 --> JE6{"Valid input?"}
-                        JE6 -->|No| JE7["Block save and show validation error"]
-                        JE6 -->|Yes| JE8["Rebuild the same selected wrapper type"]
-                        JE4 --> JE9["Walk stringValue, arrayValue, mapValue and entityValue"]
+                        JE6 -->|No| JE7["Block save &amp; show error"]
+                        JE6 -->|Yes| JE8["Rebuild wrapper type"]
+                        JE4 --> JE9["Walk nested string, array, map &amp; entity"]
                         JE8 --> JE9
-                        JE9 --> JE10{"Valid JSON object or array string?"}
-                        JE10 -->|Yes| JE11["JSON.parse then compact JSON.stringify"]
+                        JE9 --> JE10{"Valid JSON string?"}
+                        JE10 -->|Yes| JE11["Minify via JSON.parse/stringify"]
                         JE10 -->|No| JE12["Keep original string text"]
-                        JE11 --> JE13["Preflight reversible backup and commit"]
+                        JE11 --> JE13["Preflight backup &amp; commit"]
                         JE12 --> JE13
                     </div>
                 </div>
@@ -1710,19 +1765,23 @@ headers.set(
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Cooperative cancellation</span>
                     <div class="mermaid">
                     flowchart TD
-                        CA1["Analyze or copy request"] --> CA2["Fetch / lookup / commit"]
-                        CA2 --> CA3{"HTTP 429?"}
-                        CA3 -->|Yes| CA4["Abortable exponential wait"]
-                        CA4 --> CA5{"Retry count below 5?"}
-                        CA5 -->|Yes| CA2
-                        CA5 -->|No| CA6["Return bounded rate-limit error"]
-                        CA3 -->|No| CA7["Continue operation"]
-                        CB1["User clicks Cancel"] --> CB2["Set cancel flag & abort signal"]
-                        CB2 --> CA2
-                        CB2 --> CA4
-                        CA2 -->|AbortError| CB3["Stop current work unit"]
-                        CA4 -->|AbortError| CB3
-                        CB3 --> CB4["Record partial outcome when writes occurred"]
+                        subgraph ExecutionFlow["Execution &amp; Retry Pipeline"]
+                            CA1["Analyze or copy request"] --> CA2["Fetch / lookup / commit"]
+                            CA2 --> CA3{"HTTP 429 Rate Limited?"}
+                            CA3 -->|Yes| CA4["Abortable exponential backoff"]
+                            CA4 --> CA5{"Retry count &lt; 5?"}
+                            CA5 -->|Yes| CA2
+                            CA5 -->|No| CA6["Return bounded rate-limit error"]
+                            CA3 -->|No| CA7["Complete operation"]
+                        end
+                        subgraph UserCancel["User Cancellation Action"]
+                            CB1["User clicks Cancel"] --> CB2["Trigger AbortSignal &amp; cancel flag"]
+                            CB2 --> CA2
+                            CB2 --> CA4
+                            CA2 -->|AbortError| CB3["Stop current work unit"]
+                            CA4 -->|AbortError| CB3
+                            CB3 --> CB4["Record partial state when writes occurred"]
+                        end
                     </div>
                 </div>
 
@@ -1731,19 +1790,24 @@ headers.set(
                     <span class="flow-kicker"><i class="fa-solid fa-rotate-left"></i> Restore first, delete only when authorized</span>
                     <div class="mermaid">
                     flowchart TD
-                        RV1["Load and validate audit backup"] --> RV2["Build separate upsert and delete plans"]
-                        RV2 --> RV3["Retarget keys to original project and database"]
-                        RV3 --> RV4["Minify JSON stringValue content"]
-                        RV4 --> RV5["Commit all restore upserts in chunks of 400"]
-                        RV5 --> RV6{"Deletes required?"}
-                        RV6 -->|No| RV10["Revert complete"]
-                        RV6 -->|Yes| RV7["Commit delete-only chunk"]
-                        RV7 --> RV8{"Delete permission denied?"}
-                        RV8 -->|No| RV9{"More delete chunks?"}
-                        RV9 -->|Yes| RV7
-                        RV9 -->|No| RV10
-                        RV8 -->|Yes| RV11["Skip remaining deletes; keep restored upserts"]
-                        RV11 --> RV12["Record PARTIAL result and skipped count"]
+                        subgraph Decompress["1. Decompress &amp; Plan"]
+                            RV1["Load audit backup"] --> RV2["Decompress Gzip Base64"]
+                            RV2 --> RV3["Build separate upsert/delete plans"]
+                            RV3 --> RV4["Retarget original partition keys"]
+                        end
+                        subgraph ExecuteRestore["2. Ordered Upsert Execution"]
+                            RV4 --> RV5["Commit all restore upserts in 400-entity chunks"]
+                            RV5 --> RV6{"Deletes required?"}
+                            RV6 -->|No| RV10["Revert complete (SUCCESS)"]
+                        end
+                        subgraph SafeCleanup["3. Permission-Aware Cleanup"]
+                            RV6 -->|Yes| RV7["Commit delete chunk"]
+                            RV7 --> RV8{"Permission denied (403)?"}
+                            RV8 -->|Yes| RV11["Stop deletes, keep upserts (PARTIAL)"]
+                            RV8 -->|No| RV9{"More chunks?"}
+                            RV9 -->|Yes| RV7
+                            RV9 -->|No| RV10
+                        end
                     </div>
                     <div class="flow-caption">
                         <span><strong>No delete permission:</strong> existing entities are still restored with upserts; delete-required reversals are skipped and reported.</span>
@@ -2424,6 +2488,7 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
                 
                 // Update URL hash for bookmarking links
                 window.location.hash = 'section-' + targetId;
+                setTimeout(normalizeMermaidViewBoxes, 60);
             }
         }
 
@@ -2477,6 +2542,22 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
             typeNextChar();
         };
 
+        // Normalize Mermaid SVG ViewBoxes so no node borders or labels ever clip
+        function normalizeMermaidViewBoxes() {
+            document.querySelectorAll('.mermaid svg').forEach(svg => {
+                const mainG = svg.querySelector('g.nodes') ? svg.querySelector('g.nodes').parentElement : svg.querySelector('g');
+                if (!mainG) return;
+                try {
+                    const bbox = mainG.getBBox();
+                    if (bbox.width > 0 && bbox.height > 0) {
+                        const pad = 24;
+                        svg.setAttribute('viewBox', `${bbox.x - pad} ${bbox.y - pad} ${bbox.width + pad * 2} ${bbox.height + pad * 2}`);
+                        svg.style.maxWidth = `${bbox.width + pad * 2}px`;
+                    }
+                } catch (e) {}
+            });
+        }
+
         // Initialize Mermaid diagrams
         mermaid.initialize({
             startOnLoad: true,
@@ -2484,10 +2565,7 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
             flowchart: { 
                 useMaxWidth: true, 
                 htmlLabels: true, 
-                curve: 'basis',
-                padding: 30,
-                nodeSpacing: 45,
-                rankSpacing: 45
+                curve: 'linear'
             },
             securityLevel: 'strict',
             themeVariables: {
@@ -2500,6 +2578,10 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
                 tertiaryColor: '#0b2e24'
             }
         });
+
+        // Run normalization after diagrams render
+        window.addEventListener('DOMContentLoaded', () => setTimeout(normalizeMermaidViewBoxes, 800));
+        window.addEventListener('load', () => setTimeout(normalizeMermaidViewBoxes, 1200));
 
         // Run flow motion only while a diagram is on screen.
         const flowObserver = new IntersectionObserver(entries => {
