@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Page 9: Mochi Companion & Audio FX - GCP Tools Portal Technical Documentation. Interactive mascot mechanics, magnetic evasion, Web Audio synthesizer, and the D-0198 suspense easter egg.">
+    <title>Page 9: Mochi Companion & Audio FX | GCP Tools Portal Docs</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #060911;
+            --bg-sidebar: #0a0f1d;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #00d4ff;
+            --accent-emerald: #10b981;
+            --accent-purple: #c084fc;
+            --accent-amber: #fbbf24;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.65;
+        }
+
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .font-title { font-family: 'Space Grotesk', sans-serif; }
+
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        #reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #00d4ff, #c084fc);
+            z-index: 9999;
+            transition: width 0.05s ease-out;
+        }
+
+        .sidebar-link.active {
+            background: rgba(0, 212, 255, 0.12);
+            color: #00d4ff;
+            border-left: 3px solid #00d4ff;
+            font-weight: 600;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Mochi Rage Animation */
+        @keyframes mochiRageShake {
+            0%, 100% { transform: scale(2.2) translate(0, 0); }
+            20% { transform: scale(2.2) translate(-3px, 3px); }
+            40% { transform: scale(2.2) translate(3px, -2px); }
+            60% { transform: scale(2.2) translate(-2px, -3px); }
+            80% { transform: scale(2.2) translate(3px, 2px); }
+        }
+        .anim-mochi-rage {
+            animation: mochiRageShake 0.1s infinite !important;
+            filter: drop-shadow(0 0 25px rgba(239, 68, 68, 0.9)) !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div id="reading-progress"></div>
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-40 bg-[#080d1a]/95 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <button id="btn-toggle-sidebar" class="lg:hidden p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <a href="../datastore-copier/index.html" class="flex items-center gap-2 text-white font-bold tracking-tight text-sm sm:text-base">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <span>GCP Tools Portal</span>
+                </a>
+                <span class="hidden sm:inline-flex badge-pill bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    Comprehensive Technical Manual • Page 9 of 10
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="v2.html" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition font-medium">
+                    <i class="fa-solid fa-seedling"></i> Beginner View
+                </a>
+                <a href="../datastore-copier/index.html" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 transition font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left"></i> Open App
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-1 flex max-w-7xl mx-auto w-full">
+        
+        <!-- SIDEBAR -->
+        <aside id="doc-sidebar" class="fixed lg:sticky top-14 left-0 z-30 w-72 h-[calc(100vh-3.5rem)] bg-[#070b16] lg:bg-transparent border-r border-white/10 p-4 overflow-y-auto hidden lg:block transition-all duration-300">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-3 px-2 flex justify-between items-center">
+                <span>Documentation Modules</span>
+                <span class="text-cyan-400 font-bold">10 Pages</span>
+            </div>
+            
+            <nav class="space-y-1 text-xs">
+                <a href="page-01-architecture.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">01</span>
+                    <span class="flex-1">Architecture &amp; System Overview</span>
+                </a>
+                <a href="page-02-auth-iam.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">02</span>
+                    <span class="flex-1">Authentication, Security &amp; IAM</span>
+                </a>
+                <a href="page-03-datastore-migration.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">03</span>
+                    <span class="flex-1">Datastore Migration &amp; Batching</span>
+                </a>
+                <a href="page-04-bq-comparator.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">04</span>
+                    <span class="flex-1">BigQuery Schema Comparator</span>
+                </a>
+                <a href="page-05-sql-diff-ast.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">05</span>
+                    <span class="flex-1">SQL Diffing &amp; AST Engine</span>
+                </a>
+                <a href="page-06-safety-audit-rollback.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">06</span>
+                    <span class="flex-1">Safety, Auditing &amp; 1-Click Rollback</span>
+                </a>
+                <a href="page-07-find-replace-names.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">07</span>
+                    <span class="flex-1">Find &amp; Replace &amp; Display Names</span>
+                </a>
+                <a href="page-08-superadmin-hub.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">08</span>
+                    <span class="flex-1">SuperAdmin Hub &amp; Telemetry</span>
+                </a>
+                <a href="page-09-mochi-companion.html" class="sidebar-link active flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-cyan-400">09</span>
+                    <span class="flex-1 font-medium">Mochi Companion &amp; Audio FX</span>
+                    <i class="fa-solid fa-chevron-right text-[9px] text-cyan-400"></i>
+                </a>
+                <a href="page-10-runbooks-troubleshooting.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">10</span>
+                    <span class="flex-1">Runbooks &amp; Troubleshooting</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 min-w-0 p-4 sm:p-8 lg:p-10 max-w-4xl">
+            
+            <!-- Breadcrumbs -->
+            <div class="flex items-center gap-2 text-xs text-slate-400 mb-4 font-mono">
+                <a href="index.html" class="hover:text-cyan-400">Documentation</a>
+                <span>/</span>
+                <span class="text-slate-200">Module 09</span>
+                <span>/</span>
+                <span class="text-cyan-400 font-semibold">Mochi Companion</span>
+            </div>
+
+            <!-- Page Title -->
+            <div class="border-b border-white/10 pb-6 mb-8">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-pink-500/10 border border-pink-500/30 text-pink-400 text-xs font-mono font-semibold mb-3">
+                    CHAPTER 09 • INTERACTIVE ASSISTANT &amp; PROCEDURAL AUDIO
+                </div>
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight font-title mb-3">
+                    Mochi Companion, Audio FX &amp; Easter Eggs
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                    Architecture of Mochi: magnetic step binding, 140px smart cursor evasion, synthesized procedural Web Audio, and the D-0198 suspense sequence.
+                </p>
+            </div>
+
+            <!-- ANIMATED EXPLANATION: MOCHI MOOD SIMULATOR & AUDIO SYNTH -->
+            <section class="mb-12">
+                <div class="glass-panel p-6 border-pink-500/30 relative overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-white/10 pb-3">
+                        <div>
+                            <span class="badge-pill bg-pink-500/20 text-pink-300 border border-pink-500/40 text-[10px] font-mono font-bold">
+                                <i class="fa-solid fa-play mr-1"></i> LIVE ANIMATED SIMULATOR
+                            </span>
+                            <h3 class="text-lg font-bold text-white font-title mt-1">
+                                Interactive Mochi Mood Switcher &amp; Sound Lab
+                            </h3>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-300 mb-6">
+                        Click the emotion triggers below to watch Mochi transition states, activate particle auras, and synthesize procedural Web Audio frequencies:
+                    </p>
+
+                    <!-- Interactive Mochi Stage -->
+                    <div class="bg-black/60 border border-white/10 rounded-xl p-6 mb-5 flex flex-col sm:flex-row items-center justify-around gap-6">
+                        
+                        <!-- Animated Mochi Figure -->
+                        <div id="mochi-avatar-box" class="w-24 h-24 rounded-full bg-slate-900 border-2 border-cyan-400/60 flex items-center justify-center text-4xl shadow-lg shadow-cyan-500/20 transition-all duration-300">
+                            <span id="mochi-emoji">✨</span>
+                        </div>
+
+                        <!-- Mood Controls -->
+                        <div class="grid grid-cols-2 gap-2 text-xs font-mono w-full sm:w-auto">
+                            <button onclick="setMochiMood('happy')" class="p-2.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 transition text-left">
+                                💖 <strong>Happy</strong> (Ascending Chime)
+                            </button>
+                            <button onclick="setMochiMood('grumpy')" class="p-2.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition text-left">
+                                💢 <strong>Grumpy</strong> (140Hz Buzz)
+                            </button>
+                            <button onclick="setMochiMood('thinking')" class="p-2.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 transition text-left">
+                                🔮 <strong>Thinking</strong> (Arpeggio)
+                            </button>
+                            <button onclick="setMochiMood('rage')" class="p-2.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition text-left">
+                                💥 <strong>5-Click Rage</strong> (2.2x Swell)
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <div class="p-2.5 rounded bg-black/40 border border-white/5 text-slate-400 font-mono text-xs flex justify-between">
+                        <span id="mochi-audio-telemetry">Active frequency: 440Hz Sine Oscillator. Zero MP3s downloaded.</span>
+                        <span id="mochi-mood-badge" class="badge-pill bg-cyan-500/20 text-cyan-300 text-[10px]">IDLE</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 1: MAGNETIC EVASION ALGORITHM -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">01</span>
+                    Magnetic Attachment &amp; Smart 140px Cursor Evasion
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Mochi is designed to guide users without getting in the way:
+                </p>
+
+                <div class="glass-panel p-5 border-cyan-500/30 mb-6">
+                    <ul class="text-xs text-slate-300 space-y-2">
+                        <li><strong>• Magnetic Step Docking:</strong> Dynamically calculates the bounding box of active input fields and positions Mochi adjacent to the operator's current task.</li>
+                        <li><strong>• 140px Repulsion Radius:</strong> When the operator moves their mouse toward Mochi to click an underlying form control, Mochi detects the vector and smoothly floats away to prevent click interception.</li>
+                        <li><strong>• Keyboard Hotkey (? / F1):</strong> Operators can summon or dismiss Mochi at any moment using single-key shortcuts.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SECTION 2: D-0198 EASTER EGG -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center text-sm font-mono">02</span>
+                    The D-0198 10-Second Suspense Easter Egg
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Hidden inside the portal is an interactive 10-second CRT terminal glitch sequence:
+                </p>
+
+                <div class="p-4 rounded-xl bg-black/40 border border-red-500/30 text-xs font-mono text-slate-300">
+                    <p class="mb-2 text-red-400 font-bold">Trigger Mechanisms:</p>
+                    <p>1. Type secret sequence: <code>d0198</code>, <code>d-0198</code>, or <code>shreyash</code> anywhere on the page.</p>
+                    <p>2. Rapidly click Mochi <strong>5 times</strong> within a rolling 3-second window (triggers 2.2x rage swell before launching).</p>
+                    <p class="mt-3 text-slate-400">At the conclusion of the reveal, the overlay performs a CRT shutdown collapse and restores the user directly to the exact screen where they left off.</p>
+                </div>
+            </section>
+
+            <!-- PAGINATION -->
+            <div class="border-t border-white/10 pt-8 mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <a href="page-08-superadmin-hub.html" class="w-full sm:w-auto text-xs px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Prev: Page 8 — SuperAdmin Hub</span>
+                </a>
+                <a href="page-10-runbooks-troubleshooting.html" class="w-full sm:w-auto text-xs px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition">
+                    <span>Next: Page 10 — Runbooks &amp; Troubleshooting</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- SCRIPT: PROCEDURAL AUDIO SYNTHESIZER & MOCHI SIMULATOR -->
+    <script>
+        window.addEventListener('scroll', () => {
+            const h = document.documentElement;
+            const b = document.body;
+            const percent = (h.scrollTop || b.scrollTop) / ((h.scrollHeight || b.scrollHeight) - h.clientHeight) * 100;
+            const bar = document.getElementById('reading-progress');
+            if (bar) bar.style.width = percent + '%';
+        });
+
+        const sidebar = document.getElementById('doc-sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+        }
+
+        // Web Audio Context (Procedural Sound)
+        let audioCtx = null;
+        function playTone(freq, duration = 0.15, type = 'sine') {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        function setMochiMood(mood) {
+            const box = document.getElementById('mochi-avatar-box');
+            const emoji = document.getElementById('mochi-emoji');
+            const telemetry = document.getElementById('mochi-audio-telemetry');
+            const badge = document.getElementById('mochi-mood-badge');
+
+            box.className = "w-24 h-24 rounded-full bg-slate-900 border-2 flex items-center justify-center text-4xl shadow-lg transition-all duration-300";
+
+            if (mood === 'happy') {
+                box.classList.add('border-emerald-400', 'shadow-emerald-500/30');
+                emoji.textContent = "💖";
+                badge.className = "badge-pill bg-emerald-500/20 text-emerald-300 text-[10px]";
+                badge.textContent = "HAPPY";
+                telemetry.textContent = "Synthesizing 587Hz & 880Hz ascending chime...";
+                playTone(587, 0.12);
+                setTimeout(() => playTone(880, 0.2), 120);
+            } else if (mood === 'grumpy') {
+                box.classList.add('border-amber-400', 'shadow-amber-500/30');
+                emoji.textContent = "💢";
+                badge.className = "badge-pill bg-amber-500/20 text-amber-300 text-[10px]";
+                badge.textContent = "GRUMPY";
+                telemetry.textContent = "Synthesizing 130Hz sawtooth low buzz...";
+                playTone(130, 0.25, 'sawtooth');
+            } else if (mood === 'thinking') {
+                box.classList.add('border-purple-400', 'shadow-purple-500/30');
+                emoji.textContent = "🔮";
+                badge.className = "badge-pill bg-purple-500/20 text-purple-300 text-[10px]";
+                badge.textContent = "THINKING";
+                telemetry.textContent = "Synthesizing 520Hz & 659Hz harmonic arpeggio...";
+                playTone(520, 0.15);
+                setTimeout(() => playTone(659, 0.2), 150);
+            } else if (mood === 'rage') {
+                box.classList.add('anim-mochi-rage', 'border-red-500');
+                emoji.textContent = "💥";
+                badge.className = "badge-pill bg-red-500/20 text-red-300 text-[10px]";
+                badge.textContent = "5-CLICK OVERHEAT RAGE";
+                telemetry.textContent = "Synthesizing 95Hz overload frequency (Swell 2.2x)...";
+                playTone(95, 0.6, 'sawtooth');
+                setTimeout(() => {
+                    box.classList.remove('anim-mochi-rage');
+                    emoji.textContent = "✨";
+                    badge.textContent = "IDLE";
+                }, 1300);
+            }
+        }
+    </script>
+</body>
+</html>

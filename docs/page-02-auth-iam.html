@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Page 2: Authentication, Security & IAM Access Matrix - GCP Tools Portal Technical Documentation. Token lifecycle, zero-persistence RAM enclaves, least-privilege IAM matrices, and CSP.">
+    <title>Page 2: Authentication, Security & IAM | GCP Tools Portal Docs</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #060911;
+            --bg-sidebar: #0a0f1d;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #00d4ff;
+            --accent-emerald: #10b981;
+            --accent-purple: #c084fc;
+            --accent-amber: #fbbf24;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.65;
+        }
+
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .font-title { font-family: 'Space Grotesk', sans-serif; }
+
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        #reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #00d4ff, #c084fc);
+            z-index: 9999;
+            transition: width 0.05s ease-out;
+        }
+
+        .sidebar-link.active {
+            background: rgba(0, 212, 255, 0.12);
+            color: #00d4ff;
+            border-left: 3px solid #00d4ff;
+            font-weight: 600;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Animated Token Pulse & Wave */
+        @keyframes pulseHandshake {
+            0% { transform: scale(0.98); opacity: 0.8; }
+            50% { transform: scale(1.02); opacity: 1; filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.6)); }
+            100% { transform: scale(0.98); opacity: 0.8; }
+        }
+        .anim-pulse-handshake { animation: pulseHandshake 3s infinite ease-in-out; }
+
+        @keyframes packetStream {
+            0% { transform: translateX(0); opacity: 0; }
+            30% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { transform: translateX(180px); opacity: 0; }
+        }
+        .anim-packet-dot {
+            animation: packetStream 2s infinite linear;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div id="reading-progress"></div>
+
+    <!-- TOP HEADER -->
+    <header class="sticky top-0 z-40 bg-[#080d1a]/95 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <button id="btn-toggle-sidebar" class="lg:hidden p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <a href="../datastore-copier/index.html" class="flex items-center gap-2 text-white font-bold tracking-tight text-sm sm:text-base">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <span>GCP Tools Portal</span>
+                </a>
+                <span class="hidden sm:inline-flex badge-pill bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    Comprehensive Technical Manual • Page 2 of 10
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="v2.html" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition font-medium">
+                    <i class="fa-solid fa-seedling"></i> Beginner View
+                </a>
+                <a href="../datastore-copier/index.html" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 transition font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left"></i> Open App
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER (SIDEBAR + CONTENT) -->
+    <div class="flex-1 flex max-w-7xl mx-auto w-full">
+        
+        <!-- SIDEBAR (10 PAGES TABLE OF CONTENTS) -->
+        <aside id="doc-sidebar" class="fixed lg:sticky top-14 left-0 z-30 w-72 h-[calc(100vh-3.5rem)] bg-[#070b16] lg:bg-transparent border-r border-white/10 p-4 overflow-y-auto hidden lg:block transition-all duration-300">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-3 px-2 flex justify-between items-center">
+                <span>Documentation Modules</span>
+                <span class="text-cyan-400 font-bold">10 Pages</span>
+            </div>
+            
+            <nav class="space-y-1 text-xs">
+                <a href="page-01-architecture.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">01</span>
+                    <span class="flex-1">Architecture &amp; System Overview</span>
+                </a>
+                <a href="page-02-auth-iam.html" class="sidebar-link active flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-cyan-400">02</span>
+                    <span class="flex-1 font-medium">Authentication, Security &amp; IAM</span>
+                    <i class="fa-solid fa-chevron-right text-[9px] text-cyan-400"></i>
+                </a>
+                <a href="page-03-datastore-migration.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">03</span>
+                    <span class="flex-1">Datastore Migration &amp; Batching</span>
+                </a>
+                <a href="page-04-bq-comparator.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">04</span>
+                    <span class="flex-1">BigQuery Schema Comparator</span>
+                </a>
+                <a href="page-05-sql-diff-ast.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">05</span>
+                    <span class="flex-1">SQL Diffing &amp; AST Engine</span>
+                </a>
+                <a href="page-06-safety-audit-rollback.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">06</span>
+                    <span class="flex-1">Safety, Auditing &amp; 1-Click Rollback</span>
+                </a>
+                <a href="page-07-find-replace-names.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">07</span>
+                    <span class="flex-1">Find &amp; Replace &amp; Display Names</span>
+                </a>
+                <a href="page-08-superadmin-hub.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">08</span>
+                    <span class="flex-1">SuperAdmin Hub &amp; Telemetry</span>
+                </a>
+                <a href="page-09-mochi-companion.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">09</span>
+                    <span class="flex-1">Mochi Companion &amp; Audio FX</span>
+                </a>
+                <a href="page-10-runbooks-troubleshooting.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">10</span>
+                    <span class="flex-1">Runbooks &amp; Troubleshooting</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN ARTICLE CONTENT -->
+        <main class="flex-1 min-w-0 p-4 sm:p-8 lg:p-10 max-w-4xl">
+            
+            <!-- Breadcrumbs -->
+            <div class="flex items-center gap-2 text-xs text-slate-400 mb-4 font-mono">
+                <a href="index.html" class="hover:text-cyan-400">Documentation</a>
+                <span>/</span>
+                <span class="text-slate-200">Module 02</span>
+                <span>/</span>
+                <span class="text-cyan-400 font-semibold">Authentication &amp; IAM</span>
+            </div>
+
+            <!-- Page Title -->
+            <div class="border-b border-white/10 pb-6 mb-8">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-semibold mb-3">
+                    CHAPTER 02 • SECURITY &amp; ACCESS CONTROL SPECIFICATION
+                </div>
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight font-title mb-3">
+                    Authentication, Security &amp; IAM Matrix
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                    A comprehensive guide to the portal's zero-persistence token handling, least-privilege IAM matrices, Google OpenID verification pipeline, and automated attack defense layers.
+                </p>
+            </div>
+
+            <!-- ANIMATED EXPLANATION: TOKEN LIFECYCLE & HANDSHAKE SIMULATOR -->
+            <section class="mb-12">
+                <div class="glass-panel p-6 border-cyan-500/30 relative overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-white/10 pb-3">
+                        <div>
+                            <span class="badge-pill bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold">
+                                <i class="fa-solid fa-play mr-1"></i> LIVE ANIMATED EXPLANATION
+                            </span>
+                            <h3 class="text-lg font-bold text-white font-title mt-1">
+                                Animated Token Lifecycle &amp; Cryptographic Handshake
+                            </h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-anim-simulate" onclick="runHandshakeSimulation()" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs shadow-lg transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-key"></i> Trigger Handshake
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-300 mb-6">
+                        Watch how the temporary Google OAuth token moves from terminal extraction to volatile browser memory, passes through the OpenID validation gateway, and automatically expires after 3600 seconds:
+                    </p>
+
+                    <!-- Interactive Animated Pipeline Graphic -->
+                    <div class="relative bg-black/60 border border-white/10 rounded-xl p-6 mb-6 overflow-hidden">
+                        
+                        <!-- 4 Animated Stages -->
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 relative z-10">
+                            
+                            <!-- Stage 1: Terminal -->
+                            <div id="stage-card-1" class="p-3.5 rounded-xl bg-slate-900/90 border border-white/10 transition-all duration-300">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[10px] font-mono text-slate-400 font-bold">STEP 01</span>
+                                    <i class="fa-solid fa-terminal text-slate-400"></i>
+                                </div>
+                                <div class="text-xs font-bold text-white mb-1">gcloud CLI</div>
+                                <div class="text-[11px] font-mono text-emerald-400 bg-black/60 px-2 py-1 rounded border border-white/5">
+                                    print-token
+                                </div>
+                                <div class="text-[10px] text-slate-400 mt-2">Ephemeral ya29 string</div>
+                            </div>
+
+                            <!-- Stage 2: RAM Enclave -->
+                            <div id="stage-card-2" class="p-3.5 rounded-xl bg-slate-900/90 border border-white/10 transition-all duration-300">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[10px] font-mono text-slate-400 font-bold">STEP 02</span>
+                                    <i class="fa-solid fa-microchip text-slate-400"></i>
+                                </div>
+                                <div class="text-xs font-bold text-white mb-1">Client RAM</div>
+                                <div class="text-[11px] font-mono text-cyan-400 bg-black/60 px-2 py-1 rounded border border-white/5">
+                                    State.token
+                                </div>
+                                <div class="text-[10px] text-slate-400 mt-2">Zero disk persistence</div>
+                            </div>
+
+                            <!-- Stage 3: OpenID Gate -->
+                            <div id="stage-card-3" class="p-3.5 rounded-xl bg-slate-900/90 border border-white/10 transition-all duration-300">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[10px] font-mono text-slate-400 font-bold">STEP 03</span>
+                                    <i class="fa-solid fa-shield-check text-slate-400"></i>
+                                </div>
+                                <div class="text-xs font-bold text-white mb-1">OpenID Gateway</div>
+                                <div class="text-[11px] font-mono text-purple-400 bg-black/60 px-2 py-1 rounded border border-white/5">
+                                    tokeninfo
+                                </div>
+                                <div class="text-[10px] text-slate-400 mt-2">Verified identity check</div>
+                            </div>
+
+                            <!-- Stage 4: 60-Min Expiry -->
+                            <div id="stage-card-4" class="p-3.5 rounded-xl bg-slate-900/90 border border-white/10 transition-all duration-300">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[10px] font-mono text-slate-400 font-bold">STEP 04</span>
+                                    <i class="fa-solid fa-stopwatch text-slate-400"></i>
+                                </div>
+                                <div class="text-xs font-bold text-white mb-1">TTL Countdown</div>
+                                <div class="text-[11px] font-mono text-amber-400 bg-black/60 px-2 py-1 rounded border border-white/5" id="sim-ttl-display">
+                                    3599s TTL
+                                </div>
+                                <div class="text-[10px] text-slate-400 mt-2">Automatic memory purge</div>
+                            </div>
+
+                        </div>
+
+                        <!-- Live Telemetry Stream -->
+                        <div class="mt-5 pt-3 border-t border-white/10 flex items-center justify-between text-xs font-mono text-slate-400">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                                <span id="telemetry-status" class="text-slate-300">Handshake engine ready. Click 'Trigger Handshake' to simulate.</span>
+                            </div>
+                            <span class="text-[11px] text-cyan-400 font-bold" id="telemetry-timer">[00.00ms]</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 1: THE ZERO-PERSISTENCE MODEL -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono">01</span>
+                    The Zero-Persistence Memory Security Policy
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Most web-based cloud administration tools store sensitive OAuth credentials in <code>localStorage</code> or browser cookies. If malicious browser extensions, XSS scripts, or shared device users inspect the machine, these tokens can be exfiltrated.
+                </p>
+
+                <div class="glass-panel p-5 border-emerald-500/30 mb-6">
+                    <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-lock text-emerald-400"></i> Strict Ephemeral Memory Guarantees
+                    </h3>
+                    <ul class="text-xs text-slate-300 space-y-2">
+                        <li><strong>1. Volatile Memory Closure:</strong> The token is saved solely in a module-scoped variable (<code>State.token</code>). No browser persistence API (localStorage, sessionStorage, IndexedDB, CacheAPI) is ever touched.</li>
+                        <li><strong>2. No URL Leakage:</strong> Tokens are never attached as query parameters or hash fragments in HTTP requests. They are transmitted strictly via the HTTP <code>Authorization: Bearer</code> header.</li>
+                        <li><strong>3. Instant Tab Evaporation:</strong> When the browser tab is closed, refreshed, or navigated away from, the JavaScript heap is immediately freed by the browser garbage collector, destroying the token forever.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SECTION 2: LEAST-PRIVILEGE IAM ACCESS MATRIX -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">02</span>
+                    Least-Privilege IAM Access Matrix
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    To maintain strict least-privilege access, operators do not require Owner or Editor privileges on Google Cloud projects. The following role combinations are sufficient:
+                </p>
+
+                <div class="glass-panel overflow-hidden border-white/10 mb-6">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-black/50 text-slate-400 font-mono border-b border-white/10">
+                            <tr>
+                                <th class="p-3.5">Environment / Target</th>
+                                <th class="p-3.5">Recommended IAM Role</th>
+                                <th class="p-3.5">Permissions Granted</th>
+                                <th class="p-3.5">Scope</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5 text-slate-300 font-sans">
+                            <tr>
+                                <td class="p-3.5 font-mono text-cyan-400 font-semibold">Source GCP Project</td>
+                                <td class="p-3.5 font-mono text-emerald-400 font-bold">roles/datastore.viewer</td>
+                                <td class="p-3.5 font-mono text-[11px]">datastore.entities.get<br>datastore.entities.list</td>
+                                <td class="p-3.5 text-xs text-slate-400">Strictly read-only; impossible to mutate or delete source data.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-mono text-cyan-400 font-semibold">Target GCP Project</td>
+                                <td class="p-3.5 font-mono text-amber-400 font-bold">roles/datastore.user</td>
+                                <td class="p-3.5 font-mono text-[11px]">datastore.entities.create<br>datastore.entities.update<br>datastore.entities.delete</td>
+                                <td class="p-3.5 text-xs text-slate-400">Allows inserting entities and executing rollback deletions.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-mono text-cyan-400 font-semibold">BigQuery Schema Comparator</td>
+                                <td class="p-3.5 font-mono text-purple-400 font-bold">roles/bigquery.metadataViewer</td>
+                                <td class="p-3.5 font-mono text-[11px]">bigquery.tables.get<br>bigquery.datasets.get</td>
+                                <td class="p-3.5 text-xs text-slate-400">Enables schema column comparison without querying underlying table data.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-mono text-cyan-400 font-semibold">Scheduled Query Transfer</td>
+                                <td class="p-3.5 font-mono text-pink-400 font-bold">roles/bigquery.admin</td>
+                                <td class="p-3.5 font-mono text-[11px]">bigquery.transfers.update</td>
+                                <td class="p-3.5 text-xs text-slate-400">Required only when recreating recurring SQL transfer configurations.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- SECTION 3: SERVER-SIDE TOKENINFO VERIFICATION PIPELINE -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono">03</span>
+                    Server-Side Tokeninfo &amp; Anti-Spoofing Pipeline
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    When audit records or rollback requests are submitted, the backend microservice (<code>auditApi</code>) does not accept or trust any client-submitted email address. Instead, the verified identity is extracted securely on Google's OpenID servers:
+                </p>
+
+                <div class="bg-black/60 border border-white/10 p-4 rounded-xl font-mono text-xs text-slate-300 mb-6 overflow-x-auto">
+                    <div class="text-slate-500 mb-2">// functions/lib/audit-core.js</div>
+                    <pre><code class="text-emerald-400">const verifyGoogleIdentity = async token => {
+    const response = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+        redirect: 'error'
+    });
+    if (!response.ok) {
+        throw new AuditRequestError(401, 'INVALID_TOKEN', 'Google access token is invalid or expired.');
+    }
+    return normalizeVerifiedIdentity(await response.json());
+};</code></pre>
+                </div>
+            </section>
+
+            <!-- PAGINATION / NAVIGATION FOOTER -->
+            <div class="border-t border-white/10 pt-8 mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <a href="page-01-architecture.html" class="w-full sm:w-auto text-xs px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Prev: Page 1 — Architecture &amp; System Overview</span>
+                </a>
+                <a href="page-03-datastore-migration.html" class="w-full sm:w-auto text-xs px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition">
+                    <span>Next: Page 3 — Datastore Migration &amp; Batching</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- SCRIPT: INTERACTIVE ANIMATED HANDSHAKE SIMULATION -->
+    <script>
+        // Reading Progress
+        window.addEventListener('scroll', () => {
+            const h = document.documentElement;
+            const b = document.body;
+            const st = 'scrollTop';
+            const sh = 'scrollHeight';
+            const percent = (h[st] || b[st]) / ((h[sh] || b[sh]) - h.clientHeight) * 100;
+            const bar = document.getElementById('reading-progress');
+            if (bar) bar.style.width = percent + '%';
+        });
+
+        // Mobile Sidebar
+        const sidebar = document.getElementById('doc-sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+        }
+
+        // Live Animated Handshake Simulation
+        let isSimulating = false;
+        async function runHandshakeSimulation() {
+            if (isSimulating) return;
+            isSimulating = true;
+
+            const stages = [1, 2, 3, 4];
+            const telemetry = document.getElementById('telemetry-status');
+            const timer = document.getElementById('telemetry-timer');
+            const ttlDisplay = document.getElementById('sim-ttl-display');
+
+            // Reset borders
+            stages.forEach(s => {
+                const el = document.getElementById('stage-card-' + s);
+                if (el) el.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            });
+
+            // Stage 1: Terminal
+            document.getElementById('stage-card-1').style.borderColor = '#10b981';
+            telemetry.textContent = "Step 1: gcloud auth print-access-token generated ya29 bearer string.";
+            timer.textContent = "[+14.20ms]";
+            await new Promise(r => setTimeout(r, 700));
+
+            // Stage 2: RAM
+            document.getElementById('stage-card-2').style.borderColor = '#00d4ff';
+            telemetry.textContent = "Step 2: Token encapsulated into TypeScript State.token memory closure.";
+            timer.textContent = "[+28.50ms]";
+            await new Promise(r => setTimeout(r, 700));
+
+            // Stage 3: OpenID
+            document.getElementById('stage-card-3').style.borderColor = '#c084fc';
+            telemetry.textContent = "Step 3: OpenID userinfo verified. Subject & email signature bound.";
+            timer.textContent = "[+114.80ms]";
+            await new Promise(r => setTimeout(r, 700));
+
+            // Stage 4: TTL countdown
+            document.getElementById('stage-card-4').style.borderColor = '#fbbf24';
+            telemetry.textContent = "Step 4: Active session live. 3600s expiration countdown engaged.";
+            timer.textContent = "[+120.00ms COMPLETE]";
+
+            // Count down 3 seconds
+            let ttl = 3599;
+            for (let i = 0; i < 3; i++) {
+                ttl--;
+                ttlDisplay.textContent = ttl + 's TTL';
+                await new Promise(r => setTimeout(r, 300));
+            }
+
+            isSimulating = false;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+        });
+    </script>
+</body>
+</html>

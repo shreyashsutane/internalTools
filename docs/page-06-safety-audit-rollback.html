@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Page 6: Safety, Auditing & 1-Click Rollback - GCP Tools Portal Technical Documentation. Pre-mutation snapshots, lossless revert algorithms, immutable audit trails, and partial-restore fallbacks.">
+    <title>Page 6: Safety, Auditing & Rollback | GCP Tools Portal Docs</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #060911;
+            --bg-sidebar: #0a0f1d;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #00d4ff;
+            --accent-emerald: #10b981;
+            --accent-purple: #c084fc;
+            --accent-amber: #fbbf24;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.65;
+        }
+
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .font-title { font-family: 'Space Grotesk', sans-serif; }
+
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        #reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #00d4ff, #c084fc);
+            z-index: 9999;
+            transition: width 0.05s ease-out;
+        }
+
+        .sidebar-link.active {
+            background: rgba(0, 212, 255, 0.12);
+            color: #00d4ff;
+            border-left: 3px solid #00d4ff;
+            font-weight: 600;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Rewind Keyframe */
+        @keyframes rewindPulse {
+            0% { transform: scale(1); filter: hue-rotate(0deg); }
+            50% { transform: scale(1.03); filter: hue-rotate(180deg); }
+            100% { transform: scale(1); filter: hue-rotate(0deg); }
+        }
+        .anim-rewind {
+            animation: rewindPulse 1.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div id="reading-progress"></div>
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-40 bg-[#080d1a]/95 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <button id="btn-toggle-sidebar" class="lg:hidden p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <a href="../datastore-copier/index.html" class="flex items-center gap-2 text-white font-bold tracking-tight text-sm sm:text-base">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <span>GCP Tools Portal</span>
+                </a>
+                <span class="hidden sm:inline-flex badge-pill bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    Comprehensive Technical Manual • Page 6 of 10
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="v2.html" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition font-medium">
+                    <i class="fa-solid fa-seedling"></i> Beginner View
+                </a>
+                <a href="../datastore-copier/index.html" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 transition font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left"></i> Open App
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-1 flex max-w-7xl mx-auto w-full">
+        
+        <!-- SIDEBAR -->
+        <aside id="doc-sidebar" class="fixed lg:sticky top-14 left-0 z-30 w-72 h-[calc(100vh-3.5rem)] bg-[#070b16] lg:bg-transparent border-r border-white/10 p-4 overflow-y-auto hidden lg:block transition-all duration-300">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-3 px-2 flex justify-between items-center">
+                <span>Documentation Modules</span>
+                <span class="text-cyan-400 font-bold">10 Pages</span>
+            </div>
+            
+            <nav class="space-y-1 text-xs">
+                <a href="page-01-architecture.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">01</span>
+                    <span class="flex-1">Architecture &amp; System Overview</span>
+                </a>
+                <a href="page-02-auth-iam.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">02</span>
+                    <span class="flex-1">Authentication, Security &amp; IAM</span>
+                </a>
+                <a href="page-03-datastore-migration.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">03</span>
+                    <span class="flex-1">Datastore Migration &amp; Batching</span>
+                </a>
+                <a href="page-04-bq-comparator.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">04</span>
+                    <span class="flex-1">BigQuery Schema Comparator</span>
+                </a>
+                <a href="page-05-sql-diff-ast.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">05</span>
+                    <span class="flex-1">SQL Diffing &amp; AST Engine</span>
+                </a>
+                <a href="page-06-safety-audit-rollback.html" class="sidebar-link active flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-cyan-400">06</span>
+                    <span class="flex-1 font-medium">Safety, Auditing &amp; 1-Click Rollback</span>
+                    <i class="fa-solid fa-chevron-right text-[9px] text-cyan-400"></i>
+                </a>
+                <a href="page-07-find-replace-names.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">07</span>
+                    <span class="flex-1">Find &amp; Replace &amp; Display Names</span>
+                </a>
+                <a href="page-08-superadmin-hub.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">08</span>
+                    <span class="flex-1">SuperAdmin Hub &amp; Telemetry</span>
+                </a>
+                <a href="page-09-mochi-companion.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">09</span>
+                    <span class="flex-1">Mochi Companion &amp; Audio FX</span>
+                </a>
+                <a href="page-10-runbooks-troubleshooting.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">10</span>
+                    <span class="flex-1">Runbooks &amp; Troubleshooting</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 min-w-0 p-4 sm:p-8 lg:p-10 max-w-4xl">
+            
+            <!-- Breadcrumbs -->
+            <div class="flex items-center gap-2 text-xs text-slate-400 mb-4 font-mono">
+                <a href="index.html" class="hover:text-cyan-400">Documentation</a>
+                <span>/</span>
+                <span class="text-slate-200">Module 06</span>
+                <span>/</span>
+                <span class="text-cyan-400 font-semibold">Safety &amp; Rollback</span>
+            </div>
+
+            <!-- Page Title -->
+            <div class="border-b border-white/10 pb-6 mb-8">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold mb-3">
+                    CHAPTER 06 • DATA-LOSS PREVENTION &amp; POINT-IN-TIME RECOVERY
+                </div>
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight font-title mb-3">
+                    Safety, Auditing &amp; 1-Click Rollback
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                    How the portal eliminates production data-loss risks via pre-mutation snapshotting, atomic revert plans, partial-restore fallbacks, and server-verified immutable audit logs.
+                </p>
+            </div>
+
+            <!-- ANIMATED EXPLANATION: TIME-MACHINE REWIND SIMULATOR -->
+            <section class="mb-12">
+                <div class="glass-panel p-6 border-amber-500/30 relative overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-white/10 pb-3">
+                        <div>
+                            <span class="badge-pill bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold">
+                                <i class="fa-solid fa-play mr-1"></i> LIVE ANIMATED SIMULATOR
+                            </span>
+                            <h3 class="text-lg font-bold text-white font-title mt-1">
+                                Point-in-Time Snapshot &amp; 1-Click Rewind
+                            </h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-trigger-mutation" onclick="simulateMutation()" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs shadow-lg transition">
+                                1. Copy to Target
+                            </button>
+                            <button id="btn-trigger-rollback" onclick="simulateRollback()" disabled class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg transition opacity-50 cursor-not-allowed">
+                                2. 1-Click Rollback
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-slate-300 mb-6">
+                        Experience how the pre-mutation safety net captures an exact snapshot in Cloud Firestore before touching Google Cloud, enabling instant 1-click restoration:
+                    </p>
+
+                    <!-- Interactive Timeline Graphic -->
+                    <div id="sim-timeline-box" class="bg-black/60 border border-white/10 rounded-xl p-5 mb-4 font-mono text-xs transition-all">
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 text-center">
+                            
+                            <!-- Snapshot Card -->
+                            <div id="card-snapshot" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-colors">
+                                <div class="text-[10px] text-slate-400 font-bold mb-1">PRE-MUTATION SNAPSHOT</div>
+                                <div class="text-xs font-bold text-white mb-1">Status: <span id="txt-snapshot-status" class="text-slate-400">IDLE</span></div>
+                                <div class="text-[10px] text-slate-500">Immutable JSON state in Firestore</div>
+                            </div>
+
+                            <!-- Target State Card -->
+                            <div id="card-target" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-colors">
+                                <div class="text-[10px] text-slate-400 font-bold mb-1">TARGET ENVIRONMENT</div>
+                                <div class="text-xs font-bold text-white mb-1">Entities: <span id="txt-target-state" class="text-emerald-400">ORIGINAL (v1.0)</span></div>
+                                <div class="text-[10px] text-slate-500">Target Datastore Kind</div>
+                            </div>
+
+                            <!-- Revert Readiness Card -->
+                            <div id="card-revert" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-colors">
+                                <div class="text-[10px] text-slate-400 font-bold mb-1">REVERSAL ENGINE</div>
+                                <div class="text-xs font-bold text-white mb-1">Plan: <span id="txt-revert-plan" class="text-slate-400">ARMED &amp; READY</span></div>
+                                <div class="text-[10px] text-slate-500">1-click restore capability</div>
+                            </div>
+
+                        </div>
+
+                        <div class="p-2.5 rounded bg-black/50 border border-white/5 flex items-center justify-between text-slate-400">
+                            <span id="txt-sim-log">Ready. Click '1. Copy to Target' to trigger pre-mutation snapshot.</span>
+                            <span id="txt-sim-badge" class="badge-pill bg-slate-800 text-slate-400 text-[10px]">SAFE</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 1: PRE-MUTATION SNAPSHOTTING -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">01</span>
+                    Pre-Mutation Snapshot Architecture
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Every operation that writes or overwrites data in Google Cloud adheres to a strict protocol:
+                </p>
+
+                <div class="glass-panel p-5 border-cyan-500/30 mb-6">
+                    <ol class="text-xs text-slate-300 space-y-2 list-decimal list-inside">
+                        <li><strong>Target Discovery:</strong> The client reads existing target entities before generating mutations.</li>
+                        <li><strong>Snapshot Packaging:</strong> If entities already exist in the target, their full JSON structure is compressed into a <code>prevState</code> payload.</li>
+                        <li><strong>Atomic Save:</strong> An audit record with status <code>IN_PROGRESS</code> is committed to Cloud Firestore *before* the first mutation RPC is sent to Google Cloud.</li>
+                        <li><strong>Safe Execution:</strong> If the network drops or the browser crashes mid-copy, the snapshot is already preserved in Firestore and can be reverted from the SuperAdmin console.</li>
+                    </ol>
+                </div>
+            </section>
+
+            <!-- SECTION 2: NON-DESTRUCTIVE PARTIAL RESTORE FALLBACK -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono">02</span>
+                    Partial-Restore Permission Fallback
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    In strict enterprise GCP environments, operators are frequently granted <code>create</code> and <code>update</code> permissions, but denied <code>datastore.entities.delete</code>.
+                </p>
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    If an operator triggers a rollback without delete permissions, our revert engine catches the <code>403 PERMISSION_DENIED</code> error, automatically falls back to restoring overwritten entities via upsert, reports the status as <strong>PARTIAL</strong>, and outputs the exact leftover entity keys for an administrator to clean up.
+                </p>
+            </section>
+
+            <!-- PAGINATION -->
+            <div class="border-t border-white/10 pt-8 mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <a href="page-05-sql-diff-ast.html" class="w-full sm:w-auto text-xs px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Prev: Page 5 — SQL Diffing &amp; AST Engine</span>
+                </a>
+                <a href="page-07-find-replace-names.html" class="w-full sm:w-auto text-xs px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition">
+                    <span>Next: Page 7 — Find &amp; Replace &amp; Names</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- SCRIPT -->
+    <script>
+        window.addEventListener('scroll', () => {
+            const h = document.documentElement;
+            const b = document.body;
+            const percent = (h.scrollTop || b.scrollTop) / ((h.scrollHeight || b.scrollHeight) - h.clientHeight) * 100;
+            const bar = document.getElementById('reading-progress');
+            if (bar) bar.style.width = percent + '%';
+        });
+
+        const sidebar = document.getElementById('doc-sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+        }
+
+        async function simulateMutation() {
+            const btnRollback = document.getElementById('btn-trigger-rollback');
+            const cardSnap = document.getElementById('card-snapshot');
+            const cardTgt = document.getElementById('card-target');
+            const txtSnap = document.getElementById('txt-snapshot-status');
+            const txtTgt = document.getElementById('txt-target-state');
+            const txtLog = document.getElementById('txt-sim-log');
+            const badge = document.getElementById('txt-sim-badge');
+
+            // Phase 1: Snapshot
+            cardSnap.className = "p-3 rounded-lg bg-slate-900 border border-cyan-500/50 shadow-lg shadow-cyan-500/20";
+            txtSnap.textContent = "COMMITTED (ID: #log_9831)";
+            txtSnap.className = "text-cyan-400 font-bold";
+            txtLog.textContent = "Step 1: Pre-mutation snapshot persisted to Cloud Firestore.";
+            await new Promise(r => setTimeout(r, 700));
+
+            // Phase 2: Mutate target
+            cardTgt.className = "p-3 rounded-lg bg-slate-900 border border-amber-500/50 shadow-lg shadow-amber-500/20";
+            txtTgt.textContent = "MODIFIED (v2.0 Overwritten)";
+            txtTgt.className = "text-amber-400 font-bold";
+            txtLog.textContent = "Step 2: Target entities updated in GCP. Revert button now armed!";
+            badge.className = "badge-pill bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px]";
+            badge.textContent = "MUTATION APPLIED";
+
+            btnRollback.disabled = false;
+            btnRollback.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        async function simulateRollback() {
+            const box = document.getElementById('sim-timeline-box');
+            const cardTgt = document.getElementById('card-target');
+            const txtTgt = document.getElementById('txt-target-state');
+            const txtLog = document.getElementById('txt-sim-log');
+            const badge = document.getElementById('txt-sim-badge');
+            const btnRollback = document.getElementById('btn-trigger-rollback');
+
+            box.classList.add('anim-rewind');
+            txtLog.textContent = "Executing 1-Click Rollback: Rewinding entities to pre-mutation snapshot...";
+            await new Promise(r => setTimeout(r, 900));
+
+            cardTgt.className = "p-3 rounded-lg bg-slate-900 border border-emerald-500/50 shadow-lg shadow-emerald-500/20";
+            txtTgt.textContent = "RESTORED (v1.0 Lossless)";
+            txtTgt.className = "text-emerald-400 font-bold";
+            txtLog.textContent = "Rollback successful! Target entities 100% restored to original state.";
+            badge.className = "badge-pill bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px]";
+            badge.textContent = "RESTORED 100%";
+
+            box.classList.remove('anim-rewind');
+            btnRollback.disabled = true;
+            btnRollback.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    </script>
+</body>
+</html>

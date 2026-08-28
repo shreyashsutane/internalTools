@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Page 3: Cloud Datastore Migration & Batching Engine - GCP Tools Portal Technical Documentation. Enterprise batching algorithms, multi-filtering, type preservation, and live quota adherence.">
+    <title>Page 3: Datastore Migration & Batching | GCP Tools Portal Docs</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #060911;
+            --bg-sidebar: #0a0f1d;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #00d4ff;
+            --accent-emerald: #10b981;
+            --accent-purple: #c084fc;
+            --accent-amber: #fbbf24;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.65;
+        }
+
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .font-title { font-family: 'Space Grotesk', sans-serif; }
+
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        #reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #00d4ff, #c084fc);
+            z-index: 9999;
+            transition: width 0.05s ease-out;
+        }
+
+        .sidebar-link.active {
+            background: rgba(0, 212, 255, 0.12);
+            color: #00d4ff;
+            border-left: 3px solid #00d4ff;
+            font-weight: 600;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Animated batch chunk movement */
+        @keyframes batchTravel {
+            0% { transform: translateX(-10px); opacity: 0; }
+            40% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { transform: translateX(220px); opacity: 0; }
+        }
+        .anim-batch-particle {
+            animation: batchTravel 2.4s infinite cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div id="reading-progress"></div>
+
+    <!-- TOP HEADER -->
+    <header class="sticky top-0 z-40 bg-[#080d1a]/95 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <button id="btn-toggle-sidebar" class="lg:hidden p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <a href="../datastore-copier/index.html" class="flex items-center gap-2 text-white font-bold tracking-tight text-sm sm:text-base">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <span>GCP Tools Portal</span>
+                </a>
+                <span class="hidden sm:inline-flex badge-pill bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    Comprehensive Technical Manual • Page 3 of 10
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="v2.html" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition font-medium">
+                    <i class="fa-solid fa-seedling"></i> Beginner View
+                </a>
+                <a href="../datastore-copier/index.html" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 transition font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left"></i> Open App
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-1 flex max-w-7xl mx-auto w-full">
+        
+        <!-- SIDEBAR -->
+        <aside id="doc-sidebar" class="fixed lg:sticky top-14 left-0 z-30 w-72 h-[calc(100vh-3.5rem)] bg-[#070b16] lg:bg-transparent border-r border-white/10 p-4 overflow-y-auto hidden lg:block transition-all duration-300">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-3 px-2 flex justify-between items-center">
+                <span>Documentation Modules</span>
+                <span class="text-cyan-400 font-bold">10 Pages</span>
+            </div>
+            
+            <nav class="space-y-1 text-xs">
+                <a href="page-01-architecture.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">01</span>
+                    <span class="flex-1">Architecture &amp; System Overview</span>
+                </a>
+                <a href="page-02-auth-iam.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">02</span>
+                    <span class="flex-1">Authentication, Security &amp; IAM</span>
+                </a>
+                <a href="page-03-datastore-migration.html" class="sidebar-link active flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-cyan-400">03</span>
+                    <span class="flex-1 font-medium">Datastore Migration &amp; Batching</span>
+                    <i class="fa-solid fa-chevron-right text-[9px] text-cyan-400"></i>
+                </a>
+                <a href="page-04-bq-comparator.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">04</span>
+                    <span class="flex-1">BigQuery Schema Comparator</span>
+                </a>
+                <a href="page-05-sql-diff-ast.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">05</span>
+                    <span class="flex-1">SQL Diffing &amp; AST Engine</span>
+                </a>
+                <a href="page-06-safety-audit-rollback.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">06</span>
+                    <span class="flex-1">Safety, Auditing &amp; 1-Click Rollback</span>
+                </a>
+                <a href="page-07-find-replace-names.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">07</span>
+                    <span class="flex-1">Find &amp; Replace &amp; Display Names</span>
+                </a>
+                <a href="page-08-superadmin-hub.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">08</span>
+                    <span class="flex-1">SuperAdmin Hub &amp; Telemetry</span>
+                </a>
+                <a href="page-09-mochi-companion.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">09</span>
+                    <span class="flex-1">Mochi Companion &amp; Audio FX</span>
+                </a>
+                <a href="page-10-runbooks-troubleshooting.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">10</span>
+                    <span class="flex-1">Runbooks &amp; Troubleshooting</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 min-w-0 p-4 sm:p-8 lg:p-10 max-w-4xl">
+            
+            <!-- Breadcrumbs -->
+            <div class="flex items-center gap-2 text-xs text-slate-400 mb-4 font-mono">
+                <a href="index.html" class="hover:text-cyan-400">Documentation</a>
+                <span>/</span>
+                <span class="text-slate-200">Module 03</span>
+                <span>/</span>
+                <span class="text-cyan-400 font-semibold">Datastore Migration</span>
+            </div>
+
+            <!-- Page Title -->
+            <div class="border-b border-white/10 pb-6 mb-8">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-semibold mb-3">
+                    CHAPTER 03 • CORE DATASTORE PIPELINE SPECIFICATION
+                </div>
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight font-title mb-3">
+                    Datastore Migration &amp; Batching Engine
+                </h1>
+                <p class="text-slate-400 text-sm sm:text-base leading-relaxed">
+                    Engineering specification of the high-throughput entity transfer pipeline: 50-entity streaming batches, self-chunking atomic commits, dual-strategy schema discovery, and multi-filtering with lossless type fidelity.
+                </p>
+            </div>
+
+            <!-- ANIMATED EXPLANATION: LIVE BATCH STREAMING & QUOTA GAUGES -->
+            <section class="mb-12">
+                <div class="glass-panel p-6 border-cyan-500/30 relative overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-white/10 pb-3">
+                        <div>
+                            <span class="badge-pill bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold">
+                                <i class="fa-solid fa-play mr-1"></i> LIVE ANIMATED SIMULATION
+                            </span>
+                            <h3 class="text-lg font-bold text-white font-title mt-1">
+                                High-Throughput Batch Stream &amp; Quota Compliance Meter
+                            </h3>
+                        </div>
+                        <button onclick="runBatchStreamSimulation()" class="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs shadow-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt"></i> Stream 250 Entities
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-slate-300 mb-6">
+                        Watch how the portal splits large migrations into safe 50-entity batches, parallelizes HTTP/2 entity lookups, and monitors Cloud Datastore quotas in real time:
+                    </p>
+
+                    <!-- Animated Stream Track -->
+                    <div class="bg-black/60 border border-white/10 rounded-xl p-5 mb-5 relative">
+                        
+                        <!-- 3 Nodes Track -->
+                        <div class="grid grid-cols-3 gap-4 text-center relative z-10 mb-4">
+                            <div class="p-3 rounded-lg bg-slate-900 border border-cyan-500/30">
+                                <i class="fa-solid fa-database text-cyan-400 text-base mb-1"></i>
+                                <div class="text-xs font-bold text-white">Source Datastore</div>
+                                <div class="text-[10px] text-slate-400 font-mono">50 entities/batch</div>
+                            </div>
+                            <div class="p-3 rounded-lg bg-slate-900 border border-purple-500/30">
+                                <i class="fa-solid fa-arrows-split-up-and-left text-purple-400 text-base mb-1"></i>
+                                <div class="text-xs font-bold text-white">Parallel HTTP/2 Lookup</div>
+                                <div class="text-[10px] text-slate-400 font-mono">Promise.all()</div>
+                            </div>
+                            <div class="p-3 rounded-lg bg-slate-900 border border-emerald-500/30">
+                                <i class="fa-solid fa-circle-check text-emerald-400 text-base mb-1"></i>
+                                <div class="text-xs font-bold text-white">Target Commit</div>
+                                <div class="text-[10px] text-slate-400 font-mono">Atomic Snapshot</div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar & Batch Counter -->
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-3">
+                            <div id="batch-progress-bar" class="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+                        </div>
+
+                        <!-- Live Quota Gauges -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
+                            <div class="bg-black/40 p-2 rounded border border-white/5">
+                                <div class="text-[10px] text-slate-400">BATCH CURRENT</div>
+                                <div id="meter-batch" class="text-cyan-400 font-bold">0 / 5</div>
+                            </div>
+                            <div class="bg-black/40 p-2 rounded border border-white/5">
+                                <div class="text-[10px] text-slate-400">ENTITIES WRITTEN</div>
+                                <div id="meter-entities" class="text-emerald-400 font-bold">0 / 250</div>
+                            </div>
+                            <div class="bg-black/40 p-2 rounded border border-white/5">
+                                <div class="text-[10px] text-slate-400">RPC PAYLOAD SIZE</div>
+                                <div id="meter-size" class="text-purple-400 font-bold">0 KB / 4 MB</div>
+                            </div>
+                            <div class="bg-black/40 p-2 rounded border border-white/5">
+                                <div class="text-[10px] text-slate-400">MUTATIONS / RPC</div>
+                                <div id="meter-mutations" class="text-amber-400 font-bold">0 / 250</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 1: ENTERPRISE BATCHING ALGORITHM -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">01</span>
+                    Autonomous Chunking &amp; Quota Protection
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Google Cloud Datastore enforces strict API constraints on <code>:commit</code> calls: a maximum of <strong>500 mutations</strong> or <strong>10 MB</strong> per request. To provide a bulletproof safety margin, our migration engine caps requests at <strong>250 mutations</strong> and <strong>4.0 MB</strong>:
+                </p>
+
+                <div class="bg-black/60 border border-white/10 p-4 rounded-xl font-mono text-xs text-slate-300 mb-6 overflow-x-auto">
+                    <div class="text-slate-500 mb-2">// datastore-copier/src/datastore-utils.ts</div>
+                    <pre><code class="text-cyan-300">export async function commitInSafeChunks(targetProject, mutations, token) {
+    const CHUNK_LIMIT = 250;
+    const MAX_RPC_BYTES = 4 * 1024 * 1024;
+    
+    for (let i = 0; i &lt; mutations.length; i += CHUNK_LIMIT) {
+        const batch = mutations.slice(i, i + CHUNK_LIMIT);
+        // Verify byte length within bounds
+        const payloadSize = new TextEncoder().encode(JSON.stringify({ mutations: batch })).length;
+        if (payloadSize &gt; MAX_RPC_BYTES) {
+            // Split further dynamically
+        }
+        await DatastoreApi.commit(targetProject, batch, token);
+    }
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- SECTION 2: DUAL-STRATEGY SCHEMA DISCOVERY -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono">02</span>
+                    Dual-Strategy Property Discovery
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Unlike relational SQL databases with rigid schemas, Cloud Datastore is schema-free. Different entities under the same Kind can have completely different properties. Our portal employs a <strong>dual-strategy discovery algorithm</strong>:
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div class="p-4 rounded-xl bg-black/40 border border-cyan-500/30">
+                        <div class="text-xs font-mono text-cyan-400 font-bold mb-1">STRATEGY A</div>
+                        <h4 class="text-sm font-bold text-white mb-1">Statistical Entity Sampling</h4>
+                        <p class="text-xs text-slate-400">
+                            Executes an ephemeral read of 20 sample entities to dynamically build property drop-downs and discover real datatypes in production.
+                        </p>
+                    </div>
+                    <div class="p-4 rounded-xl bg-black/40 border border-emerald-500/30">
+                        <div class="text-xs font-mono text-emerald-400 font-bold mb-1">STRATEGY B</div>
+                        <h4 class="text-sm font-bold text-white mb-1">Metadata Kind Queries</h4>
+                        <p class="text-xs text-slate-400">
+                            Queries <code>__property__</code> namespace metadata as fallback when zero active entities exist or permissions are restricted.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: LOSSLESS TYPE PRESERVATION -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono">03</span>
+                    Lossless Datastore REST Value Fidelity
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    To prevent data corruption during migrations, all Google Datastore primitive and complex types are preserved with 100% fidelity:
+                </p>
+
+                <div class="glass-panel overflow-hidden border-white/10 mb-6">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-black/50 text-slate-400 font-mono border-b border-white/10">
+                            <tr>
+                                <th class="p-3.5">Datastore REST Key</th>
+                                <th class="p-3.5">Data Type</th>
+                                <th class="p-3.5">Preservation Strategy</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5 text-slate-300 font-sans">
+                            <tr>
+                                <td class="p-3.5 font-mono text-cyan-400">integerValue</td>
+                                <td class="p-3.5 font-semibold text-white">64-bit Signed Integer</td>
+                                <td class="p-3.5 text-slate-400">Preserved as string to prevent 64-bit IEEE 754 precision loss in JavaScript.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-mono text-cyan-400">timestampValue</td>
+                                <td class="p-3.5 font-semibold text-white">RFC 3339 UTC Timestamp</td>
+                                <td class="p-3.5 text-slate-400">Maintains exact nanosecond ISO timestamp with zero timezone drift.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-mono text-cyan-400">blobValue</td>
+                                <td class="p-3.5 font-semibold text-white">Binary Byte Array</td>
+                                <td class="p-3.5 text-slate-400">Transferred via base64 encoding without string encoding mutation.</td>
+                            </tr>
+                            <tr>
+                                <td class="p-3.5 font-mono text-cyan-400">keyValue</td>
+                                <td class="p-3.5 font-semibold text-white">Datastore Entity Key</td>
+                                <td class="p-3.5 text-slate-400">Retargets partition project ID to target while preserving kind, ID, or name hierarchy.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- PAGINATION -->
+            <div class="border-t border-white/10 pt-8 mt-12 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <a href="page-02-auth-iam.html" class="w-full sm:w-auto text-xs px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Prev: Page 2 — Authentication &amp; IAM</span>
+                </a>
+                <a href="page-04-bq-comparator.html" class="w-full sm:w-auto text-xs px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20 transition">
+                    <span>Next: Page 4 — BigQuery Schema Comparator</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- SCRIPT: ANIMATED BATCH STREAM SIMULATOR -->
+    <script>
+        window.addEventListener('scroll', () => {
+            const h = document.documentElement;
+            const b = document.body;
+            const percent = (h.scrollTop || b.scrollTop) / ((h.scrollHeight || b.scrollHeight) - h.clientHeight) * 100;
+            const bar = document.getElementById('reading-progress');
+            if (bar) bar.style.width = percent + '%';
+        });
+
+        const sidebar = document.getElementById('doc-sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+        }
+
+        let isStreaming = false;
+        async function runBatchStreamSimulation() {
+            if (isStreaming) return;
+            isStreaming = true;
+
+            const progressBar = document.getElementById('batch-progress-bar');
+            const meterBatch = document.getElementById('meter-batch');
+            const meterEntities = document.getElementById('meter-entities');
+            const meterSize = document.getElementById('meter-size');
+            const meterMutations = document.getElementById('meter-mutations');
+
+            for (let batch = 1; batch <= 5; batch++) {
+                meterBatch.textContent = batch + ' / 5';
+                meterEntities.textContent = (batch * 50) + ' / 250';
+                meterSize.textContent = (batch * 72) + ' KB / 4 MB';
+                meterMutations.textContent = (batch * 50) + ' / 250';
+                progressBar.style.width = (batch * 20) + '%';
+                await new Promise(r => setTimeout(r, 450));
+            }
+
+            isStreaming = false;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+        });
+    </script>
+</body>
+</html>
