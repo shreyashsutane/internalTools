@@ -247,25 +247,33 @@ export const Api = {
             } while (cursor);
         } catch (error) {
             console.warn('Datastore property metadata query failed; using entity sampling fallback.', error);
+        }
+
+        // If metadata query succeeded but returned 0 properties (e.g. unindexed properties), sample entities
+        if (properties.size === 0) {
             cursor = undefined;
             let sampled = 0;
-            do {
-                const query: any = { kind: [{ name: kind }], limit: Math.min(500, 1000 - sampled) };
-                if (cursor) query.startCursor = cursor;
-                const d = await Api.fetch(url, {
-                    method: 'POST',
-                    body: JSON.stringify({ partitionId, query }),
-                    signal
-                });
-                const results = d.batch?.entityResults || [];
-                results.forEach((result: any) => {
-                    Object.keys(result.entity?.properties || {}).forEach(name => properties.add(name));
-                });
-                sampled += results.length;
-                cursor = sampled >= 1000 || d.batch?.moreResults === 'NO_MORE_RESULTS'
-                    ? undefined
-                    : d.batch?.endCursor;
-            } while (cursor);
+            try {
+                do {
+                    const query: any = { kind: [{ name: kind }], limit: Math.min(500, 1000 - sampled) };
+                    if (cursor) query.startCursor = cursor;
+                    const d = await Api.fetch(url, {
+                        method: 'POST',
+                        body: JSON.stringify({ partitionId, query }),
+                        signal
+                    });
+                    const results = d.batch?.entityResults || [];
+                    results.forEach((result: any) => {
+                        Object.keys(result.entity?.properties || {}).forEach(name => properties.add(name));
+                    });
+                    sampled += results.length;
+                    cursor = sampled >= 1000 || d.batch?.moreResults === 'NO_MORE_RESULTS'
+                        ? undefined
+                        : d.batch?.endCursor;
+                } while (cursor);
+            } catch (err) {
+                console.warn('Entity sampling fallback failed:', err);
+            }
         }
         return [...properties].sort();
     },

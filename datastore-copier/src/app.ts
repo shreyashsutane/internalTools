@@ -4,11 +4,16 @@ import { Api } from './api';
 import { UI } from './ui';
 import { Diff } from './diff';
 import { AuditLog } from './audit';
+import { AssistUI } from './assist-ui';
+import { AssistManager } from './assist';
+import { SoundFX } from './sound';
+import { D0198EasterEgg } from './easter-egg';
 import {
     cloneDatastoreValue,
     compressJsonToBase64,
     datastoreValueToEditorText,
     editorTextToDatastoreValue,
+    extractEntityDisplayName,
     getDatastoreEditorType,
     mapConcurrent,
     replaceDatastoreField,
@@ -109,7 +114,24 @@ export const App = {
         if (qCopyBtn) qCopyBtn.onclick = App.openQueryCopyModal;
 
         const dsAddFilterBtn = Utils.$('btn-ds-add-filter');
-        if (dsAddFilterBtn) dsAddFilterBtn.onclick = UI.addDsFilter;
+        if (dsAddFilterBtn) {
+            dsAddFilterBtn.onclick = () => {
+                UI.addDsFilter();
+                SoundFX.playPop();
+            };
+        }
+
+        document.querySelectorAll('.btn-preset-filter').forEach((btn: any) => {
+            btn.onclick = () => {
+                const prop = btn.dataset.prop || '__key__';
+                const op = btn.dataset.op || '=';
+                const type = btn.dataset.type || 'string';
+                const val = btn.dataset.val || '';
+                UI.addDsFilter(prop, op, type, val);
+                SoundFX.playChime();
+                Utils.toast(`Preset applied: ${prop} ${op} "${val}"`, 'ok');
+            };
+        });
 
         const dsModField = Utils.$('ds-mod-field') as HTMLInputElement | null;
         if (dsModField) dsModField.oninput = (e: any) => { State.ds.modField = e.target.value; };
@@ -129,8 +151,22 @@ export const App = {
         const dsCsvBtn = Utils.$('btn-ds-csv');
         if (dsCsvBtn) dsCsvBtn.onclick = App.exportDsCsv;
 
+        const dsExportMdBtn = Utils.$('btn-ds-export-md');
+        if (dsExportMdBtn) dsExportMdBtn.onclick = App.exportDsMarkdown;
+
+        const dsDryRunBtn = Utils.$('btn-ds-dry-run');
+        if (dsDryRunBtn) dsDryRunBtn.onclick = App.runDsDryRun;
+
+        const dsDiffSearchInp = Utils.$('ds-diff-search') as HTMLInputElement | null;
+        if (dsDiffSearchInp) {
+            dsDiffSearchInp.oninput = (e: any) => App.filterDsDiffSearch(e.target.value);
+        }
+
         const dsCopyBtn = Utils.$('btn-ds-copy');
         if (dsCopyBtn) dsCopyBtn.onclick = App.openDsCopyModal;
+
+        const toggleAssistBtn = Utils.$('btn-toggle-assist');
+        if (toggleAssistBtn) toggleAssistBtn.onclick = () => AssistUI.toggle();
 
         const bqSearchInp = Utils.$('bq-search') as HTMLInputElement | null;
         if (bqSearchInp) {
@@ -175,6 +211,7 @@ export const App = {
         }
 
         AuditLog.renderLogs();
+        AssistUI.init();
     },
     verify: async (): Promise<void> => {
         const tokenInp = Utils.$('inp-token') as HTMLInputElement | null;
@@ -1275,6 +1312,136 @@ export const App = {
             if (!logged) Utils.toast('CSV exported, but the export action could not be logged.', 'warn');
         });
     },
+    exportDsMarkdown: (): void => {
+        const lines = [
+            `# Datastore Comparison Report (${State.ds.kind || 'Export'})`,
+            `* **Source Project:** \`${State.ds.src || '—'}\``,
+            `* **Target Project:** \`${State.ds.tgt || '—'}\``,
+            `* **Entity Kind:** \`${State.ds.kind || '—'}\``,
+            `* **Total Analyzed:** ${State.ds.stats.total}`,
+            `* **Identical:** ${State.ds.stats.identical}`,
+            `* **Different:** ${State.ds.stats.different}`,
+            `* **Missing in Target:** ${State.ds.stats.missing}`,
+            `* **Project Mapped:** ${State.ds.stats.mapped}`,
+            `* **Generated At:** ${new Date().toISOString()}`,
+            '',
+            `| Entity Key | Status | Diff Summary |`,
+            `| :--- | :--- | :--- |`
+        ];
+        State.ds.results.forEach(r => {
+            lines.push(`| \`${r.keyStr}\` | **${r.status.toUpperCase()}** | ${r.diffSum} |`);
+        });
+        const md = lines.join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
+        a.download = `datastore_report_${State.ds.kind || 'export'}.md`;
+        a.click();
+        Utils.toast('Markdown report exported', 'ok');
+    },
+    filterDsDiffSearch: (term: string): void => {
+        const t = term.toLowerCase().trim();
+        if (!t) {
+            App.filterDsResults(State.ds.filterStatus);
+            return;
+        }
+        State.ds.filtered = State.ds.results.filter(r => 
+            (State.ds.filterStatus === 'all' || r.status === State.ds.filterStatus) &&
+            (r.keyStr.toLowerCase().includes(t) || r.diffSum.toLowerCase().includes(t))
+        );
+        State.ds.page = 1;
+        App.renderDsTable();
+    },
+    runDsDryRun: async (): Promise<void> => {
+        if (!State.ds.src || !State.ds.kind) {
+            Utils.toast('Please select Source Project and Entity Kind first', 'warn');
+            return;
+        }
+        AssistManager.setMascotState('thinking');
+        if (AssistManager.isActive()) AssistUI.render();
+        Utils.toast('Executing in-memory Dry Run simulation...', 'info');
+
+        try {
+            const body: any = {
+                partitionId: { projectId: State.ds.src },
+                query: { kind: [{ name: State.ds.kind }], limit: 5 }
+            };
+            if (State.ds.srcDb) body.partitionId.databaseId = State.ds.srcDb;
+
+            const res = await Api.runDatastoreQuery(State.ds.src, body, State.ds.srcDb);
+            const entities = (res.batch?.entityResults || []).map((r: any) => r.entity);
+
+            if (entities.length === 0) {
+                Utils.toast('No sample entities found to simulate', 'warn');
+                AssistManager.setMascotState('idle');
+                if (AssistManager.isActive()) AssistUI.render();
+                return;
+            }
+
+            const simulated = entities.map((ent: any) => {
+                const cloned = cloneDatastoreValue({ entityValue: ent }).entityValue;
+                let modified = false;
+                if (State.ds.modField && State.ds.modTarget) {
+                    modified = replaceDatastoreField(cloned.properties || {}, State.ds.modField, State.ds.modTarget, State.ds.modReplace) > 0;
+                }
+                return {
+                    key: ent.key?.path?.[0]?.name || ent.key?.path?.[0]?.id || 'sample-key',
+                    before: JSON.stringify(ent.properties || {}, null, 2),
+                    after: JSON.stringify(cloned.properties || {}, null, 2),
+                    modified
+                };
+            });
+
+            AssistManager.setMascotState('success');
+            if (AssistManager.isActive()) AssistUI.render();
+
+            const modalContent = `
+                <div style="padding:20px;max-width:850px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <i class="fa-solid fa-flask" style="color:var(--accent-teal, #00d4ff);font-size:22px"></i>
+                            <div>
+                                <h3 style="font-weight:700;font-size:16px">Dry Run Pre-Flight Simulation</h3>
+                                <p style="font-size:12px;color:var(--muted)">In-memory preview for kind <strong>${State.ds.kind}</strong> (5 sample entities). 0 writes sent to GCP.</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-s" onclick="UI.closeModal()"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:16px;max-height:60vh;overflow-y:auto;padding-right:8px">
+                        ${simulated.map((s: any, idx: number) => `
+                            <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:14px">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                                    <span class="mono" style="font-weight:600;font-size:12px;color:var(--fg)">Sample #${idx + 1}: ${s.key}</span>
+                                    <span class="badge font-semibold" style="background:${s.modified ? 'var(--warn-dim)' : 'var(--ok-dim)'};color:${s.modified ? 'var(--warn)' : 'var(--ok)'}">
+                                        ${s.modified ? 'TRANSFORM APPLIED' : 'UNMODIFIED'}
+                                    </span>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                                    <div>
+                                        <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:4px">BEFORE (SOURCE RAW)</div>
+                                        <pre style="background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:8px;font-size:10.5px;max-height:140px;overflow:auto" class="mono">${Utils.escapeHtml(s.before)}</pre>
+                                    </div>
+                                    <div>
+                                        <div style="font-size:10px;font-weight:600;color:var(--accent-teal, #00d4ff);margin-bottom:4px">AFTER (SIMULATED MUTATION)</div>
+                                        <pre style="background:var(--bg);border:1px solid var(--brd);border-radius:8px;padding:8px;font-size:10.5px;max-height:140px;overflow:auto" class="mono">${Utils.escapeHtml(s.after)}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;border-top:1px solid var(--brd);padding-top:14px">
+                        <button class="btn btn-s" onclick="UI.closeModal()">Close Preview</button>
+                    </div>
+                </div>
+            `;
+            UI.openModal(modalContent);
+        } catch (e: any) {
+            Utils.toast(e.message || 'Dry Run simulation failed', 'err');
+            AssistManager.setMascotState('warning');
+            if (AssistManager.isActive()) AssistUI.render();
+        }
+    },
     filterDsResults: (status: string): void => {
         State.ds.filterStatus = status;
         State.ds.filtered = status === 'all' ? State.ds.results : State.ds.results.filter(r => r.status === status);
@@ -1714,6 +1881,21 @@ export const App = {
             fragment.querySelector('.project-id-strong')!.textContent = pid;
             fragment.querySelector('.side-span')!.textContent = side === 'src' ? 'source' : 'target';
 
+            const prevEntity = side === 'src' ? r.srcEntity : r.tgtEntity;
+            const dispInfo = extractEntityDisplayName(prevEntity) || extractEntityDisplayName({ properties: props });
+            const badgeWrap = fragment.querySelector('.entity-ref-badge-wrap');
+            if (badgeWrap && dispInfo) {
+                badgeWrap.innerHTML = `
+                    <div class="flex items-center gap-2 p-2 rounded bg-zinc-900/80 border border-zinc-800">
+                        <span class="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">Entity Name:</span>
+                        <span class="badge px-2 py-0.5 rounded text-xs font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800 flex items-center gap-1">
+                            <span class="text-zinc-400 font-mono text-[10px]">${Utils.escapeHtml(dispInfo.fieldName)}:</span>
+                            <span class="text-white font-medium">"${Utils.escapeHtml(dispInfo.value)}"</span>
+                        </span>
+                    </div>
+                `;
+            }
+
             UI.openModal(fragment);
 
             const cancelBtn = Utils.$('modal-root')!.querySelector('.btn-cancel') as HTMLButtonElement;
@@ -1738,16 +1920,20 @@ export const App = {
                         prevEntity: prevEntity ? cloneDatastoreValue(prevEntity) : null,
                         rawKey: cloneDatastoreValue(r.rawKey),
                         keyStr,
-                        dbId
+                        dbId,
+                        referenceName: dispInfo ? dispInfo.value : undefined,
+                        referenceField: dispInfo ? dispInfo.fieldName : undefined
                     };
                     if (!AuditLog.canPersistPrevState(prevState)) {
                         throw new Error('The entity backup is too large for a safe audit entry. Reduce the entity size before saving.');
                     }
+                    
+                    const refSuffix = dispInfo ? ` [${dispInfo.fieldName}: "${dispInfo.value}"]` : '';
                     editAuditLogId = await AuditLog.addLog(
                         'DATASTORE_EDIT',
                         '—',
                         pid,
-                        `Started inline edit for entity ${keyStr}.`,
+                        `Started inline edit for entity ${keyStr}${refSuffix}.`,
                         'IN_PROGRESS',
                         prevState
                     );
@@ -1813,6 +1999,34 @@ export const App = {
         fragment.querySelector('.src-pid-strong')!.textContent = State.ds.src;
         fragment.querySelector('.tgt-pid-strong')!.textContent = State.ds.tgt;
         fragment.querySelector('.selected-cnt-span')!.textContent = String(State.ds.selected.size);
+
+        const selectedEntitiesList = fragment.querySelector('.modal-ds-selected-entities');
+        if (selectedEntitiesList) {
+            selectedEntitiesList.replaceChildren();
+            const keys = [...State.ds.selected];
+            const resultByKey = new Map(State.ds.results.map(r => [r.keyStr, r]));
+
+            keys.forEach(keyStr => {
+                const res = resultByKey.get(keyStr);
+                const entity = res?.srcEntity || res?.tgtEntity;
+                const dispInfo = extractEntityDisplayName(entity);
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between text-xs py-1.5 px-2.5 rounded bg-zinc-900/70 border border-zinc-800/80';
+                item.innerHTML = `
+                    <span class="mono text-zinc-300 font-medium">${Utils.escapeHtml(keyStr)}</span>
+                    ${dispInfo ? `
+                        <span class="badge px-2 py-0.5 rounded text-[11px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/80 flex items-center gap-1">
+                            <span class="text-zinc-400 font-mono text-[10px]">${Utils.escapeHtml(dispInfo.fieldName)}:</span>
+                            <span class="text-white font-medium">"${Utils.escapeHtml(dispInfo.value)}"</span>
+                        </span>
+                    ` : `
+                        <span class="text-[10px] text-zinc-500 font-mono italic">No reference name</span>
+                    `}
+                `;
+                selectedEntitiesList.appendChild(item);
+            });
+        }
 
         UI.openModal(fragment);
 
@@ -1987,13 +2201,26 @@ export const App = {
                     });
                 });
 
+                const entityDisplayNames: Record<string, { fieldName: string; value: string }> = {};
+                (srcRes.found || []).forEach((entry: any) => {
+                    const k = App.formatKey(entry.entity?.key);
+                    const disp = extractEntityDisplayName(entry.entity);
+                    if (disp && k) entityDisplayNames[k] = disp;
+                });
+
+                const refNamesList = Object.values(entityDisplayNames).slice(0, 3).map(d => `${d.fieldName}: "${d.value}"`);
+                const refSummary = refNamesList.length > 0
+                    ? ` [Ref: ${refNamesList.join(', ')}${Object.keys(entityDisplayNames).length > 3 ? '...' : ''}]`
+                    : '';
+
                 let backupState: any = {
                     type: "DATASTORE_COPY",
                     kind: State.ds.kind,
                     srcDb: State.ds.srcDb,
                     tgtDb: State.ds.tgtDb,
                     batch: `${batchNum}/${totalBatches}`,
-                    backupData: chunkBackupData
+                    backupData: chunkBackupData,
+                    entityDisplayNames
                 };
 
                 // Native Gzip compression for maximum 1-click revert fidelity
@@ -2007,7 +2234,8 @@ export const App = {
                         srcDb: State.ds.srcDb,
                         tgtDb: State.ds.tgtDb,
                         batch: `${batchNum}/${totalBatches}`,
-                        count: chunkStrs.length
+                        count: chunkStrs.length,
+                        entityDisplayNames
                     };
                     if (AuditLog.canPersistPrevState(compressedState)) {
                         backupState = compressedState;
@@ -2026,6 +2254,7 @@ export const App = {
                     backupState = {
                         ...backupState,
                         backupData: lightweightBackup,
+                        entityDisplayNames,
                         warning: "Snapshot exceeded 700KB limit; preserved key targets."
                     };
                 }
@@ -2034,7 +2263,7 @@ export const App = {
                     'DATASTORE_COPY',
                     State.ds.src,
                     State.ds.tgt,
-                    `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities) for kind ${State.ds.kind}.`,
+                    `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities of kind ${State.ds.kind})${refSummary}.`,
                     'IN_PROGRESS',
                     backupState,
                     true
@@ -2045,35 +2274,25 @@ export const App = {
                 }
 
                 const mutations: any[] = [];
-                const foundSourceKeys = new Set(
-                    (srcRes.found || []).map((entry: any) => App.formatKey(entry.entity.key))
-                );
-                const missingSourceCount = chunkStrs.filter(keyStr => !foundSourceKeys.has(keyStr)).length;
-                fail += missingSourceCount;
-                batchFailureCount = foundSourceKeys.size;
-
                 for (const e of srcRes.found || []) {
-                    const entity = cloneDatastoreValue(e.entity);
-                    const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
-                    const tgtPartitionId: any = { projectId: State.ds.tgt };
-                    if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
-                    entity.key.partitionId = tgtPartitionId;
+                    let entity = cloneDatastoreValue(e.entity);
+                    const targetKey = cloneDatastoreValue(targetKeyByString.get(App.formatKey(e.entity.key)));
+                    entity.key = targetKey;
 
-                    if (applyMod && modTarget && entity.properties) {
-                        replacementCount += replaceDatastoreField(
-                            entity.properties,
-                            modField,
-                            modTarget,
-                            modReplace
-                        );
+                    if (applyMod) {
+                        replaceDatastoreField(entity, modField, modTarget, modReplace);
+                        replacementCount++;
                     }
 
                     if (entity.properties) {
                         Diff.minifyJsonProperties(entity.properties);
-                        for (const [property, sourceValue] of Object.entries(e.entity.properties || {})) {
-                            const copiedValue = entity.properties[property];
-                            const sourceType = getDatastoreEditorType(sourceValue);
-                            const copiedType = getDatastoreEditorType(copiedValue);
+                    }
+
+                    // Pre-flight type fidelity verification
+                    if (e.entity.properties && entity.properties) {
+                        for (const property of Object.keys(e.entity.properties)) {
+                            const sourceType = getDatastoreEditorType(e.entity.properties[property]);
+                            const copiedType = getDatastoreEditorType(entity.properties[property]);
                             if (sourceType !== copiedType) {
                                 throw new Error(`Type fidelity check failed for ${App.formatKey(e.entity.key)}.${property}`);
                             }
@@ -2090,7 +2309,7 @@ export const App = {
                 }
 
                 if (batchAuditLogId) {
-                    let batchDetails = `Copied batch ${batchNum}/${totalBatches} (${mutations.length} entities) for kind ${State.ds.kind}.`;
+                    let batchDetails = `Copied batch ${batchNum}/${totalBatches} (${mutations.length} entities of kind ${State.ds.kind})${refSummary}.`;
                     if (applyMod) {
                         const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (recursively)";
                         batchDetails += ` Applied Find & Replace on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
@@ -2144,10 +2363,18 @@ export const App = {
     }
 };
 
-window.onload = () => {
-    // Expose for E2E testing context
+const bootstrap = () => {
     (window as any).State = State;
     (window as any).App = App;
-
+    (window as any).AssistUI = AssistUI;
+    (window as any).AssistManager = AssistManager;
+    (window as any).D0198EasterEgg = D0198EasterEgg;
+    D0198EasterEgg.init();
     App.init();
 };
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrap);
+} else {
+    bootstrap();
+}

@@ -388,11 +388,14 @@ export const AuditLog = {
                         const prevStr = item.prevEntity ? JSON.stringify(item.prevEntity.properties || item.prevEntity, null, 2) : '—';
                         const actionColor = item.action === 'upsert' ? 'var(--warn)' : 'var(--ok)';
                         const actionLabel = item.action === 'upsert' ? 'OVERWRITTEN (Restorable)' : 'NEW ENTITY (Deletable on Revert)';
+                        const refInfo = state.entityDisplayNames?.[item.keyStr];
+                        const refBadge = refInfo ? `<span class="badge" style="background:rgba(0,212,255,0.15); color:var(--accent2); font-size:9px; border:1px solid rgba(0,212,255,0.3); margin-left:6px;"><span style="color:var(--muted); margin-right:3px;">${Utils.escapeHtml(refInfo.fieldName)}:</span>"${Utils.escapeHtml(refInfo.value)}"</span>` : '';
                         return `
                             <div style="margin-bottom: 12px; border-bottom: 1px solid var(--brd); padding-bottom: 10px;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                                    <div style="font-weight: 600; color: var(--fg); font-size: 11px; font-family: var(--font-mono);">
+                                    <div style="font-weight: 600; color: var(--fg); font-size: 11px; font-family: var(--font-mono); display:flex; align-items:center;">
                                         #${idx + 1}. Entity Key: <span style="color: var(--accent2);">${Utils.escapeHtml(item.keyStr)}</span>
+                                        ${refBadge}
                                     </div>
                                     <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--bg); color: ${actionColor}; font-weight: 600; border: 1px solid var(--brd);">
                                         ${actionLabel}
@@ -414,9 +417,13 @@ export const AuditLog = {
                     `;
                 } else if (state.type === 'DATASTORE_EDIT') {
                     const prevStr = state.prevEntity ? JSON.stringify(state.prevEntity.properties || state.prevEntity, null, 2) : '—';
+                    const refBadge = state.referenceName ? `<span class="badge" style="background:rgba(0,212,255,0.15); color:var(--accent2); font-size:10px; border:1px solid rgba(0,212,255,0.3); margin-left:8px;"><span style="color:var(--muted); margin-right:3px;">${Utils.escapeHtml(state.referenceField || 'Name')}:</span>"${Utils.escapeHtml(state.referenceName)}"</span>` : '';
                     stateDetailsHtml += `
                         <div style="margin-bottom: 18px; padding-bottom: 14px;">
-                            <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px; font-size: 11px;">Entity Key: ${Utils.escapeHtml(state.keyStr)}</div>
+                            <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px; font-size: 11px; display:flex; align-items:center;">
+                                Entity Key: <span style="font-family:var(--font-mono); color:var(--accent2); margin-left:4px;">${Utils.escapeHtml(state.keyStr)}</span>
+                                ${refBadge}
+                            </div>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
                                 <div>
                                     <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 5px;">PREVIOUS STATE:</div>

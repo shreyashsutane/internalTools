@@ -120,6 +120,18 @@ export const UI = {
         const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
         const kMenu = Utils.$('dd-ds-kind');
         if (kInp && kMenu) {
+            let kindDebounceTimer: any = null;
+            const handleKindChange = (val: string) => {
+                State.ds.kind = val;
+                UI.updateGqlPreview();
+                if (kindDebounceTimer) clearTimeout(kindDebounceTimer);
+                kindDebounceTimer = setTimeout(() => {
+                    if (State.ds.src && val) {
+                        UI.loadProperties();
+                    }
+                }, 200);
+            };
+
             const renderKinds = () => {
                 const f = kInp.value.toLowerCase();
                 const ft = State.ds.kinds.filter(kind => kind.toLowerCase().includes(f));
@@ -130,15 +142,18 @@ export const UI = {
                     ft.forEach(kind => appendSimpleMenuItem(kMenu, kind, targetId => {
                         kInp.value = targetId;
                         kMenu.classList.remove('open');
-                        State.ds.kind = targetId;
-                        UI.loadProperties();
+                        handleKindChange(targetId);
                     }));
                 }
                 kMenu.classList.add('open');
             };
             kInp.onfocus = renderKinds;
             kInp.onblur = () => setTimeout(() => kMenu.classList.remove('open'), 150);
-            kInp.oninput = renderKinds;
+            kInp.oninput = () => {
+                renderKinds();
+                handleKindChange(kInp.value.trim());
+            };
+            kInp.onchange = () => handleKindChange(kInp.value.trim());
         }
 
         setupSimpleDD('ds-mod-field', 'dd-ds-mod', State.ds.properties, 'modField', null);
@@ -148,6 +163,10 @@ export const UI = {
         if (State.ds.databasesSrc) setupSimpleDD('ds-src-db', 'dd-ds-src-db', State.ds.databasesSrc, 'srcDb', null, async (dbId) => {
             const kindInp = Utils.getInput('ds-kind');
             kindInp.value = '';
+            State.ds.kind = '';
+            State.ds.properties = [];
+            UI.refreshAllFilterPropertyDropdowns();
+            UI.updateGqlPreview();
             await UI.loadKinds(State.ds.src, dbId);
         });
         if (State.ds.databasesTgt) setupSimpleDD('ds-tgt-db', 'dd-ds-tgt-db', State.ds.databasesTgt, 'tgtDb', null);
@@ -180,7 +199,7 @@ export const UI = {
     loadKinds: async (pid: string, databaseId?: string) => {
         if (!pid) return;
         const kindInp = Utils.getInput('ds-kind');
-        kindInp.placeholder = "Loading...";
+        kindInp.placeholder = "Loading kinds...";
         try {
             State.ds.kinds = await Api.getKinds(pid, databaseId);
             kindInp.placeholder = "Select Kind...";
@@ -196,14 +215,83 @@ export const UI = {
         try {
             State.ds.properties = await Api.getProperties(State.ds.src, State.ds.kind, State.ds.srcDb);
             UI.initDropdowns();
-            Utils.toast("Properties loaded", "ok");
+            UI.refreshAllFilterPropertyDropdowns();
+            UI.updateGqlPreview();
+            Utils.toast(`Loaded ${State.ds.properties.length} properties for "${State.ds.kind}"`, "ok");
         } catch (e: any) {
             const { ErrorBoundary } = await import('./utils');
             await ErrorBoundary.handle(e, 'UI.loadProperties');
             State.ds.properties = [];
+            UI.refreshAllFilterPropertyDropdowns();
+            UI.updateGqlPreview();
         }
     },
-    addDsFilter: () => {
+    refreshAllFilterPropertyDropdowns: () => {
+        const c = Utils.$('ds-filters-container');
+        if (!c) return;
+        const rows = c.querySelectorAll('.filter-row');
+        const properties = State.ds.properties;
+        const props = ['__key__', ...properties.filter((p: string) => p !== '__key__')];
+
+        rows.forEach(r => {
+            const propSelect = r.querySelector('.filter-prop') as HTMLSelectElement | null;
+            if (!propSelect) return;
+            const currentVal = propSelect.value;
+            propSelect.replaceChildren();
+
+            props.forEach(property => {
+                const option = document.createElement('option');
+                option.value = property;
+                option.textContent = property === '__key__' ? '__key__ (ID / Name)' : property;
+                propSelect.appendChild(option);
+            });
+
+            if (currentVal && props.includes(currentVal)) {
+                propSelect.value = currentVal;
+            } else {
+                propSelect.value = '__key__';
+            }
+        });
+    },
+    updateGqlPreview: () => {
+        const previewEl = Utils.$('gql-preview-content');
+        if (!previewEl) return;
+
+        const kind = State.ds.kind || '{Kind}';
+        const rows = document.querySelectorAll('#ds-filters-container .filter-row');
+        const conditions: string[] = [];
+
+        rows.forEach(r => {
+            const prop = (r.querySelector('.filter-prop') as HTMLSelectElement)?.value || '__key__';
+            const op = (r.querySelector('.filter-op') as HTMLSelectElement)?.value || 'EQUAL';
+            const type = (r.querySelector('.filter-type') as HTMLSelectElement)?.value || 'auto';
+            const val = (r.querySelector('.filter-val') as HTMLInputElement)?.value || '';
+
+            let opSym = '=';
+            if (op === 'LESS_THAN') opSym = '<';
+            else if (op === 'LESS_THAN_OR_EQUAL') opSym = '<=';
+            else if (op === 'GREATER_THAN') opSym = '>';
+            else if (op === 'GREATER_THAN_OR_EQUAL') opSym = '>=';
+            else if (op === 'IN') opSym = 'IN';
+            else if (op === 'NOT_IN') opSym = 'NOT IN';
+            else if (op === 'HAS_ANCESTOR') opSym = 'HAS ANCESTOR';
+
+            let valStr = val ? `"${val}"` : '...';
+            if (type === 'integer' || type === 'double' || type === 'boolean' || type === 'null') {
+                valStr = val || (type === 'null' ? 'null' : '0');
+            } else if (op === 'IN' || op === 'NOT_IN') {
+                valStr = `[${val || '...'}]`;
+            } else if (op === 'HAS_ANCESTOR') {
+                valStr = `KEY(${val || '...'})`;
+            }
+
+            conditions.push(`${prop} ${opSym} ${valStr}`);
+        });
+
+        const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
+        previewEl.textContent = `SELECT * FROM ${kind}${whereClause} ORDER BY __key__ ASC`;
+    },
+    addDsFilter: (presetProp?: string, presetOp?: string, presetType?: string, presetVal?: string) => {
         const c = Utils.$('ds-filters-container');
         if (!c) return;
         const tmpl = Utils.$('template-ds-filter-row') as HTMLTemplateElement;
@@ -216,15 +304,29 @@ export const UI = {
         const valContainer = fragment.querySelector('.filter-val-container') as HTMLElement;
 
         if (propSelect) {
-            const properties = State.ds.properties;
+            const properties = State.ds.properties || [];
             const props = ['__key__', ...properties.filter((p: string) => p !== '__key__')];
+            if (presetProp && !props.includes(presetProp)) {
+                props.push(presetProp);
+            }
             propSelect.replaceChildren();
             props.forEach(property => {
                 const option = document.createElement('option');
                 option.value = property;
                 option.textContent = property === '__key__' ? '__key__ (ID / Name)' : property;
+                if (presetProp && property === presetProp) option.selected = true;
                 propSelect.appendChild(option);
             });
+            propSelect.onchange = () => UI.updateGqlPreview();
+        }
+
+        if (opSelect) {
+            if (presetOp) opSelect.value = presetOp;
+            opSelect.onchange = () => UI.updateGqlPreview();
+        }
+
+        if (typeSelect && presetType) {
+            typeSelect.value = presetType;
         }
 
         const updateValInput = () => {
@@ -258,6 +360,13 @@ export const UI = {
                     <input class="inp filter-val text-xs filter-val-width" placeholder="Value">
                 `;
             }
+            const valInput = valContainer.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | null;
+            if (valInput) {
+                if (presetVal) valInput.value = presetVal;
+                valInput.oninput = () => UI.updateGqlPreview();
+                valInput.onchange = () => UI.updateGqlPreview();
+            }
+            UI.updateGqlPreview();
         };
 
         if (typeSelect) {
@@ -269,10 +378,12 @@ export const UI = {
             removeBtn.onclick = (e) => {
                 const target = e.currentTarget as HTMLElement;
                 target.closest('.filter-row')?.remove();
+                UI.updateGqlPreview();
             };
         }
 
         c.appendChild(fragment);
+        updateValInput();
     },
     openModal: (content: string | HTMLElement | DocumentFragment, isLarge = false) => {
         const root = Utils.$('modal-root');

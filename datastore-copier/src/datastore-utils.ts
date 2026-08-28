@@ -645,5 +645,61 @@ export const isQuerySemanticallyEqual = (
     return { match: false, type: 'modified' };
 };
 
+export type EntityDisplayNameInfo = {
+    fieldName: string;
+    value: string;
+};
 
+export const extractEntityDisplayName = (entity: any): EntityDisplayNameInfo | null => {
+    if (!entity || !entity.properties || typeof entity.properties !== 'object') {
+        return null;
+    }
+    const props = entity.properties;
 
+    const priorityFields = [
+        'referenceName',
+        'chainName',
+        'name',
+        'displayName',
+        'title',
+        'jobName',
+        'taskName',
+        'username',
+        'email',
+        'label',
+        'code',
+        'slug',
+        'description'
+    ];
+
+    // 1. Exact Priority Match (Case-Insensitive)
+    for (const field of priorityFields) {
+        const key = Object.keys(props).find(k => k.toLowerCase() === field.toLowerCase());
+        if (key && props[key]) {
+            const rawVal = props[key].stringValue !== undefined ? props[key].stringValue
+                : props[key].integerValue !== undefined ? props[key].integerValue
+                : props[key].booleanValue !== undefined ? props[key].booleanValue
+                : props[key].timestampValue !== undefined ? props[key].timestampValue
+                : null;
+            if (rawVal !== null && rawVal !== undefined && String(rawVal).trim() !== '') {
+                return { fieldName: key, value: String(rawVal) };
+            }
+        }
+    }
+
+    // 2. Any property ending in 'name' or 'title' or 'id'
+    for (const key of Object.keys(props)) {
+        const lower = key.toLowerCase();
+        if ((lower.endsWith('name') || lower.endsWith('title') || lower.endsWith('label')) && props[key]) {
+            const rawVal = props[key].stringValue !== undefined ? props[key].stringValue
+                : props[key].integerValue !== undefined ? props[key].integerValue
+                : props[key].booleanValue !== undefined ? props[key].booleanValue
+                : null;
+            if (rawVal !== null && rawVal !== undefined && String(rawVal).trim() !== '') {
+                return { fieldName: key, value: String(rawVal) };
+            }
+        }
+    }
+
+    return null;
+};

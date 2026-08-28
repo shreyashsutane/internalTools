@@ -866,6 +866,36 @@ export const App = {
                 }
             }
 
+            let refNamesHtml = '';
+            if (state?.referenceName) {
+                refNamesHtml = `
+                    <div class="mt-2 flex items-center gap-1.5">
+                        <span class="text-[10px] text-zinc-400 font-mono">Reference:</span>
+                        <span class="badge-pill bg-cyan-950/70 text-cyan-300 border-cyan-800/60 font-medium text-[11px]">${state.referenceField ? `${Utils.escapeHtml(state.referenceField)}: ` : ''}"${Utils.escapeHtml(state.referenceName)}"</span>
+                    </div>
+                `;
+            } else if (state?.entityDisplayNames && typeof state.entityDisplayNames === 'object') {
+                const entries = Object.entries(state.entityDisplayNames).slice(0, 8);
+                if (entries.length > 0) {
+                    refNamesHtml = `
+                        <div class="mt-2 pt-2 border-t border-[var(--brd2)]">
+                            <div class="text-[10px] text-[var(--muted)] font-semibold mb-1.5 flex items-center gap-1">
+                                <i class="fa-solid fa-tag text-cyan-400"></i> Entity Reference Names (${Object.keys(state.entityDisplayNames).length}):
+                            </div>
+                            <div class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                                ${entries.map(([k, v]: [string, any]) => `
+                                    <span class="badge-pill bg-cyan-950/60 text-cyan-300 border-cyan-800/60 text-[10px]">
+                                        <span class="font-mono text-zinc-400 mr-1">${Utils.escapeHtml(k.split('/').pop() || k)}:</span>
+                                        <span class="font-semibold text-white">${Utils.escapeHtml(v.fieldName)}: "${Utils.escapeHtml(v.value)}"</span>
+                                    </span>
+                                `).join('')}
+                                ${Object.keys(state.entityDisplayNames).length > 8 ? `<span class="text-[10px] text-zinc-500 self-center">+${Object.keys(state.entityDisplayNames).length - 8} more</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
             return `
                 <div class="p-3.5 rounded-xl border border-[var(--brd2)] bg-[var(--bg2)] hover:border-amber-500/30 transition-all text-xs">
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">

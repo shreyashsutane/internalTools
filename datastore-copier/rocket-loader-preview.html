@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket Launch Loader Preview | GCP Tools Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #030712;
+            --card-bg: rgba(15, 23, 42, 0.85);
+            --border: rgba(122, 92, 255, 0.35);
+            --accent-purple: #806cff;
+            --accent-cyan: #65dfff;
+            --accent-pink: #ff5ca8;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(128, 108, 255, 0.14) 0%, transparent 60%),
+                radial-gradient(circle at 80% 80%, rgba(255, 92, 168, 0.09) 0%, transparent 50%),
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow-x: hidden;
+        }
+
+        .preview-card {
+            max-width: 760px;
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 40px 32px;
+            box-shadow: 0 30px 80px -15px rgba(0, 0, 0, 0.9), 0 0 50px rgba(128, 108, 255, 0.18);
+            backdrop-filter: blur(24px);
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .badge-header {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 18px;
+            background: rgba(128, 108, 255, 0.16);
+            border: 1px solid rgba(128, 108, 255, 0.45);
+            border-radius: 999px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: #b898ff;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #ffffff 0%, #b898ff 50%, #65dfff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.desc {
+            color: var(--text-muted);
+            font-size: 15px;
+            margin-bottom: 24px;
+        }
+
+        /* ROCKET LOADER STYLES */
+        .rocket-container {
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            background: rgba(2, 6, 23, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            margin: 10px 0 24px;
+            min-height: 340px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rocket-animation {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+        }
+
+        /* Main launch travel: crouch at bottom -> blast upward -> reset from below */
+        .rocket-launch-group {
+            transform-origin: 120px 220px;
+            animation: rocketLaunchPath 3s cubic-bezier(0.2, 0.75, 0.2, 1) infinite;
+        }
+
+        @keyframes rocketLaunchPath {
+            0% { transform: translateY(36px); }
+            12% { transform: translateY(42px) scaleY(0.985); }
+            20% { transform: translateY(28px); }
+            55% { transform: translateY(-42px); }
+            78% { transform: translateY(-115px); }
+            92% { transform: translateY(-170px); opacity: 1; }
+            93% { transform: translateY(80px); opacity: 0; }
+            100% { transform: translateY(36px); opacity: 1; }
+        }
+
+        .rocket {
+            transform-origin: 120px 175px;
+            animation:
+                rocketTilt 3s ease-in-out infinite,
+                rocketBoost 3s ease-in-out infinite;
+        }
+
+        @keyframes rocketTilt {
+            0%, 14% { transform: rotate(0deg); }
+            20% { transform: rotate(-1.8deg); }
+            38% { transform: rotate(1.4deg); }
+            60% { transform: rotate(-1deg); }
+            78% { transform: rotate(0.5deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        @keyframes rocketBoost {
+            0%, 16% { transform: scale(1); }
+            20% { transform: scale(1.02); }
+            55% { transform: scale(1.03); }
+            78% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Flame grows stronger during launch */
+        .rocket-flame {
+            transform-origin: 120px 216px;
+            animation: flameLaunch 3s ease-in-out infinite;
+        }
+
+        @keyframes flameLaunch {
+            0% { transform: scaleY(0.72) scaleX(0.88); opacity: 0.86; }
+            12% { transform: scaleY(0.95) scaleX(0.94); opacity: 0.96; }
+            20% { transform: scaleY(1.15) scaleX(1); opacity: 1; }
+            38% { transform: scaleY(1.38) scaleX(1.06); opacity: 1; }
+            60% { transform: scaleY(1.62) scaleX(1.1); opacity: 1; }
+            78% { transform: scaleY(1.9) scaleX(1.12); opacity: 1; }
+            92% { transform: scaleY(2.05) scaleX(1.08); opacity: 1; }
+            100% { transform: scaleY(0.72) scaleX(0.88); opacity: 0.86; }
+        }
+
+        /* Window glow intensifies */
+        .rocket-window {
+            animation: windowGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes windowGlow {
+            0% { opacity: 0.78; }
+            20% { opacity: 0.9; }
+            60% { opacity: 1; }
+            78% { opacity: 1; transform: scale(1.04); }
+            100% { opacity: 0.78; transform: scale(1); }
+        }
+
+        /* Calm face fades out while excited launch face fades in */
+        .rocket-face-calm {
+            animation: calmFace 3s ease-in-out infinite;
+        }
+
+        @keyframes calmFace {
+            0%, 18% { opacity: 1; }
+            32%, 100% { opacity: 0; }
+        }
+
+        .rocket-face-launch {
+            opacity: 0;
+            transform-origin: 120px 188px;
+            animation: launchFace 3s ease-in-out infinite;
+        }
+
+        @keyframes launchFace {
+            0%, 18% { opacity: 0; transform: scale(0.9); }
+            26% { opacity: 0.7; transform: scale(1); }
+            40%, 86% { opacity: 1; transform: scale(1.03); }
+            100% { opacity: 0; transform: scale(0.9); }
+        }
+
+        /* Stars fall downward faster when rocket goes up */
+        .rocket-stars {
+            animation: starsDrift 3s linear infinite;
+        }
+
+        @keyframes starsDrift {
+            0% { transform: translateY(0); opacity: 0.95; }
+            20% { transform: translateY(8px); opacity: 1; }
+            60% { transform: translateY(36px); opacity: 0.95; }
+            92% { transform: translateY(72px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 0.95; }
+        }
+
+        /* Faster streaks to sell upward motion */
+        .rocket-streaks {
+            animation: streaksRush 0.55s linear infinite;
+        }
+
+        @keyframes streaksRush {
+            from { transform: translateY(-60px); opacity: 0; }
+            20% { opacity: 0.85; }
+            to { transform: translateY(100px); opacity: 0; }
+        }
+
+        /* Exhaust particles expand and fall */
+        .rocket-exhaust {
+            transform-origin: 120px 260px;
+            animation: exhaustBurst 0.8s ease-out infinite;
+        }
+
+        @keyframes exhaustBurst {
+            from { opacity: 1; transform: translateY(0) scale(0.9); }
+            to { opacity: 0; transform: translateY(30px) scale(1.45); }
+        }
+
+        /* Ground shadow/smoke ring react at lift-off */
+        .rocket-launch-shadow {
+            transform-origin: center;
+            animation: launchShadow 3s ease-in-out infinite;
+        }
+
+        @keyframes launchShadow {
+            0% { transform: scaleX(1); opacity: 0.16; }
+            20% { transform: scaleX(1.1); opacity: 0.24; }
+            60% { transform: scaleX(0.78); opacity: 0.08; }
+            92% { transform: scaleX(0.58); opacity: 0.02; }
+            100% { transform: scaleX(1); opacity: 0.16; }
+        }
+
+        .rocket-smoke-ring {
+            transform-origin: center;
+            animation: smokeRing 3s ease-out infinite;
+        }
+
+        @keyframes smokeRing {
+            0%, 12% { opacity: 0; transform: scale(0.6); }
+            20% { opacity: 0.85; transform: scale(1); }
+            40% { opacity: 0.45; transform: scale(1.55); }
+            60%, 100% { opacity: 0; transform: scale(2); }
+        }
+
+        .rocket-loading-text {
+            margin-top: 14px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 16px;
+            color: #d1d5db;
+            letter-spacing: 0.02em;
+        }
+
+        .loading-dots span {
+            animation: dotAnimation 1.2s infinite;
+        }
+
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dotAnimation {
+            0%, 60%, 100% { opacity: 0.2; }
+            30% { opacity: 1; }
+        }
+
+        /* Fullscreen Overlay */
+        .rocket-fullscreen-screen {
+            position: fixed;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            background: rgba(3, 7, 18, 0.95);
+            backdrop-filter: blur(24px);
+        }
+
+        .btn-exit-fullscreen {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: #fff;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-exit-fullscreen:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn-action {
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-action:hover {
+            background: rgba(128, 108, 255, 0.2);
+            border-color: var(--accent-purple);
+            transform: translateY(-2px);
+        }
+
+        .btn-action.active {
+            background: linear-gradient(135deg, rgba(128, 108, 255, 0.4), rgba(101, 223, 255, 0.4));
+            border-color: var(--accent-cyan);
+            color: #fff;
+            box-shadow: 0 0 16px rgba(128, 108, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="preview-card">
+        <div class="badge-header">
+            <i class="fa-solid fa-rocket"></i> Full Launch Sequence Rocket Loader
+        </div>
+        <h1>Rocket Launch Loader Preview</h1>
+        <p class="desc">3-stage dynamic launch sequence with speed streaks, launchpad smoke ring, and transforming excited face.</p>
+
+        <div class="rocket-container" id="inlineStage">
+            <div class="rocket-animation" id="rocketAnimBox" style="width: 220px; height: 220px;">
+                <svg viewBox="0 0 240 320" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" role="img">
+                    <defs>
+                        <linearGradient id="rktBody" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#ffffff" />
+                            <stop offset="70%" stop-color="#f4f1ff" />
+                            <stop offset="100%" stop-color="#dfe6ff" />
+                        </linearGradient>
+
+                        <radialGradient id="rktWindow">
+                            <stop offset="0%" stop-color="#8ffcff" />
+                            <stop offset="45%" stop-color="#5f9cff" />
+                            <stop offset="100%" stop-color="#7a5cff" />
+                        </radialGradient>
+
+                        <linearGradient id="rktFlameOuter" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#fff3a5" />
+                            <stop offset="30%" stop-color="#ffb74d" />
+                            <stop offset="65%" stop-color="#ff6a57" />
+                            <stop offset="100%" stop-color="#ff4fa6" />
+                        </linearGradient>
+
+                        <linearGradient id="rktFlameInner" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#ffffff" />
+                            <stop offset="55%" stop-color="#fff2b0" />
+                            <stop offset="100%" stop-color="#ffb34d" />
+                        </linearGradient>
+
+                        <filter id="rktGlow" x="-100%" y="-100%" width="300%" height="300%">
+                            <feGaussianBlur stdDeviation="6" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+
+                        <filter id="rktShadow">
+                            <feDropShadow dx="0" dy="8" stdDeviation="8" flood-opacity="0.18" />
+                        </filter>
+                    </defs>
+
+                    <!-- BACKGROUND STARS -->
+                    <g class="rocket-stars slow-stars">
+                        <circle cx="34" cy="42" r="3" fill="#a68cff" />
+                        <circle cx="198" cy="58" r="2.5" fill="#65dfff" />
+                        <circle cx="55" cy="145" r="2" fill="#ff9fd5" />
+                        <circle cx="196" cy="152" r="3" fill="#94f4ff" />
+                        <path d="M38 86 L41 92 L47 95 L41 98 L38 104 L35 98 L29 95 L35 92 Z" fill="#ffe68b" />
+                        <path d="M186 104 L189 110 L195 113 L189 116 L186 122 L183 116 L177 113 L183 110 Z" fill="#b898ff" />
+                    </g>
+
+                    <!-- SPEED STREAKS -->
+                    <g class="rocket-streaks">
+                        <rect x="26" y="38" width="3" height="28" rx="2" fill="#d9d0ff" opacity="0.8" />
+                        <rect x="52" y="98" width="2.5" height="24" rx="2" fill="#8cecff" opacity="0.75" />
+                        <rect x="192" y="68" width="3" height="32" rx="2" fill="#ffd8ef" opacity="0.7" />
+                        <rect x="210" y="120" width="2.5" height="20" rx="2" fill="#d7d4ff" opacity="0.75" />
+                        <rect x="18" y="160" width="3" height="26" rx="2" fill="#f4d6ff" opacity="0.75" />
+                    </g>
+
+                    <!-- LAUNCH SMOKE RING & SHADOW -->
+                    <ellipse class="rocket-launch-shadow" cx="120" cy="285" rx="40" ry="10" fill="#4f4b73" opacity="0.16" />
+                    <ellipse class="rocket-smoke-ring" cx="120" cy="292" rx="24" ry="6" fill="none" stroke="#e8defe" stroke-width="4" opacity="0.85" />
+
+                    <!-- ROCKET LAUNCH GROUP -->
+                    <g class="rocket-launch-group">
+                        <!-- EXHAUST PARTICLES -->
+                        <g class="rocket-exhaust">
+                            <circle cx="103" cy="256" r="5" fill="#ff9b6d" />
+                            <circle cx="133" cy="266" r="4" fill="#c993ff" />
+                            <circle cx="121" cy="286" r="5" fill="#65dfff" />
+                            <circle cx="89" cy="278" r="3.5" fill="#ffd678" />
+                            <circle cx="145" cy="286" r="3" fill="#ff8fd6" />
+                        </g>
+
+                        <g class="rocket">
+                            <!-- FLAME -->
+                            <g class="rocket-flame">
+                                <path d="
+                                    M102 215
+                                    Q120 286 138 215
+                                    Q129 252 120 272
+                                    Q111 252 102 215
+                                " fill="url(#rktFlameOuter)" filter="url(#rktGlow)" />
+                                <path d="
+                                    M111 216
+                                    Q120 259 129 216
+                                    Q124 236 120 248
+                                    Q116 236 111 216
+                                " fill="url(#rktFlameInner)" />
+                            </g>
+
+                            <!-- SIDE FINS -->
+                            <path d="
+                                M90 180
+                                Q63 192 72 221
+                                Q85 208 101 205
+                                Z
+                            " fill="#7e6bff" />
+                            <path d="
+                                M150 180
+                                Q177 192 168 221
+                                Q155 208 139 205
+                                Z
+                            " fill="#7e6bff" />
+
+                            <!-- FUSELAGE BODY -->
+                            <path d="
+                                M120 58
+                                Q81 87 88 164
+                                Q90 196 103 217
+                                L137 217
+                                Q150 196 152 164
+                                Q159 87 120 58
+                                Z
+                            " fill="url(#rktBody)" filter="url(#rktShadow)" />
+
+                            <!-- NOSE CONE -->
+                            <path d="
+                                M120 58
+                                Q101 74 95 100
+                                L145 100
+                                Q139 74 120 58
+                            " fill="#7864ff" />
+
+                            <!-- WINDOW -->
+                            <circle cx="120" cy="132" r="25" fill="#ebedff" />
+                            <circle class="rocket-window" cx="120" cy="132" r="19" fill="url(#rktWindow)" filter="url(#rktGlow)" />
+                            <circle cx="113" cy="125" r="5" fill="white" opacity="0.75" />
+
+                            <!-- CALM FACE (STANDBY) -->
+                            <g class="rocket-face rocket-face-calm">
+                                <ellipse cx="111" cy="178" rx="5" ry="8" fill="#25243a" />
+                                <ellipse cx="129" cy="178" rx="5" ry="8" fill="#25243a" />
+                                <circle cx="109" cy="175" r="1.7" fill="white" />
+                                <circle cx="127" cy="175" r="1.7" fill="white" />
+                                <path d="M112 192 Q120 199 128 192" fill="none" stroke="#4a294b" stroke-width="3" stroke-linecap="round" />
+                                <ellipse cx="99" cy="188" rx="6" ry="3" fill="#ff99b4" opacity="0.45" />
+                                <ellipse cx="141" cy="188" rx="6" ry="3" fill="#ff99b4" opacity="0.45" />
+                            </g>
+
+                            <!-- EXCITED LAUNCH FACE (BLASTOFF) -->
+                            <g class="rocket-face rocket-face-launch">
+                                <path d="M107 176 Q111 172 115 176" fill="none" stroke="#25243a" stroke-width="4" stroke-linecap="round" />
+                                <path d="M125 176 Q129 172 133 176" fill="none" stroke="#25243a" stroke-width="4" stroke-linecap="round" />
+                                <circle cx="99" cy="188" r="6" fill="#ff7d9f" opacity="0.75" />
+                                <circle cx="141" cy="188" r="6" fill="#ff7d9f" opacity="0.75" />
+                                <path d="M109 191 Q120 206 131 191 Q129 209 120 210 Q111 208 109 191" fill="#652338" />
+                                <ellipse cx="120" cy="203" rx="7" ry="4" fill="#ff8aaa" />
+                            </g>
+                        </g>
+                    </g>
+                </svg>
+            </div>
+
+            <div class="rocket-loading-text" id="loadingText">
+                Launching GCP Engine...
+                <span class="loading-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-action active" onclick="setText('Launching GCP Engine...')"><i class="fa-solid fa-cloud"></i> Launching Engine</button>
+            <button class="btn-action" onclick="setText('Analyzing Datastore Entities...')"><i class="fa-solid fa-database"></i> Datastore Analysis</button>
+            <button class="btn-action" onclick="setText('Comparing BigQuery Schemas...')"><i class="fa-solid fa-table"></i> BigQuery Diff</button>
+            <button class="btn-action" onclick="toggleFullscreen()"><i class="fa-solid fa-expand"></i> Fullscreen Mode</button>
+        </div>
+    </div>
+
+    <!-- Fullscreen Overlay Element -->
+    <div id="fullscreenOverlay" class="rocket-fullscreen-screen">
+        <button class="btn-exit-fullscreen" onclick="toggleFullscreen()"><i class="fa-solid fa-compress"></i> Exit Fullscreen (Esc)</button>
+        <div id="fullscreenTarget"></div>
+    </div>
+
+    <script>
+        function setText(msg) {
+            const textEl = document.getElementById('loadingText');
+            textEl.innerHTML = `${msg} <span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>`;
+
+            document.querySelectorAll('.controls .btn-action').forEach(b => {
+                b.classList.toggle('active', b.textContent.includes(msg.split(' ')[0]));
+            });
+        }
+
+        let isFullscreen = false;
+        function toggleFullscreen() {
+            isFullscreen = !isFullscreen;
+            const overlay = document.getElementById('fullscreenOverlay');
+            const target = document.getElementById('fullscreenTarget');
+            const stage = document.getElementById('inlineStage');
+
+            if (isFullscreen) {
+                target.appendChild(stage);
+                overlay.style.display = 'flex';
+            } else {
+                document.querySelector('.preview-card').insertBefore(stage, document.querySelector('.controls'));
+                overlay.style.display = 'none';
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                toggleFullscreen();
+            }
+        });
+    </script>
+</body>
+</html>
