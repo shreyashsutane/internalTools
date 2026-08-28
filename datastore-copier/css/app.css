@@ -681,6 +681,19 @@ h1, h2, h3 {
     transform: scale(1.1);
 }
 
+.mochi-rage-overheat {
+    transform: scale(2.2) translateY(-22px) !important;
+    filter: drop-shadow(0 0 35px rgba(255, 35, 65, 0.95)) hue-rotate(-25deg) !important;
+    animation: mochiRageShake 0.08s infinite alternate !important;
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    z-index: 99999 !important;
+}
+
+@keyframes mochiRageShake {
+    0% { transform: scale(2.2) translateY(-22px) rotate(-5deg); }
+    100% { transform: scale(2.2) translateY(-22px) rotate(5deg); }
+}
+
 .assist-mascot {
     display: inline-flex;
     justify-content: center;

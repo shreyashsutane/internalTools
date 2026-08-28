@@ -5,6 +5,8 @@
 
 import { AssistManager, AssistStep, MascotState } from './assist';
 import { Utils } from './utils';
+import { SoundFX } from './sound';
+import { D0198EasterEgg } from './easter-egg';
 
 export const AssistUI = {
     private_typingTimer: null as any,
@@ -233,37 +235,59 @@ export const AssistUI = {
         const closeBtn = document.getElementById('btn-assist-close');
         if (closeBtn) closeBtn.onclick = () => AssistUI.toggle(false);
 
-        // Mascot Single Click (Happy) & Double Click (Angry) Interactivity
+        // Mascot Single Click (Happy), Double Click (Angry) & 5-Click (Overheat Rage -> Hacking Screen)
         const mascotBox = document.getElementById('assist-mascot-interactive-box');
         if (mascotBox) {
-            let clickTimer: any = null;
+            let clickCount = 0;
+            let resetTimer: any = null;
 
             mascotBox.onclick = (e) => {
                 e.stopPropagation();
-                if (clickTimer) {
-                    clearTimeout(clickTimer);
-                    clickTimer = null;
-                    // Double Click: Angry!
-                    AssistManager.setTemporaryReaction('angry');
+                clickCount++;
+
+                if (resetTimer) clearTimeout(resetTimer);
+
+                if (clickCount >= 5) {
+                    // 💥 5 CLICKS TRIGGERED!
+                    clickCount = 0;
+
+                    // 1. Mochi becomes furious and expands 2.2x with vibrating electrical rage
+                    AssistManager.setTemporaryReaction('angry', '⚠️ CRITICAL OVERHEAT: Mochi has reached maximum rage! 💢⚡');
+                    SoundFX.playGrumpy();
                     AssistUI.render();
-                } else {
-                    clickTimer = setTimeout(() => {
-                        clickTimer = null;
+
+                    const mascotEl = document.getElementById('assist-mascot-interactive-box');
+                    if (mascotEl) {
+                        mascotEl.classList.add('mochi-rage-overheat');
+                    }
+
+                    // 2. Dramatic 1.3-second rage swell, then launches the 10s hacking sequence
+                    setTimeout(() => {
+                        if (mascotEl) mascotEl.classList.remove('mochi-rage-overheat');
+                        D0198EasterEgg.trigger();
+                    }, 1300);
+                    return;
+                }
+
+                // Normal 1-click (Happy) / 2-click (Angry) evaluator
+                resetTimer = setTimeout(() => {
+                    if (clickCount === 1) {
                         // Single Click: Happy!
                         AssistManager.setTemporaryReaction('happy');
+                        SoundFX.playPop();
                         AssistUI.render();
-                    }, 240);
-                }
+                    } else if (clickCount >= 2) {
+                        // Double / Triple Click: Angry!
+                        AssistManager.setTemporaryReaction('angry');
+                        SoundFX.playGrumpy();
+                        AssistUI.render();
+                    }
+                    clickCount = 0;
+                }, 280);
             };
 
             mascotBox.ondblclick = (e) => {
                 e.stopPropagation();
-                if (clickTimer) {
-                    clearTimeout(clickTimer);
-                    clickTimer = null;
-                }
-                AssistManager.setTemporaryReaction('angry');
-                AssistUI.render();
             };
         }
     },
