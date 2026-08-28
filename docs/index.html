@@ -857,6 +857,24 @@
             border-color: var(--accent-teal);
             background: rgba(0,212,255,0.05);
         }
+
+        /* Version 2 Beginner Guide Styles */
+        .interactive-step-btn.active {
+            border-color: #10b981 !important;
+            background: rgba(16, 185, 129, 0.18) !important;
+            color: #10b981 !important;
+        }
+        .faq-accordion summary {
+            cursor: pointer;
+            list-style: none;
+            user-select: none;
+        }
+        .faq-accordion summary::-webkit-details-marker {
+            display: none;
+        }
+        .faq-accordion[open] summary .faq-icon {
+            transform: rotate(180deg);
+        }
     </style>
 </head>
 <body>
@@ -876,6 +894,317 @@
             </div>
         </header>
 
+        
+        <!-- VERSION 1 vs VERSION 2 SELECTOR -->
+        <div style="display:flex; justify-content:center; align-items:center; margin: 0 auto 28px; max-width: 620px; background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 16px; padding: 6px; gap: 6px; box-shadow: 0 12px 30px rgba(0,0,0,0.6); backdrop-filter: blur(16px); position: sticky; top: 12px; z-index: 1000;">
+            <button id="btn-doc-v2" onclick="switchDocVersion('v2')" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.18); color: #10b981; transition: all 0.25s;">
+                <i class="fa-solid fa-seedling"></i> Version 2: Beginner Guide
+                <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.25); color: #34d399; font-weight: 700;">Simple</span>
+            </button>
+            <button id="btn-doc-v1" onclick="switchDocVersion('v1')" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--text-muted); transition: all 0.25s;">
+                <i class="fa-solid fa-microchip"></i> Version 1: Technical Manual
+                <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(0, 212, 255, 0.15); color: #00d4ff;">Deep Dive</span>
+            </button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW: VERSION 2 (BEGINNER-FRIENDLY GUIDE) -->
+        <!-- ========================================== -->
+        <div id="view-doc-v2" style="display:block;">
+            <!-- Hero -->
+            <div style="text-align: center; padding: 16px 0 28px;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; padding: 4px 14px; border-radius: 999px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; font-size: 12px; font-weight: 600; margin-bottom: 12px;">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Simple, Visual & Jargon-Free Guide
+                </div>
+                <h2 style="font-size: 2.2rem; font-weight: 800; color: #fff; margin: 0 0 10px; line-height: 1.2;">
+                    GCP Infrastructure Manager <br>
+                    <span style="background: linear-gradient(135deg, #10b981, #00d4ff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        Made Friendly For Everyone
+                    </span>
+                </h2>
+                <p style="color: var(--text-muted); font-size: 14px; max-width: 680px; margin: 0 auto 24px;">
+                    Compare BigQuery schemas, copy Datastore kinds safely, and transfer scheduled queries between Google Cloud projects — with zero coding fear.
+                </p>
+
+                <!-- Quick Action Cards -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; max-width: 780px; margin: 0 auto; text-align: left;">
+                    <a href="#v2-quickstart" class="glass-card" style="padding: 16px; text-decoration: none; border-color: rgba(16, 185, 129, 0.3); display: block;">
+                        <div style="color: #10b981; font-weight: 700; font-size: 14px; margin-bottom: 6px;"><i class="fa-solid fa-bolt"></i> 5-Min Quickstart</div>
+                        <div style="color: var(--text-muted); font-size: 12px;">Step-by-step instructions from token to first safe copy.</div>
+                    </a>
+                    <a href="#v2-simulator" class="glass-card" style="padding: 16px; text-decoration: none; border-color: rgba(0, 212, 255, 0.3); display: block;">
+                        <div style="color: #00d4ff; font-weight: 700; font-size: 14px; margin-bottom: 6px;"><i class="fa-solid fa-gamepad"></i> Visual Playground</div>
+                        <div style="color: var(--text-muted); font-size: 12px;">Test buttons in a simulated preview before touching GCP.</div>
+                    </a>
+                    <a href="#v2-jargon" class="glass-card" style="padding: 16px; text-decoration: none; border-color: rgba(192, 132, 252, 0.3); display: block;">
+                        <div style="color: #c084fc; font-weight: 700; font-size: 14px; margin-bottom: 6px;"><i class="fa-solid fa-book-open"></i> Jargon Buster</div>
+                        <div style="color: var(--text-muted); font-size: 12px;">What "Kind", "Entity", and "Bearer Token" actually mean.</div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- 1. ELI5 Overview -->
+            <div class="glass-card" style="padding: 28px; margin-bottom: 24px; border-color: rgba(16, 185, 129, 0.25);">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); display: flex; align-items: center; justify-content: center; color: #10b981; font-size: 18px;">
+                        <i class="fa-solid fa-lightbulb"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0;">1. Explain It Like I'm 5: What Does This Tool Do?</h3>
+                        <p style="font-size: 12px; color: var(--text-muted); margin: 2px 0 0;">The simplest analogy to understand what's happening</p>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: center;">
+                    <div style="font-size: 13px; color: #cbd5e1; line-height: 1.6;">
+                        <p style="margin-bottom: 10px;">
+                            Imagine you have two houses in Google Cloud: <strong style="color: #10b981;">House A (Source)</strong> and <strong style="color: #00d4ff;">House B (Target)</strong>.
+                        </p>
+                        <p style="margin-bottom: 10px;">
+                            You want to move furniture (your database records) from House A to House B, or check if both rooms have matching blueprints.
+                        </p>
+                        <p style="margin-bottom: 10px;">
+                            Normally, doing this requires writing dangerous command-line scripts where one typo can wipe out production data.
+                        </p>
+                        <div style="padding: 12px; border-radius: 8px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); color: #34d399; font-weight: 500;">
+                            ✨ <strong>GCP Infrastructure Manager</strong> is your gentle moving assistant. It packs the furniture safely, inspects the new room first, and keeps an exact photo backup so you can undo anytime with 1 click!
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 14px; display: flex; gap: 12px;">
+                            <i class="fa-solid fa-shield-halved text-emerald-400" style="font-size: 20px; margin-top: 2px;"></i>
+                            <div>
+                                <div style="font-weight: 700; font-size: 13px; color: #fff;">1. Memory-Only Safety</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Your access token lives only in your browser tab's RAM. It is never saved to a database or disk.</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px; padding: 14px; display: flex; gap: 12px;">
+                            <i class="fa-solid fa-eye text-cyan-400" style="font-size: 20px; margin-top: 2px;"></i>
+                            <div>
+                                <div style="font-weight: 700; font-size: 13px; color: #fff;">2. Read-Only by Default</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Comparing schemas and scanning tables will never write, modify, or delete anything in Google Cloud.</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 12px; padding: 14px; display: flex; gap: 12px;">
+                            <i class="fa-solid fa-rotate-left text-amber-400" style="font-size: 20px; margin-top: 2px;"></i>
+                            <div>
+                                <div style="font-weight: 700; font-size: 13px; color: #fff;">3. 1-Click Rollback (Undo)</div>
+                                <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Every copy automatically records a backup in Audit Logs so you can restore your original data instantly.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Quickstart -->
+            <div id="v2-quickstart" class="glass-card" style="padding: 28px; margin-bottom: 24px;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0 0 4px;">2. 5-Minute "Zero-to-Hero" Quickstart</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 20px;">Everything you need to know from logging in to your first safe copy</p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;">
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; padding: 16px;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); color: #10b981; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">1</div>
+                        <div style="font-weight: 700; font-size: 14px; color: #fff; margin-bottom: 4px;">Get Your Token</div>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Run this command in terminal or Cloud Shell:</p>
+                        <div style="background: #020617; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); font-family: var(--font-code); font-size: 11px; color: #34d399; margin-bottom: 6px;">
+                            <code>gcloud auth print-access-token</code>
+                        </div>
+                        <p style="font-size: 11px; color: #64748b;">Copy the long string starting with <code>ya29...</code>. It is a temporary 60-minute pass.</p>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(0, 212, 255, 0.25); border-radius: 12px; padding: 16px;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(0, 212, 255, 0.2); color: #00d4ff; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">2</div>
+                        <div style="font-weight: 700; font-size: 14px; color: #fff; margin-bottom: 4px;">Paste & Authenticate</div>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Open GCP Infrastructure Manager and paste the token:</p>
+                        <div style="background: #020617; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #00d4ff; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                            <i class="fa-solid fa-key"></i> Click <strong>"Verify Token"</strong>
+                        </div>
+                        <p style="font-size: 11px; color: #64748b;">A green badge appears showing your verified email. You are logged in.</p>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(192, 132, 252, 0.25); border-radius: 12px; padding: 16px;">
+                        <div style="width: 28px; height: 28px; border-radius: 50%; background: rgba(192, 132, 252, 0.2); color: #c084fc; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">3</div>
+                        <div style="font-weight: 700; font-size: 14px; color: #fff; margin-bottom: 4px;">Pick Your Operation</div>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Choose your mission:</p>
+                        <ul style="font-size: 11px; color: #cbd5e1; list-style: none; padding: 0; margin: 0; line-height: 1.7;">
+                            <li><strong style="color: #00d4ff;">• BigQuery:</strong> Compare table schemas.</li>
+                            <li><strong style="color: #10b981;">• Datastore:</strong> Move rows between projects.</li>
+                            <li><strong style="color: #c084fc;">• Scheduled:</strong> Copy recurring SQL queries.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Interactive Simulator -->
+            <div id="v2-simulator" class="glass-card" style="padding: 28px; margin-bottom: 24px; border-color: rgba(0, 212, 255, 0.3);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: rgba(0, 212, 255, 0.15); color: #00d4ff; border: 1px solid rgba(0, 212, 255, 0.35);">
+                            <i class="fa-solid fa-gamepad mr-1"></i> Interactive Simulator
+                        </span>
+                        <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin: 6px 0 2px;">3. Click-to-Learn Visual Playground</h3>
+                        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Click the buttons below to see how the app reacts before touching real cloud data.</p>
+                    </div>
+                    <button onclick="resetSimulator()" style="font-size: 11px; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;">
+                        <i class="fa-solid fa-rotate mr-1"></i> Reset Demo
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 16px;">
+                    <button id="sim-btn-1" onclick="setSimStep(1)" class="interactive-step-btn active" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); text-align: left; cursor: pointer; color: #fff;">
+                        <div style="font-size: 9px; color: var(--text-muted); font-family: var(--font-code);">STEP 1</div>
+                        <div style="font-size: 12px; font-weight: 600;">🔑 Token</div>
+                    </button>
+                    <button id="sim-btn-2" onclick="setSimStep(2)" class="interactive-step-btn" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); text-align: left; cursor: pointer; color: #fff;">
+                        <div style="font-size: 9px; color: var(--text-muted); font-family: var(--font-code);">STEP 2</div>
+                        <div style="font-size: 12px; font-weight: 600;">📂 Kind</div>
+                    </button>
+                    <button id="sim-btn-3" onclick="setSimStep(3)" class="interactive-step-btn" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); text-align: left; cursor: pointer; color: #fff;">
+                        <div style="font-size: 9px; color: var(--text-muted); font-family: var(--font-code);">STEP 3</div>
+                        <div style="font-size: 12px; font-weight: 600;">🔍 Filter</div>
+                    </button>
+                    <button id="sim-btn-4" onclick="setSimStep(4)" class="interactive-step-btn" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); text-align: left; cursor: pointer; color: #fff;">
+                        <div style="font-size: 9px; color: var(--text-muted); font-family: var(--font-code);">STEP 4</div>
+                        <div style="font-size: 12px; font-weight: 600;">🧪 Dry Run</div>
+                    </button>
+                    <button id="sim-btn-5" onclick="setSimStep(5)" class="interactive-step-btn" style="padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.4); text-align: left; cursor: pointer; color: #fff;">
+                        <div style="font-size: 9px; color: var(--text-muted); font-family: var(--font-code);">STEP 5</div>
+                        <div style="font-size: 12px; font-weight: 600;">⏪ Rollback</div>
+                    </button>
+                </div>
+
+                <div id="sim-display-box" style="background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 18px;">
+                    <!-- Injected dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- 4. Meet Mochi -->
+            <div class="glass-card" style="padding: 24px; margin-bottom: 24px; border-color: rgba(192, 132, 252, 0.3);">
+                <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                    <div style="width: 60px; height: 60px; border-radius: 16px; background: rgba(192, 132, 252, 0.15); border: 1px solid rgba(192, 132, 252, 0.35); display: flex; align-items: center; justify-content: center; font-size: 28px;">
+                        🐱
+                    </div>
+                    <div style="flex: 1;">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin: 0 0 4px;">4. Meet Mochi — Your In-App Companion</h3>
+                        <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 10px;">
+                            Mochi is the friendly floating orb in the bottom corner who gives gentle suggestions based on where you click.
+                        </p>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; font-size: 11px;">
+                            <div style="background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                                💖 <strong style="color: #f472b6;">Single Click:</strong> Happy chime celebration!
+                            </div>
+                            <div style="background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                                💢 <strong style="color: #fbbf24;">Double Click:</strong> Mochi gets grumpy.
+                            </div>
+                            <div style="background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                                ⌨️ <strong style="color: #00d4ff;">Shortcut:</strong> Press <code>?</code> or <code>F1</code> to toggle.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Jargon Buster -->
+            <div id="v2-jargon" class="glass-card" style="padding: 24px; margin-bottom: 24px;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0 0 4px;">5. Plain-English "Jargon Buster"</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 16px;">Technical cloud words translated into everyday speech</p>
+
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; text-align: left; font-size: 12px; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); font-family: var(--font-code); font-size: 11px;">
+                                <th style="padding: 8px 12px;">Cloud Term</th>
+                                <th style="padding: 8px 12px;">What it actually means in plain English</th>
+                            </tr>
+                        </thead>
+                        <tbody style="color: #cbd5e1;">
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                <td style="padding: 10px 12px; font-weight: 600; color: #10b981;">GCP Project</td>
+                                <td style="padding: 10px 12px;">A workspace or company folder in Google Cloud where your data lives.</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                <td style="padding: 10px 12px; font-weight: 600; color: #10b981;">Kind</td>
+                                <td style="padding: 10px 12px;">The table name or category of data (e.g. <code>Users</code>, <code>Orders</code>).</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                <td style="padding: 10px 12px; font-weight: 600; color: #10b981;">Entity</td>
+                                <td style="padding: 10px 12px;">A single row or item inside a Kind.</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                <td style="padding: 10px 12px; font-weight: 600; color: #00d4ff;">BigQuery Schema</td>
+                                <td style="padding: 10px 12px;">The structural blueprint of a table (which columns exist and their data types).</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                                <td style="padding: 10px 12px; font-weight: 600; color: #c084fc;">Dry Run</td>
+                                <td style="padding: 10px 12px;">A safe practice rehearsal test with zero changes made to Google Cloud.</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px 12px; font-weight: 600; color: #fbbf24;">1-Click Revert</td>
+                                <td style="padding: 10px 12px;">The magic "Undo" button that restores the database to its pre-copy state.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 6. Troubleshooting & FAQs -->
+            <div class="glass-card" style="padding: 24px; margin-bottom: 24px;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin: 0 0 4px;">6. Troubleshooting & Common Questions</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 16px;">Direct answers to common beginner stumbling blocks</p>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <details class="faq-accordion" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px;">
+                        <summary style="font-weight: 600; font-size: 13px; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+                            <span>🔴 It says "401 Unauthorized" or "Token Expired". What should I do?</span>
+                            <i class="fa-solid fa-chevron-down faq-icon" style="font-size: 10px; color: var(--text-muted); transition: transform 0.2s;"></i>
+                        </summary>
+                        <div style="margin-top: 8px; font-size: 12px; color: #cbd5e1; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+                            Google Cloud access tokens automatically expire after <strong>60 minutes</strong> for safety.<br>
+                            <strong>Fix:</strong> Open terminal, run <code>gcloud auth print-access-token</code> again, copy the fresh token, and paste it into the app.
+                        </div>
+                    </details>
+
+                    <details class="faq-accordion" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px;">
+                        <summary style="font-weight: 600; font-size: 13px; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+                            <span>🚫 It says "403 Forbidden" or "Permission Denied".</span>
+                            <i class="fa-solid fa-chevron-down faq-icon" style="font-size: 10px; color: var(--text-muted); transition: transform 0.2s;"></i>
+                        </summary>
+                        <div style="margin-top: 8px; font-size: 12px; color: #cbd5e1; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+                            Your Google Cloud account needs permissions on that project. Ask your GCP administrator for:<br>
+                            • <code>roles/datastore.viewer</code> (to view/read entities)<br>
+                            • <code>roles/datastore.user</code> (to copy/write entities)<br>
+                            • <code>roles/bigquery.metadataViewer</code> (to compare table schemas)
+                        </div>
+                    </details>
+
+                    <details class="faq-accordion" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px;">
+                        <summary style="font-weight: 600; font-size: 13px; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+                            <span>⚠️ Can this tool accidentally delete my source database?</span>
+                            <i class="fa-solid fa-chevron-down faq-icon" style="font-size: 10px; color: var(--text-muted); transition: transform 0.2s;"></i>
+                        </summary>
+                        <div style="margin-top: 8px; font-size: 12px; color: #cbd5e1; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+                            <strong>Never.</strong> The source project is strictly read-only. The tool only reads entities and compares them; it contains no code to delete source entities.
+                        </div>
+                    </details>
+
+                    <details class="faq-accordion" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px;">
+                        <summary style="font-weight: 600; font-size: 13px; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+                            <span>⏪ What if I copied data with a mistake? How do I undo it?</span>
+                            <i class="fa-solid fa-chevron-down faq-icon" style="font-size: 10px; color: var(--text-muted); transition: transform 0.2s;"></i>
+                        </summary>
+                        <div style="margin-top: 8px; font-size: 12px; color: #cbd5e1; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+                            Click on <strong>"Audit History"</strong> (or open SuperAdmin Activity Logs). Look for your copy action and click the blue <strong>"1-Click Revert"</strong> button. The system will automatically restore the target database to its pre-copy state.
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VIEW: VERSION 1 (TECHNICAL ARCHITECTURE MANUAL) -->
+        <!-- ========================================== -->
+        <div id="view-doc-v1" style="display:none;">
         <!-- Dynamic Portal Navigation Tabs -->
         <nav class="nav-tabs" role="tablist">
             <button class="tab-btn active" id="tab-copier" onclick="switchMainTab('copier')">
@@ -2464,6 +2793,8 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
             </div>
         </section>
 
+                </div><!-- /view-doc-v1 -->
+
         <footer style="text-align:center; padding:30px 0; color:var(--text-muted); font-size:0.9rem; border-top:1px solid var(--border)">
             GCP Tools Portal &copy; 2026. All documentation manuals compiled and verified successfully.
         </footer>
@@ -2472,6 +2803,175 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
     <!-- UI Controllers & Tabs Switchers -->
     <script>
         // Main tabs switcher controller
+        
+        // Version 1 vs Version 2 Switcher Controller
+        window.switchDocVersion = function(version) {
+            const v1View = document.getElementById("view-doc-v1");
+            const v2View = document.getElementById("view-doc-v2");
+            const btnV1 = document.getElementById("btn-doc-v1");
+            const btnV2 = document.getElementById("btn-doc-v2");
+
+            if (version === "v1") {
+                if (v1View) v1View.style.display = "block";
+                if (v2View) v2View.style.display = "none";
+                if (btnV1) {
+                    btnV1.style.borderColor = "rgba(0, 212, 255, 0.4)";
+                    btnV1.style.background = "rgba(0, 212, 255, 0.18)";
+                    btnV1.style.color = "#00d4ff";
+                    btnV1.style.fontWeight = "700";
+                }
+                if (btnV2) {
+                    btnV2.style.borderColor = "transparent";
+                    btnV2.style.background = "transparent";
+                    btnV2.style.color = "var(--text-muted)";
+                    btnV2.style.fontWeight = "600";
+                }
+                window.location.hash = "v1";
+                localStorage.setItem("gcp_doc_version", "v1");
+            } else {
+                if (v1View) v1View.style.display = "none";
+                if (v2View) v2View.style.display = "block";
+                if (btnV2) {
+                    btnV2.style.borderColor = "rgba(16, 185, 129, 0.4)";
+                    btnV2.style.background = "rgba(16, 185, 129, 0.18)";
+                    btnV2.style.color = "#10b981";
+                    btnV2.style.fontWeight = "700";
+                }
+                if (btnV1) {
+                    btnV1.style.borderColor = "transparent";
+                    btnV1.style.background = "transparent";
+                    btnV1.style.color = "var(--text-muted)";
+                    btnV1.style.fontWeight = "600";
+                }
+                window.location.hash = "v2";
+                localStorage.setItem("gcp_doc_version", "v2");
+            }
+        };
+
+        // Simulator Data & Logic
+        const simData = {
+            1: {
+                title: "🔑 Step 1: Token Authentication",
+                badge: "SIMULATED SUCCESS",
+                badgeColor: "color:#10b981; background:rgba(16, 185, 129, 0.2); border:1px solid rgba(16,185,129,0.4);",
+                description: "You pasted your temporary token. The system verified it against Google Cloud tokeninfo API in 120ms.",
+                card: `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border-radius:8px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); font-size:12px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                        <span style="color:#fff; font-weight:600;">Verified: operator@company.com</span>
+                    </div>
+                    <span style="font-family:var(--font-code); color:#34d399; font-size:11px;">Expires in 59m 40s</span>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+                    💡 Notice: The token is held in tab memory only and was never sent to any database.
+                </div>`
+            },
+            2: {
+                title: "📂 Step 2: Select Source Kind",
+                badge: "KIND DETECTED",
+                badgeColor: "color:#00d4ff; background:rgba(0,212,255,0.2); border:1px solid rgba(0,212,255,0.4);",
+                description: "You chose the 'UserProfiles' Kind. The system performed an ephemeral schema scan of 20 sample entities.",
+                card: `<div style="padding:10px 14px; border-radius:8px; background:#020617; border:1px solid rgba(255,255,255,0.1); font-family:var(--font-code); font-size:12px;">
+                    <div style="color:var(--text-muted); margin-bottom:4px;">Source: <span style="color:#00d4ff;">proj-analytics-prod</span> / <span style="color:#fff;">(default)</span></div>
+                    <div style="color:var(--text-muted);">Selected Kind: <span style="color:#10b981; font-weight:700;">UserProfiles</span> (1,240 entities total)</div>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+                    💡 Notice: Nothing was changed in GCP. This was a zero-write inspection.
+                </div>`
+            },
+            3: {
+                title: "🔍 Step 3: Add Custom Filters",
+                badge: "GQL PREVIEW ACTIVE",
+                badgeColor: "color:#c084fc; background:rgba(192,132,252,0.2); border:1px solid rgba(192,132,252,0.4);",
+                description: "You clicked '+ Add Filter' and set status = 'ACTIVE'. Only matching records will be selected.",
+                card: `<div style="padding:10px 14px; border-radius:8px; background:rgba(192,132,252,0.1); border:1px solid rgba(192,132,252,0.3); font-family:var(--font-code); font-size:12px;">
+                    <div style="color:#c084fc; margin-bottom:4px; font-weight:600;">Live GQL Query Preview:</div>
+                    <code style="color:#f472b6;">SELECT * FROM UserProfiles WHERE status = 'ACTIVE'</code>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+                    💡 Matching entities filtered: <strong style="color:#fff;">184 of 1,240 entities</strong> selected for copying.
+                </div>`
+            },
+            4: {
+                title: "🧪 Step 4: Run Safe In-Memory Dry Run",
+                badge: "ZERO WRITES",
+                badgeColor: "color:#fbbf24; background:rgba(251,191,36,0.2); border:1px solid rgba(251,191,36,0.4);",
+                description: "You clicked 'Dry Run & Diff'. The system simulated the migration without making any real GCP changes.",
+                card: `<div style="padding:10px 14px; border-radius:8px; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); font-size:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span style="color:#fbbf24; font-weight:600;">Dry Run Comparison Report:</span>
+                        <span style="font-size:10px; padding:2px 6px; background:rgba(16,185,129,0.2); color:#34d399; border-radius:4px; font-family:var(--font-code);">184 READY</span>
+                    </div>
+                    <div style="font-size:11px; color:#cbd5e1; line-height:1.5;">
+                        • 180 entities will be created newly in Target.<br>
+                        • 4 entities already exist and will be updated (diff previewed in green/red).
+                    </div>
+                </div>`
+            },
+            5: {
+                title: "⏪ Step 5: 1-Click Rollback / Revert",
+                badge: "SAFETY NET ACTIVE",
+                badgeColor: "color:#10b981; background:rgba(16,185,129,0.2); border:1px solid rgba(16,185,129,0.4);",
+                description: "Suppose you made a typo! You can rollback instantly with the saved pre-copy snapshot.",
+                card: `<div style="padding:10px 14px; border-radius:8px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); font-size:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="color:#10b981; font-weight:600;">Pre-Mutation Snapshot Available</div>
+                        <div style="font-size:11px; color:var(--text-muted);">Audit ID: #rec_89f02a • Saved 1 min ago</div>
+                    </div>
+                    <button style="padding:6px 12px; border-radius:6px; background:#10b981; color:#000; font-weight:700; font-size:11px; border:none; cursor:pointer;">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> 1-Click Revert
+                    </button>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+                    🎉 Clicking Revert restores the 4 updated entities and deletes the 180 created entities!
+                </div>`
+            }
+        };
+
+        window.setSimStep = function(stepNum) {
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById("sim-btn-" + i);
+                if (btn) {
+                    if (i === stepNum) btn.classList.add("active");
+                    else btn.classList.remove("active");
+                }
+            }
+            const data = simData[stepNum];
+            const box = document.getElementById("sim-display-box");
+            if (box && data) {
+                box.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <div style="font-size:13px; font-weight:700; color:#fff;">${data.title}</div>
+                        <span style="font-size:10px; font-family:var(--font-code); font-weight:700; padding:2px 8px; border-radius:4px; ${data.badgeColor}">
+                            ${data.badge}
+                        </span>
+                    </div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">${data.description}</div>
+                    ${data.card}
+                `;
+            }
+        };
+
+        window.resetSimulator = function() {
+            window.setSimStep(1);
+        };
+
+        // Initialize Doc Version on Load based on hash or storage
+        window.addEventListener("DOMContentLoaded", () => {
+            const hash = window.location.hash;
+            const saved = localStorage.getItem("gcp_doc_version");
+            if (hash === "#v1" || (!hash && saved === "v1")) {
+                window.switchDocVersion("v1");
+            } else {
+                window.switchDocVersion("v2");
+                window.setSimStep(1);
+            }
+        });
+        window.addEventListener("hashchange", () => {
+            if (window.location.hash === "#v1") window.switchDocVersion("v1");
+            else if (window.location.hash === "#v2") window.switchDocVersion("v2");
+        });
+
         function switchMainTab(targetId) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');

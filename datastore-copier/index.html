@@ -32,9 +32,42 @@
                 <button id="btn-toggle-assist" class="btn btn-s" style="padding: 6px 12px; font-size: 12px; color: var(--accent-teal, #00d4ff);" title="Toggle Interactive Assist Mode (Shortcut: ?)">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> Assist Mode
                 </button>
-                <a href="../docs/index.html#section-infra-manager" target="_blank" rel="noopener noreferrer" class="btn btn-g" style="color: var(--info); font-size: 12px; padding: 6px 12px;">
-                    <i class="fa-solid fa-book"></i> Documentation
-                </a>
+                <div class="dropdown-wrapper" style="position: relative;">
+                    <button id="btn-doc-menu" class="btn btn-g" style="color: var(--info); font-size: 12px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px;" onclick="toggleDocMenu(event)">
+                        <i class="fa-solid fa-book"></i> Documentation <i class="fa-solid fa-chevron-down" style="font-size: 9px; opacity: 0.7;"></i>
+                    </button>
+                    <div id="doc-menu-dropdown" style="display: none; position: absolute; right: 0; top: calc(100% + 6px); width: 280px; background: rgba(15, 23, 42, 0.97); border: 1px solid rgba(0, 212, 255, 0.35); border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); padding: 8px; z-index: 10001; backdrop-filter: blur(16px);">
+                        <a href="../docs/v2.html" target="_blank" rel="noopener noreferrer" class="doc-menu-item" style="display: flex; gap: 10px; padding: 10px 12px; border-radius: 8px; text-decoration: none; color: #fff; transition: background 0.2s;">
+                            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); display: flex; align-items: center; justify-content: center; color: #10b981; flex-shrink: 0;">
+                                <i class="fa-solid fa-seedling"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                                    Version 2 <span style="font-size: 9px; padding: 1px 5px; border-radius: 4px; background: rgba(16, 185, 129, 0.25); color: #10b981; font-weight: 700;">Beginner</span>
+                                </div>
+                                <div style="font-size: 11px; color: var(--muted, #94a3b8); margin-top: 2px;">
+                                    Simple visual guide, step-by-step tutorial & playground.
+                                </div>
+                            </div>
+                        </a>
+
+                        <div style="height: 1px; background: rgba(255,255,255,0.08); margin: 4px 0;"></div>
+
+                        <a href="../docs/index.html#v1" target="_blank" rel="noopener noreferrer" class="doc-menu-item" style="display: flex; gap: 10px; padding: 10px 12px; border-radius: 8px; text-decoration: none; color: #fff; transition: background 0.2s;">
+                            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(0, 212, 255, 0.15); border: 1px solid rgba(0, 212, 255, 0.4); display: flex; align-items: center; justify-content: center; color: #00d4ff; flex-shrink: 0;">
+                                <i class="fa-solid fa-microchip"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                                    Version 1 <span style="font-size: 9px; padding: 1px 5px; border-radius: 4px; background: rgba(0, 212, 255, 0.25); color: #00d4ff; font-weight: 700;">Technical</span>
+                                </div>
+                                <div style="font-size: 11px; color: var(--muted, #94a3b8); margin-top: 2px;">
+                                    Deep 3D architecture, AST engine & crypto specs.
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
                 <button id="themeToggle" class="btn btn-s" style="padding: 6px 12px; font-size: 12px;" title="Toggle Dark/Light Mode">
                     <i class="fa-solid fa-sun" id="theme-icon"></i>
                 </button>
@@ -60,6 +93,20 @@
                 }
             }
         }
+        function toggleDocMenu(e) {
+            if (e) e.stopPropagation();
+            const dropdown = document.getElementById('doc-menu-dropdown');
+            if (dropdown) {
+                dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('doc-menu-dropdown');
+            const btn = document.getElementById('btn-doc-menu');
+            if (dropdown && btn && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
         window.addEventListener('DOMContentLoaded', () => {
             const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
             updateThemeIcon(currentTheme);

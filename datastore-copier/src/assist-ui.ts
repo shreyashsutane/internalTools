@@ -235,23 +235,27 @@ export const AssistUI = {
         const closeBtn = document.getElementById('btn-assist-close');
         if (closeBtn) closeBtn.onclick = () => AssistUI.toggle(false);
 
-        // Mascot Single Click (Happy), Double Click (Angry) & 5-Click (Overheat Rage -> Hacking Screen)
+        // Mascot Rolling-Window Click Combo (1=Happy, 2=Angry, 3=Annoyed, 4=Warning, 5=Overheat Rage -> 10s Hacking)
         const mascotBox = document.getElementById('assist-mascot-interactive-box');
         if (mascotBox) {
-            let clickCount = 0;
-            let resetTimer: any = null;
+            let clickTimestamps: number[] = [];
 
-            mascotBox.onclick = (e) => {
+            mascotBox.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                clickCount++;
 
-                if (resetTimer) clearTimeout(resetTimer);
+                const now = Date.now();
+                // Retain all clicks within a generous 3-second window
+                clickTimestamps = clickTimestamps.filter(t => now - t < 3000);
+                clickTimestamps.push(now);
 
-                if (clickCount >= 5) {
-                    // 💥 5 CLICKS TRIGGERED!
-                    clickCount = 0;
+                const count = clickTimestamps.length;
 
-                    // 1. Mochi becomes furious and expands 2.2x with vibrating electrical rage
+                if (count >= 5) {
+                    // 💥 5 CLICKS REACHED!
+                    clickTimestamps = [];
+
+                    // 1. Mochi swells to 2.2x giant size with vibrating electrical rage
                     AssistManager.setTemporaryReaction('angry', '⚠️ CRITICAL OVERHEAT: Mochi has reached maximum rage! 💢⚡');
                     SoundFX.playGrumpy();
                     AssistUI.render();
@@ -269,26 +273,24 @@ export const AssistUI = {
                     return;
                 }
 
-                // Normal 1-click (Happy) / 2-click (Angry) evaluator
-                resetTimer = setTimeout(() => {
-                    if (clickCount === 1) {
-                        // Single Click: Happy!
-                        AssistManager.setTemporaryReaction('happy');
-                        SoundFX.playPop();
-                        AssistUI.render();
-                    } else if (clickCount >= 2) {
-                        // Double / Triple Click: Angry!
-                        AssistManager.setTemporaryReaction('angry');
-                        SoundFX.playGrumpy();
-                        AssistUI.render();
-                    }
-                    clickCount = 0;
-                }, 280);
-            };
-
-            mascotBox.ondblclick = (e) => {
-                e.stopPropagation();
-            };
+                if (count === 1) {
+                    AssistManager.setTemporaryReaction('happy', '💖 Mochi is delighted to help you! ✨');
+                    SoundFX.playPop();
+                    AssistUI.render();
+                } else if (count === 2) {
+                    AssistManager.setTemporaryReaction('angry', '💢 Whoa! Double-click made Mochi grumpy! Ò_Ó');
+                    SoundFX.playGrumpy();
+                    AssistUI.render();
+                } else if (count === 3) {
+                    AssistManager.setTemporaryReaction('angry', '⚡ Mochi is getting agitated... (3/5 clicks) 💢');
+                    SoundFX.playGrumpy();
+                    AssistUI.render();
+                } else if (count === 4) {
+                    AssistManager.setTemporaryReaction('angry', '🔥 SYSTEM WARNING: Overheat imminent! (4/5 clicks) ⚠️');
+                    SoundFX.playGrumpy();
+                    AssistUI.render();
+                }
+            });
         }
     },
 

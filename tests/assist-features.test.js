@@ -27,8 +27,8 @@ test('AssistUI handles reactive mutation observers, single click happy and doubl
         path.join(__dirname, '../datastore-copier/src/assist-ui.ts'),
         'utf8'
     );
-    assert.match(uiSrc, /setTemporaryReaction\('happy'\)/, 'Single click must trigger happy reaction');
-    assert.match(uiSrc, /setTemporaryReaction\('angry'\)/, 'Double click must trigger angry reaction');
+    assert.match(uiSrc, /setTemporaryReaction\('happy'/, 'Single click must trigger happy reaction');
+    assert.match(uiSrc, /setTemporaryReaction\('angry'/, 'Double click must trigger angry reaction');
     assert.match(uiSrc, /bindReactiveObservers/, 'Reactive DOM and Mutation observers must be bound');
 });
 

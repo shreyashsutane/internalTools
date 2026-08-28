@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Beginner-friendly visual guide and quickstart for GCP Infrastructure Manager. Simple, jargon-free instructions for everyone.">
+    <title>GCP Tools Portal - Beginner's Guide (Version 2)</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --bg-body: #07090e;
+            --bg-card: rgba(15, 23, 42, 0.7);
+            --bg-card-hover: rgba(30, 41, 59, 0.9);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-green: #10b981;
+            --accent-teal: #00d4ff;
+            --accent-purple: #c084fc;
+            --accent-amber: #fbbf24;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+        }
+
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #10b981, #00d4ff, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .interactive-step-btn.active {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .faq-accordion summary {
+            cursor: pointer;
+            list-style: none;
+            user-select: none;
+        }
+        .faq-accordion summary::-webkit-details-marker {
+            display: none;
+        }
+        .faq-accordion[open] summary .faq-icon {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- TOP ANNOUNCEMENT & VERSION SWITCHER HEADER -->
+    <header class="sticky top-0 z-50 bg-[#0a0f1d]/90 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            
+            <div class="flex items-center gap-3">
+                <a href="../datastore-copier/index.html" class="flex items-center gap-2 text-white font-bold tracking-wide hover:opacity-80 transition">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                        <i class="fa-solid fa-cloud"></i>
+                    </div>
+                    <span>GCP Tools Portal</span>
+                </a>
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold">
+                    v2.0 Beginner Guide
+                </span>
+            </div>
+
+            <!-- VERSION 1 vs VERSION 2 SWITCHER PILL -->
+            <div class="flex items-center bg-black/40 border border-white/10 p-1 rounded-xl gap-1 shadow-inner">
+                <a href="v2.html" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm transition">
+                    <i class="fa-solid fa-seedling"></i> Version 2 (Beginner Friendly)
+                </a>
+                <a href="index.html#v1" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5 transition">
+                    <i class="fa-solid fa-microchip"></i> Version 1 (Technical Manual)
+                </a>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="../datastore-copier/index.html" class="text-xs bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left"></i> Open App
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section class="max-w-6xl mx-auto px-4 pt-10 pb-6 text-center">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-4">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Simple, Visual & Jargon-Free
+        </div>
+        <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight mb-4 text-white">
+            GCP Infrastructure Manager <br>
+            <span class="gradient-text">Made Friendly For Everyone</span>
+        </h1>
+        <p class="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto mb-8">
+            Compare BigQuery schemas, copy Datastore kinds safely, and transfer scheduled queries between Google Cloud projects — with zero coding fear.
+        </p>
+
+        <!-- Quick Action Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left max-w-4xl mx-auto">
+            <a href="#quickstart" class="glass-panel p-4 hover:border-emerald-500/50 hover:bg-slate-800/50 transition block">
+                <div class="text-emerald-400 text-lg mb-2"><i class="fa-solid fa-bolt"></i> 5-Min Quickstart</div>
+                <div class="text-xs text-slate-400">Step-by-step instructions from token to first copy.</div>
+            </a>
+            <a href="#simulator" class="glass-panel p-4 hover:border-cyan-500/50 hover:bg-slate-800/50 transition block">
+                <div class="text-cyan-400 text-lg mb-2"><i class="fa-solid fa-gamepad"></i> Visual Playground</div>
+                <div class="text-xs text-slate-400">Test clicking buttons in a safe simulator before touching GCP.</div>
+            </a>
+            <a href="#jargon" class="glass-panel p-4 hover:border-purple-500/50 hover:bg-slate-800/50 transition block">
+                <div class="text-purple-400 text-lg mb-2"><i class="fa-solid fa-book-open"></i> Jargon Buster</div>
+                <div class="text-xs text-slate-400">What "Kind", "Entity", and "Bearer Token" actually mean.</div>
+            </a>
+        </div>
+    </section>
+
+    <!-- SECTION 1: ELI5 OVERVIEW -->
+    <section class="max-w-6xl mx-auto px-4 py-8">
+        <div class="glass-panel p-6 sm:p-8 relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-lg">
+                    <i class="fa-solid fa-lightbulb"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-white">1. Explain It Like I'm 5: What Does This Tool Do?</h2>
+                    <p class="text-xs text-slate-400">The simplest analogy to understand what's happening</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mt-6">
+                <div class="space-y-3 text-sm text-slate-300">
+                    <p>
+                        Imagine you have two houses in Google Cloud: 
+                        <strong class="text-emerald-400">House A (Source)</strong> and 
+                        <strong class="text-cyan-400">House B (Target)</strong>.
+                    </p>
+                    <p>
+                        You want to move furniture (your records and database rows) from House A to House B, or check if both rooms have matching blueprints.
+                    </p>
+                    <p>
+                        Normally, doing this requires writing dangerous command-line scripts where one typo can wipe out your data.
+                    </p>
+                    <p class="p-3 bg-white/5 border border-white/10 rounded-lg text-emerald-300 font-medium">
+                        ✨ <strong>GCP Infrastructure Manager</strong> is your gentle moving assistant. It packs the furniture safely, inspects the new room first, and keeps an exact photo backup so you can unpack or undo anytime with 1 click!
+                    </p>
+                </div>
+
+                <!-- 3 Golden Rules -->
+                <div class="space-y-3">
+                    <div class="bg-black/30 border border-emerald-500/30 rounded-xl p-4 flex gap-3 items-start">
+                        <div class="text-emerald-400 text-xl"><i class="fa-solid fa-shield-halved"></i></div>
+                        <div>
+                            <div class="text-sm font-semibold text-white">1. Memory-Only Safety</div>
+                            <div class="text-xs text-slate-400 mt-0.5">Your access token lives only in your browser tab's RAM. It is never saved to a database or disk.</div>
+                        </div>
+                    </div>
+                    <div class="bg-black/30 border border-cyan-500/30 rounded-xl p-4 flex gap-3 items-start">
+                        <div class="text-cyan-400 text-xl"><i class="fa-solid fa-eye"></i></div>
+                        <div>
+                            <div class="text-sm font-semibold text-white">2. Read-Only by Default</div>
+                            <div class="text-xs text-slate-400 mt-0.5">Comparing schemas and scanning tables will never write, modify, or delete anything in Google Cloud.</div>
+                        </div>
+                    </div>
+                    <div class="bg-black/30 border border-amber-500/30 rounded-xl p-4 flex gap-3 items-start">
+                        <div class="text-amber-400 text-xl"><i class="fa-solid fa-rotate-left"></i></div>
+                        <div>
+                            <div class="text-sm font-semibold text-white">3. 1-Click Rollback (Undo)</div>
+                            <div class="text-xs text-slate-400 mt-0.5">Every copy automatically records a backup in Audit Logs so you can restore your original data instantly.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 2: 5-MINUTE QUICKSTART -->
+    <section id="quickstart" class="max-w-6xl mx-auto px-4 py-8">
+        <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-white mb-2">2. 5-Minute "Zero-to-Hero" Quickstart</h2>
+            <p class="text-xs sm:text-sm text-slate-400">Everything you need to know from logging in to your first safe copy</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Step 1 -->
+            <div class="glass-panel p-5 relative border-emerald-500/30">
+                <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-sm flex items-center justify-center mb-3">1</div>
+                <h3 class="text-base font-semibold text-white mb-1">Get Your Access Token</h3>
+                <p class="text-xs text-slate-400 mb-3">Open your computer's terminal or Google Cloud Shell and paste this command:</p>
+                <div class="bg-black/60 p-2.5 rounded-lg border border-white/10 font-mono text-xs text-emerald-300 flex justify-between items-center mb-2">
+                    <code>gcloud auth print-access-token</code>
+                </div>
+                <p class="text-[11px] text-slate-500">Copy the output starting with <code>ya29...</code>. It is a temporary 60-minute VIP pass.</p>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="glass-panel p-5 relative border-cyan-500/30">
+                <div class="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 font-bold text-sm flex items-center justify-center mb-3">2</div>
+                <h3 class="text-base font-semibold text-white mb-1">Paste & Authenticate</h3>
+                <p class="text-xs text-slate-400 mb-3">Open GCP Infrastructure Manager and paste the token into the top box:</p>
+                <div class="bg-black/60 p-2.5 rounded-lg border border-white/10 text-xs text-slate-400 flex items-center gap-2 mb-2">
+                    <i class="fa-solid fa-key text-cyan-400"></i> Click <strong>"Verify Token"</strong>
+                </div>
+                <p class="text-[11px] text-slate-500">A green shield appears showing your email. You are now securely logged in.</p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="glass-panel p-5 relative border-purple-500/30">
+                <div class="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 font-bold text-sm flex items-center justify-center mb-3">3</div>
+                <h3 class="text-base font-semibold text-white mb-1">Pick Your Operation</h3>
+                <p class="text-xs text-slate-400 mb-3">Select the card that matches your goal:</p>
+                <ul class="text-xs text-slate-300 space-y-1.5 mb-2">
+                    <li><strong class="text-cyan-400">• BigQuery Schemas:</strong> Compare column differences.</li>
+                    <li><strong class="text-emerald-400">• Datastore Copier:</strong> Move rows between projects.</li>
+                    <li><strong class="text-purple-400">• Scheduled Queries:</strong> Copy recurring SQL jobs.</li>
+                </ul>
+                <p class="text-[11px] text-slate-500">Always click "Dry Run" or "Analyze" first to inspect without writing!</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 3: INTERACTIVE VISUAL PLAYGROUND / SIMULATOR -->
+    <section id="simulator" class="max-w-6xl mx-auto px-4 py-8">
+        <div class="glass-panel p-6 sm:p-8 border-cyan-500/30">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
+                <div>
+                    <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
+                        <i class="fa-solid fa-gamepad mr-1"></i> Interactive Simulator
+                    </span>
+                    <h2 class="text-xl font-bold text-white mt-1">3. Click-to-Learn Visual Playground</h2>
+                    <p class="text-xs text-slate-400">Click the buttons below to see how the app reacts at each step before touching real cloud data.</p>
+                </div>
+                <button onclick="resetSimulator()" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition">
+                    <i class="fa-solid fa-rotate mr-1"></i> Reset Demo
+                </button>
+            </div>
+
+            <!-- Steps buttons -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
+                <button id="sim-btn-1" onclick="setSimStep(1)" class="interactive-step-btn active p-3 rounded-xl border border-white/10 bg-black/30 text-xs font-semibold text-left transition">
+                    <div class="text-[10px] text-slate-400 font-mono">STEP 1</div>
+                    <div>🔑 Paste Token</div>
+                </button>
+                <button id="sim-btn-2" onclick="setSimStep(2)" class="interactive-step-btn p-3 rounded-xl border border-white/10 bg-black/30 text-xs font-semibold text-left transition">
+                    <div class="text-[10px] text-slate-400 font-mono">STEP 2</div>
+                    <div>📂 Pick Kind</div>
+                </button>
+                <button id="sim-btn-3" onclick="setSimStep(3)" class="interactive-step-btn p-3 rounded-xl border border-white/10 bg-black/30 text-xs font-semibold text-left transition">
+                    <div class="text-[10px] text-slate-400 font-mono">STEP 3</div>
+                    <div>🔍 Add Filter</div>
+                </button>
+                <button id="sim-btn-4" onclick="setSimStep(4)" class="interactive-step-btn p-3 rounded-xl border border-white/10 bg-black/30 text-xs font-semibold text-left transition">
+                    <div class="text-[10px] text-slate-400 font-mono">STEP 4</div>
+                    <div>🧪 Dry Run</div>
+                </button>
+                <button id="sim-btn-5" onclick="setSimStep(5)" class="interactive-step-btn p-3 rounded-xl border border-white/10 bg-black/30 text-xs font-semibold text-left transition">
+                    <div class="text-[10px] text-slate-400 font-mono">STEP 5</div>
+                    <div>⏪ 1-Click Undo</div>
+                </button>
+            </div>
+
+            <!-- Simulator Live Display Box -->
+            <div id="sim-display-box" class="bg-black/60 border border-white/15 rounded-xl p-5 font-sans">
+                <!-- Content injected dynamically via JS below -->
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 4: MEET MOCHI MASCOT GUIDE -->
+    <section class="max-w-6xl mx-auto px-4 py-8">
+        <div class="glass-panel p-6 sm:p-8 border-purple-500/30">
+            <div class="flex flex-wrap items-center gap-6">
+                <div class="w-24 h-24 rounded-2xl bg-gradient-to-tr from-purple-600/30 to-pink-500/30 border border-purple-400/40 flex items-center justify-center text-4xl shadow-lg flex-shrink-0 animate-bounce">
+                    🐱
+                </div>
+                <div class="flex-1">
+                    <h2 class="text-xl font-bold text-white mb-1">4. Meet Mochi — Your In-App Companion</h2>
+                    <p class="text-xs sm:text-sm text-slate-400 mb-4">
+                        Mochi floats gently in the bottom corner of your screen to make sure you never feel confused.
+                    </p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div class="bg-black/40 p-2.5 rounded-lg border border-white/10">
+                            <span class="text-base">💖</span> <strong class="text-pink-300">Single Click:</strong>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Mochi celebrates your progress with a chime!</div>
+                        </div>
+                        <div class="bg-black/40 p-2.5 rounded-lg border border-white/10">
+                            <span class="text-base">💢</span> <strong class="text-amber-300">Double Click:</strong>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Mochi gets grumpy and shakes his head.</div>
+                        </div>
+                        <div class="bg-black/40 p-2.5 rounded-lg border border-white/10">
+                            <span class="text-base">🔮</span> <strong class="text-purple-300">Auto-Guidance:</strong>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Shows step-by-step tips based on what you click.</div>
+                        </div>
+                        <div class="bg-black/40 p-2.5 rounded-lg border border-white/10">
+                            <span class="text-base">⌨️</span> <strong class="text-cyan-300">Shortcut (?):</strong>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Press <code>?</code> or <code>F1</code> to toggle Mochi anytime.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 5: JARGON BUSTER GLOSSARY -->
+    <section id="jargon" class="max-w-6xl mx-auto px-4 py-8">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-white mb-1">5. Plain-English "Jargon Buster"</h2>
+            <p class="text-xs sm:text-sm text-slate-400">Technical cloud words translated into everyday speech</p>
+        </div>
+
+        <div class="glass-panel overflow-hidden border-white/10">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-black/40 text-slate-400 font-mono text-[11px] border-b border-white/10">
+                        <tr>
+                            <th class="p-3.5">Cloud Term</th>
+                            <th class="p-3.5">Everyday Plain English Translation</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5 font-sans">
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3.5 font-semibold text-emerald-400">GCP Project</td>
+                            <td class="p-3.5">A company account or workspace folder in Google Cloud where services and databases live.</td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3.5 font-semibold text-emerald-400">Cloud Datastore</td>
+                            <td class="p-3.5">A fast NoSQL database built by Google for storing app records like user profiles and product catalogs.</td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3.5 font-semibold text-emerald-400">Kind</td>
+                            <td class="p-3.5">The table name or category of data (for example: <code>Users</code>, <code>Orders</code>, or <code>Settings</code>).</td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3.5 font-semibold text-emerald-400">Entity</td>
+                            <td class="p-3.5">A single row or record inside a Kind (e.g. one specific user profile).</td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3.5 font-semibold text-emerald-400">Key / Name</td>
+                            <td class="p-3.5">The unique ID badge or license plate for an entity so Google Cloud knows which record it is.</td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3.5 font-semibold text-cyan-400">BigQuery Schema</td>
+                            <td class="p-3.5">The structural blueprint of a table (which columns exist, whether they are text or numbers, and if they can be empty).</td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3.5 font-semibold text-purple-400">Dry Run</td>
+                            <td class="p-3.5">A safe practice test! The system tests your copy in memory without actually writing anything to Google Cloud.</td>
+                        </tr>
+                        <tr class="hover:bg-white/[0.02]">
+                            <td class="p-3.5 font-semibold text-amber-400">1-Click Revert</td>
+                            <td class="p-3.5">The "Undo" button that restores the database back to its exact previous state using the automatic pre-copy backup.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECTION 6: TROUBLESHOOTING & FAQS -->
+    <section class="max-w-6xl mx-auto px-4 py-8 mb-12">
+        <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-white mb-1">6. Help! Something Went Wrong (Troubleshooting)</h2>
+            <p class="text-xs sm:text-sm text-slate-400">Direct answers to the most common beginner questions</p>
+        </div>
+
+        <div class="space-y-3 max-w-3xl mx-auto text-sm">
+            
+            <details class="faq-accordion glass-panel p-4 border-white/10 group">
+                <summary class="flex justify-between items-center font-semibold text-white">
+                    <span>🔴 It says "401 Unauthorized" or "Token Expired". What should I do?</span>
+                    <i class="fa-solid fa-chevron-down faq-icon text-xs text-slate-400 transition-transform duration-200"></i>
+                </summary>
+                <div class="mt-3 text-xs text-slate-300 border-t border-white/10 pt-3 space-y-2">
+                    <p>Google Cloud access tokens automatically expire after <strong>60 minutes</strong> for your safety.</p>
+                    <p><strong>Fix:</strong> Open your terminal, run <code>gcloud auth print-access-token</code> again, copy the fresh token, and paste it into the app.</p>
+                </div>
+            </details>
+
+            <details class="faq-accordion glass-panel p-4 border-white/10 group">
+                <summary class="flex justify-between items-center font-semibold text-white">
+                    <span>🚫 It says "403 Forbidden" or "Permission Denied".</span>
+                    <i class="fa-solid fa-chevron-down faq-icon text-xs text-slate-400 transition-transform duration-200"></i>
+                </summary>
+                <div class="mt-3 text-xs text-slate-300 border-t border-white/10 pt-3 space-y-2">
+                    <p>Your Google Cloud account has not been given permissions for that project yet.</p>
+                    <p><strong>Fix:</strong> Contact your GCP project administrator and ask them to grant your Google account:</p>
+                    <ul class="list-disc pl-5 space-y-1 text-emerald-400 font-mono text-[11px]">
+                        <li><code>roles/datastore.viewer</code> (to view/read entities)</li>
+                        <li><code>roles/datastore.user</code> (to copy/write entities)</li>
+                        <li><code>roles/bigquery.metadataViewer</code> (to compare table schemas)</li>
+                    </ul>
+                </div>
+            </details>
+
+            <details class="faq-accordion glass-panel p-4 border-white/10 group">
+                <summary class="flex justify-between items-center font-semibold text-white">
+                    <span>⚠️ Can this tool accidentally delete my source database?</span>
+                    <i class="fa-solid fa-chevron-down faq-icon text-xs text-slate-400 transition-transform duration-200"></i>
+                </summary>
+                <div class="mt-3 text-xs text-slate-300 border-t border-white/10 pt-3 space-y-2">
+                    <p><strong>Never.</strong> The source project is strictly read-only. It only inspects entities and prepares a copy; it has no ability or code to delete source entities.</p>
+                </div>
+            </details>
+
+            <details class="faq-accordion glass-panel p-4 border-white/10 group">
+                <summary class="flex justify-between items-center font-semibold text-white">
+                    <span>⏪ What if I copied data with a typo or mistake? How do I undo it?</span>
+                    <i class="fa-solid fa-chevron-down faq-icon text-xs text-slate-400 transition-transform duration-200"></i>
+                </summary>
+                <div class="mt-3 text-xs text-slate-300 border-t border-white/10 pt-3 space-y-2">
+                    <p>Click on <strong>"Audit History"</strong> (or open SuperAdmin Activity Logs). Look for your copy action and click the blue <strong>"1-Click Revert"</strong> button. The system will automatically restore the target database to its pre-copy state.</p>
+                </div>
+            </details>
+
+        </div>
+    </section>
+
+    <!-- FOOTER WITH QUICK LINKS -->
+    <footer class="mt-auto border-t border-white/10 bg-black/50 py-6 px-4 text-center text-xs text-slate-500">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div>
+                GCP Tools Portal • Version 2 Beginner Documentation
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="index.html#v1" class="text-cyan-400 hover:underline">Switch to Version 1 (Technical Manual)</a>
+                <a href="BEGINNER_GUIDE_V2.md" class="text-slate-400 hover:text-white transition">Markdown Guide</a>
+                <a href="../datastore-copier/index.html" class="text-emerald-400 hover:underline font-semibold">Open App →</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- INTERACTIVE SIMULATOR SCRIPT -->
+    <script>
+        const simData = {
+            1: {
+                title: "🔑 Step 1: Token Authentication",
+                badge: "SIMULATED SUCCESS",
+                badgeColor: "text-emerald-400 bg-emerald-500/20 border-emerald-500/40",
+                description: "You pasted your temporary token. The system verified it against Google Cloud's tokeninfo API in 120ms.",
+                card: `
+                    <div class="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                            <span class="text-xs text-white font-medium">Verified: operator@company.com</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-emerald-300">Expires in 59m 40s</span>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-2">
+                        💡 Notice: The token is held in tab memory only and was never sent to any database.
+                    </div>
+                `
+            },
+            2: {
+                title: "📂 Step 2: Select Source Kind",
+                badge: "KIND DETECTED",
+                badgeColor: "text-cyan-400 bg-cyan-500/20 border-cyan-500/40",
+                description: "You chose the 'UserProfiles' Kind. The system performed an ephemeral schema scan of 20 sample entities.",
+                card: `
+                    <div class="p-3 rounded-lg bg-slate-900 border border-white/10 font-mono text-xs">
+                        <div class="text-slate-400 mb-1">Source: <span class="text-cyan-300">proj-analytics-prod</span> / <span class="text-white">(default)</span></div>
+                        <div class="text-slate-400">Selected Kind: <span class="text-emerald-400 font-bold">UserProfiles</span> (1,240 entities total)</div>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-2">
+                        💡 Notice: Nothing was changed in GCP. This was a zero-write inspection.
+                    </div>
+                `
+            },
+            3: {
+                title: "🔍 Step 3: Add Custom Filters",
+                badge: "GQL PREVIEW ACTIVE",
+                badgeColor: "text-purple-400 bg-purple-500/20 border-purple-500/40",
+                description: "You clicked '+ Add Filter' and set status = 'ACTIVE'. Only matching records will be selected.",
+                card: `
+                    <div class="p-3 rounded-lg bg-purple-950/40 border border-purple-500/30 font-mono text-xs">
+                        <div class="text-purple-300 mb-1 font-semibold">Live GQL Query Preview:</div>
+                        <code class="text-pink-300">SELECT * FROM UserProfiles WHERE status = 'ACTIVE'</code>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-2">
+                        💡 Matching entities filtered: <strong class="text-white">184 of 1,240 entities</strong> selected for copying.
+                    </div>
+                `
+            },
+            4: {
+                title: "🧪 Step 4: Run Safe In-Memory Dry Run",
+                badge: "ZERO WRITES",
+                badgeColor: "text-amber-400 bg-amber-500/20 border-amber-500/40",
+                description: "You clicked 'Dry Run & Diff'. The system simulated the migration without making any real GCP changes.",
+                card: `
+                    <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-500/30 text-xs">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-amber-300 font-semibold">Dry Run Comparison Report:</span>
+                            <span class="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded font-mono">184 READY</span>
+                        </div>
+                        <div class="text-[11px] text-slate-300">
+                            • 180 entities will be created newly in Target.<br>
+                            • 4 entities already exist and will be updated (diff previewed in green/red).
+                        </div>
+                    </div>
+                `
+            },
+            5: {
+                title: "⏪ Step 5: 1-Click Rollback / Revert",
+                badge: "SAFETY NET ACTIVE",
+                badgeColor: "text-emerald-400 bg-emerald-500/20 border-emerald-500/40",
+                description: "Suppose you made a typo! You can rollback instantly with the saved pre-copy snapshot.",
+                card: `
+                    <div class="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-xs flex items-center justify-between">
+                        <div>
+                            <div class="text-emerald-300 font-semibold">Pre-Mutation Snapshot Available</div>
+                            <div class="text-[11px] text-slate-400">Audit ID: #rec_89f02a • Saved 1 min ago</div>
+                        </div>
+                        <button class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs shadow-lg transition">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> 1-Click Revert
+                        </button>
+                    </div>
+                    <div class="text-[11px] text-slate-400 mt-2">
+                        🎉 Clicking Revert restores the 4 updated entities and deletes the 180 created entities!
+                    </div>
+                `
+            }
+        };
+
+        function setSimStep(stepNum) {
+            for (let i = 1; i <= 5; i++) {
+                const btn = document.getElementById('sim-btn-' + i);
+                if (btn) {
+                    if (i === stepNum) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                }
+            }
+
+            const data = simData[stepNum];
+            const box = document.getElementById('sim-display-box');
+            if (box && data) {
+                box.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-sm font-bold text-white">${data.title}</h4>
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${data.badgeColor}">
+                            ${data.badge}
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">${data.description}</p>
+                    ${data.card}
+                `;
+            }
+        }
+
+        function resetSimulator() {
+            setSimStep(1);
+        }
+
+        // Initialize at Step 1
+        setSimStep(1);
+    </script>
+</body>
+</html>
