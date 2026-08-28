@@ -379,48 +379,91 @@
 
             <!-- SECTION 3: DATA FLOW SEQUENCE -->
             <section class="mb-12">
-                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
-                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono">03</span>
-                    End-to-End Migration Sequence Flow
-                </h2>
+                <div class="glass-panel p-6 border-purple-500/30 relative overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-white/10 pb-3">
+                        <div>
+                            <span class="badge-pill bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-mono font-bold">
+                                <i class="fa-solid fa-play mr-1"></i> LIVE ANIMATED SEQUENCE
+                            </span>
+                            <h3 class="text-lg font-bold text-white font-title mt-1">
+                                End-to-End Migration Sequence Flow
+                            </h3>
+                        </div>
+                        <button id="btn-play-seq" onclick="playSequenceAnimation()" class="px-3.5 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-400 text-black font-bold text-xs shadow-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-play"></i> Play Migration Sequence
+                        </button>
+                    </div>
 
-                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
-                    The sequence diagram below illustrates how an operation proceeds from initial authentication through pre-mutation snapshotting to final verified commit:
-                </p>
+                    <p class="text-xs text-slate-300 mb-6">
+                        Follow the exact packet lifecycle: from initial memory tokenization to pre-mutation snapshotting and final verified commit:
+                    </p>
 
-                <div class="p-4 rounded-xl bg-black/60 border border-white/10 overflow-x-auto text-xs font-mono mb-4">
-                    <pre class="mermaid text-center">
-sequenceDiagram
-    autonumber
-    actor User as Operator (Browser)
-    participant Memory as Client RAM (State.token)
-    participant GCP_Src as Source GCP Datastore
-    participant Audit as Cloud Function (auditApi)
-    participant FS as Firestore (audit_logs)
-    participant GCP_Tgt as Target GCP Datastore
+                    <!-- Animated 6-Step Sequence Pipeline -->
+                    <div class="bg-black/60 border border-white/10 rounded-xl p-5 mb-5 font-mono text-xs">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                            
+                            <div id="seq-step-1" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-all">
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                                    <span class="font-bold">STEP 01</span>
+                                    <i class="fa-solid fa-key text-cyan-400"></i>
+                                </div>
+                                <div class="font-bold text-white text-xs mb-1">1. Ephemeral Ingestion</div>
+                                <div class="text-[11px] text-slate-400">Pasted into volatile JS memory (<code>State.token</code>). Zero disk write.</div>
+                            </div>
 
-    User->>Memory: Paste token (gcloud auth print-access-token)
-    Memory->>Audit: Verify Token via OpenID Connect
-    Audit->>User: Token Verified (email, expiration timer)
-    
-    User->>GCP_Src: Run Query (Kind & Filters)
-    GCP_Src-->>User: Return 50-Entity Batch
-    
-    User->>GCP_Tgt: Lookup Target Entities (Check Existing)
-    GCP_Tgt-->>User: Existing Target State Detected
-    
-    critical Phase: Pre-Mutation Snapshotting
-        User->>Audit: POST Audit Record (status: IN_PROGRESS, prevState)
-        Audit->>FS: Persist Snapshot in atomic transaction
-        FS-->>User: Snapshot ID Confirmed (Safety Net Active)
-    end
-    
-    User->>GCP_Tgt: Commit Batch (max 250 mutations / 4 MB)
-    GCP_Tgt-->>User: Commit Response (200 OK)
-    
-    User->>Audit: POST Update (status: SUCCESS, durationMs)
-    Audit->>FS: Update Audit Record
-                    </pre>
+                            <div id="seq-step-2" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-all">
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                                    <span class="font-bold">STEP 02</span>
+                                    <i class="fa-solid fa-shield-check text-purple-400"></i>
+                                </div>
+                                <div class="font-bold text-white text-xs mb-1">2. OpenID Handshake</div>
+                                <div class="text-[11px] text-slate-400">Server validates token with Google OpenID; extracts verified identity.</div>
+                            </div>
+
+                            <div id="seq-step-3" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-all">
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                                    <span class="font-bold">STEP 03</span>
+                                    <i class="fa-solid fa-cloud-arrow-down text-cyan-400"></i>
+                                </div>
+                                <div class="font-bold text-white text-xs mb-1">3. Direct GCP Query</div>
+                                <div class="text-[11px] text-slate-400">Direct HTTP/2 query to <code>datastore.googleapis.com</code> for 50 entities.</div>
+                            </div>
+
+                            <div id="seq-step-4" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-all">
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                                    <span class="font-bold">STEP 04</span>
+                                    <i class="fa-solid fa-camera text-amber-400"></i>
+                                </div>
+                                <div class="font-bold text-white text-xs mb-1">4. Pre-Mutation Snapshot</div>
+                                <div class="text-[11px] text-slate-400">Target entities captured &amp; saved to Firestore before touching GCP.</div>
+                            </div>
+
+                            <div id="seq-step-5" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-all">
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                                    <span class="font-bold">STEP 05</span>
+                                    <i class="fa-solid fa-bolt text-emerald-400"></i>
+                                </div>
+                                <div class="font-bold text-white text-xs mb-1">5. Atomic Commit</div>
+                                <div class="text-[11px] text-slate-400">Dispatches mutations bounded to &le;250 mutations / 4 MB per RPC.</div>
+                            </div>
+
+                            <div id="seq-step-6" class="p-3 rounded-lg bg-slate-900 border border-white/10 transition-all">
+                                <div class="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                                    <span class="font-bold">STEP 06</span>
+                                    <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                                </div>
+                                <div class="font-bold text-white text-xs mb-1">6. Audit Log Verified</div>
+                                <div class="text-[11px] text-slate-400">Operation marked <code>SUCCESS</code> in Firestore with 1-click rollback armed.</div>
+                            </div>
+
+                        </div>
+
+                        <!-- Live Telemetry Bar -->
+                        <div class="p-2.5 rounded bg-black/50 border border-white/5 flex items-center justify-between text-slate-400">
+                            <span id="seq-telemetry-text">Click 'Play Migration Sequence' to trace live packet flow.</span>
+                            <span id="seq-timer-badge" class="badge-pill bg-slate-800 text-slate-400 text-[10px]">IDLE</span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -435,10 +478,28 @@ sequenceDiagram
                     Click and drag inside the interactive 3D canvas below to rotate and inspect the data transmission mesh between the browser enclave, Google APIs, and the audit subsystem:
                 </p>
 
-                <div class="relative w-full h-[360px] rounded-xl overflow-hidden border border-cyan-500/30 bg-[#02050e] shadow-2xl mb-4">
-                    <div id="three-topo-canvas" class="w-full h-full"></div>
-                    <div class="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-mono text-cyan-300 flex items-center gap-2">
-                        <i class="fa-solid fa-arrows-spin animate-spin"></i> Live WebGL Topology Mesh (Interactive Orbit)
+                <!-- Perfectly Centered 3D Canvas Box with Floating Labels -->
+                <div class="relative w-full h-[420px] rounded-xl overflow-hidden border border-cyan-500/40 bg-[#02050e] shadow-2xl mb-4">
+                    <div id="three-topo-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+                    
+                    <!-- Floating Architectural Badges Overlay -->
+                    <div class="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[11px] font-mono text-cyan-300 flex items-center gap-2 pointer-events-none">
+                        <i class="fa-solid fa-arrows-spin animate-spin"></i> 3D Topology Mesh (Centered &bull; Interactive Orbit)
+                    </div>
+
+                    <!-- Node Legend Overlay -->
+                    <div class="absolute top-3 right-3 bg-black/75 backdrop-blur-md p-2.5 rounded-lg border border-white/10 text-[10px] font-mono space-y-1 pointer-events-none">
+                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> <span class="text-slate-300">Source GCP Datastore</span></div>
+                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> <span class="text-slate-300">Target GCP Datastore</span></div>
+                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span> <span class="text-slate-300">Client Memory Enclave</span></div>
+                        <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> <span class="text-slate-300">Audit Cloud Functions</span></div>
+                    </div>
+
+                    <!-- Reset Controls Overlay -->
+                    <div class="absolute bottom-3 right-3 flex items-center gap-2">
+                        <button onclick="reset3DView()" class="px-2.5 py-1 rounded bg-black/80 hover:bg-cyan-500 hover:text-black border border-white/20 text-slate-300 text-[11px] font-mono transition">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Reset Orbit
+                        </button>
                     </div>
                 </div>
             </section>
@@ -537,107 +598,290 @@ sequenceDiagram
             });
         }
 
-        // Initialize Mermaid
-        mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+        // Interactive Sequence Stepper Simulation
+        let isPlayingSequence = false;
+        async function playSequenceAnimation() {
+            if (isPlayingSequence) return;
+            isPlayingSequence = true;
 
-        // Initialize Three.js Cloud Topology Mesh
+            const telemetry = document.getElementById('seq-telemetry-text');
+            const timerBadge = document.getElementById('seq-timer-badge');
+            const steps = [1, 2, 3, 4, 5, 6];
+
+            // Reset all cards
+            steps.forEach(i => {
+                const el = document.getElementById('seq-step-' + i);
+                if (el) el.className = "p-3 rounded-lg bg-slate-900 border border-white/10 transition-all";
+            });
+
+            const messages = [
+                "Step 1/6: Ephemeral ya29 token pasted into volatile State.token memory closure.",
+                "Step 2/6: Serverless auditApi validates tokeninfo via Google OpenID Connect.",
+                "Step 3/6: Direct HTTP/2 query to datastore.googleapis.com fetches 50 entities.",
+                "Step 4/6: Pre-mutation snapshot committed atomically to Cloud Firestore.",
+                "Step 5/6: Target Datastore commit dispatched (bounded to <= 250 mutations / 4 MB).",
+                "Step 6/6: Operation complete! Status SUCCESS recorded with 1-click rollback armed."
+            ];
+
+            const timers = ["[+12ms]", "[+48ms]", "[+125ms]", "[+210ms]", "[+340ms]", "[COMPLETE]"];
+
+            for (let i = 0; i < steps.length; i++) {
+                const stepCard = document.getElementById('seq-step-' + (i + 1));
+                if (stepCard) {
+                    stepCard.className = "p-3 rounded-lg bg-cyan-950/40 border border-cyan-400/80 shadow-lg shadow-cyan-500/20 scale-[1.02] transition-all";
+                }
+                telemetry.textContent = messages[i];
+                timerBadge.textContent = timers[i];
+                timerBadge.className = "badge-pill bg-cyan-500/20 text-cyan-300 text-[10px]";
+                await new Promise(r => setTimeout(r, 650));
+            }
+
+            isPlayingSequence = false;
+        }
+
+        // Global Scene Reference for Reset
+        let topoScene = null;
+
+        function reset3DView() {
+            if (topoScene) {
+                topoScene.rotation.set(0, 0, 0);
+            }
+        }
+
+        // Initialize Three.js Cloud Topology Mesh (Centered & Bounded with 2D Canvas Fallback)
         function initTopology3D() {
             const container = document.getElementById('three-topo-canvas');
             if (!container) return;
 
-            const width = container.clientWidth || 600;
-            const height = container.clientHeight || 360;
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 420;
 
-            const scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x02050e, 0.002);
+            let useWebGL = false;
+            try {
+                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                container.appendChild(renderer.domElement);
 
-            const camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
-            camera.position.set(0, 25, 60);
+                const scene = new THREE.Scene();
+                topoScene = scene;
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(width, height);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
+                const camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
+                camera.position.set(0, 0, 75);
+                camera.lookAt(0, 0, 0);
 
-            // Add Central Globe
-            const globeGeo = new THREE.SphereGeometry(14, 24, 24);
-            const globeMat = new THREE.MeshBasicMaterial({
-                color: 0x00d4ff,
-                wireframe: true,
-                transparent: true,
-                opacity: 0.25
-            });
-            const globe = new THREE.Mesh(globeGeo, globeMat);
-            scene.add(globe);
+                // Central Wireframe Globe
+                const globeGeo = new THREE.SphereGeometry(12, 28, 28);
+                const globeMat = new THREE.MeshBasicMaterial({
+                    color: 0x00d4ff,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.35
+                });
+                const globe = new THREE.Mesh(globeGeo, globeMat);
+                globe.position.set(0, 0, 0);
+                scene.add(globe);
 
-            // Orbiting Nodes (Source GCP, Target GCP, Audit Cloud Function)
-            const nodeGeo = new THREE.SphereGeometry(1.6, 16, 16);
-            const nodes = [
-                { color: 0x00d4ff, pos: [-24, 10, 0], name: 'Source GCP' },
-                { color: 0x10b981, pos: [24, -8, 0], name: 'Target GCP' },
-                { color: 0xc084fc, pos: [0, 22, -10], name: 'Client Enclave' },
-                { color: 0xfbbf24, pos: [0, -22, 10], name: 'Audit Cloud Function' }
-            ];
+                // Inner Solid Dark Core
+                const coreGeo = new THREE.SphereGeometry(11.4, 24, 24);
+                const coreMat = new THREE.MeshBasicMaterial({
+                    color: 0x050c1e,
+                    transparent: true,
+                    opacity: 0.95
+                });
+                const core = new THREE.Mesh(coreGeo, coreMat);
+                scene.add(core);
 
-            const nodeMeshes = [];
-            nodes.forEach(n => {
-                const mat = new THREE.MeshBasicMaterial({ color: n.color });
-                const mesh = new THREE.Mesh(nodeGeo, mat);
-                mesh.position.set(...n.pos);
-                scene.add(mesh);
-                nodeMeshes.push(mesh);
+                // Orbiting Nodes Symmetrically Framed Around (0, 0, 0)
+                const nodeGeo = new THREE.SphereGeometry(1.8, 16, 16);
+                const nodes = [
+                    { color: 0x00d4ff, pos: [-24, 0, 0], name: 'Source GCP' },
+                    { color: 0x10b981, pos: [24, 0, 0], name: 'Target GCP' },
+                    { color: 0xc084fc, pos: [0, 16, 0], name: 'Client Enclave' },
+                    { color: 0xfbbf24, pos: [0, -16, 0], name: 'Audit Cloud Function' }
+                ];
 
-                // Connecting Line to Center
-                const lineGeo = new THREE.BufferGeometry().setFromPoints([
-                    new THREE.Vector3(0, 0, 0),
-                    new THREE.Vector3(...n.pos)
-                ]);
-                const lineMat = new THREE.LineBasicMaterial({ color: n.color, transparent: true, opacity: 0.35 });
-                const line = new THREE.Line(lineGeo, lineMat);
-                scene.add(line);
-            });
+                nodes.forEach(n => {
+                    const mat = new THREE.MeshBasicMaterial({ color: n.color });
+                    const mesh = new THREE.Mesh(nodeGeo, mat);
+                    mesh.position.set(...n.pos);
+                    scene.add(mesh);
 
-            // Interactive Drag Rotation
-            let isDragging = false;
-            let prevMouseX = 0;
-            let prevMouseY = 0;
+                    const lineGeo = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(0, 0, 0),
+                        new THREE.Vector3(...n.pos)
+                    ]);
+                    const lineMat = new THREE.LineBasicMaterial({ color: n.color, transparent: true, opacity: 0.45 });
+                    const line = new THREE.Line(lineGeo, lineMat);
+                    scene.add(line);
+                });
 
-            container.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                prevMouseX = e.clientX;
-                prevMouseY = e.clientY;
-            });
-
-            window.addEventListener('mouseup', () => isDragging = false);
-
-            container.addEventListener('mousemove', (e) => {
-                if (!isDragging) return;
-                const deltaX = e.clientX - prevMouseX;
-                const deltaY = e.clientY - prevMouseY;
-                scene.rotation.y += deltaX * 0.006;
-                scene.rotation.x += deltaY * 0.006;
-                prevMouseX = e.clientX;
-                prevMouseY = e.clientY;
-            });
-
-            function animate() {
-                requestAnimationFrame(animate);
-                if (!isDragging) {
-                    scene.rotation.y += 0.003;
-                    globe.rotation.y += 0.002;
+                // Equator Ring
+                const ringGeo = new THREE.BufferGeometry();
+                const ringCount = 80;
+                const ringPositions = new Float32Array(ringCount * 3);
+                for (let i = 0; i < ringCount; i++) {
+                    const angle = (i / ringCount) * Math.PI * 2;
+                    ringPositions[i * 3] = Math.cos(angle) * 16;
+                    ringPositions[i * 3 + 1] = 0;
+                    ringPositions[i * 3 + 2] = Math.sin(angle) * 16;
                 }
-                renderer.render(scene, camera);
-            }
-            animate();
+                ringGeo.setAttribute('position', new THREE.BufferAttribute(ringPositions, 3));
+                const ringMat = new THREE.PointsMaterial({ color: 0x00d4ff, size: 0.8, transparent: true, opacity: 0.6 });
+                const ring = new THREE.Points(ringGeo, ringMat);
+                scene.add(ring);
 
-            window.addEventListener('resize', () => {
-                const w = container.clientWidth;
-                const h = container.clientHeight;
-                if (!w || !h) return;
-                camera.aspect = w / h;
-                camera.updateProjectionMatrix();
-                renderer.setSize(w, h);
-            });
+                let isDragging = false;
+                let prevMouseX = 0;
+                let prevMouseY = 0;
+
+                container.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    prevMouseX = e.clientX;
+                    prevMouseY = e.clientY;
+                });
+                window.addEventListener('mouseup', () => isDragging = false);
+                container.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    const deltaX = e.clientX - prevMouseX;
+                    const deltaY = e.clientY - prevMouseY;
+                    scene.rotation.y += deltaX * 0.005;
+                    scene.rotation.x += deltaY * 0.005;
+                    prevMouseX = e.clientX;
+                    prevMouseY = e.clientY;
+                });
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    if (!isDragging) {
+                        scene.rotation.y += 0.0025;
+                        globe.rotation.y += 0.002;
+                        ring.rotation.y += 0.004;
+                    }
+                    renderer.render(scene, camera);
+                }
+                animate();
+
+                window.addEventListener('resize', () => {
+                    const w = container.clientWidth;
+                    const h = container.clientHeight;
+                    if (!w || !h) return;
+                    camera.aspect = w / h;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(w, h);
+                });
+
+                useWebGL = true;
+            } catch (err) {
+                console.warn('WebGL initialization failed, falling back to 2D Canvas:', err);
+                useWebGL = false;
+            }
+
+            if (!useWebGL) {
+                // High-fidelity 2D Canvas Fallback
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.className = 'w-full h-full';
+                container.appendChild(canvas);
+                const ctx = canvas.getContext('2d');
+
+                let rot = 0;
+                let isDragging = false;
+                let prevX = 0;
+
+                container.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    prevX = e.clientX;
+                });
+                window.addEventListener('mouseup', () => isDragging = false);
+                container.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    rot += (e.clientX - prevX) * 0.01;
+                    prevX = e.clientX;
+                });
+
+                window.reset3DView = function() { rot = 0; };
+
+                function render2D() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    const cx = canvas.width / 2;
+                    const cy = canvas.height / 2;
+                    const R = Math.min(canvas.width, canvas.height) * 0.22;
+
+                    // Central Dark Planet
+                    const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, R);
+                    grad.addColorStop(0, '#061633');
+                    grad.addColorStop(0.8, '#030a18');
+                    grad.addColorStop(1, '#00d4ff33');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#00d4ff';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Rotating Latitudes & Longitudes
+                    ctx.strokeStyle = 'rgba(0, 212, 255, 0.25)';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 4; i++) {
+                        const phase = rot + (i * Math.PI) / 4;
+                        const rx = Math.abs(Math.cos(phase)) * R;
+                        ctx.beginPath();
+                        ctx.ellipse(cx, cy, rx, R, 0, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    ctx.beginPath();
+                    ctx.ellipse(cx, cy, R, R * 0.35, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Orbiting Satellite Nodes
+                    const nodes2D = [
+                        { name: 'Source GCP', color: '#00d4ff', dist: R * 2.2, speed: 0.008, offset: 0 },
+                        { name: 'Target GCP', color: '#10b981', dist: R * 2.2, speed: 0.008, offset: Math.PI },
+                        { name: 'Client Enclave', color: '#c084fc', dist: R * 1.6, speed: -0.012, offset: Math.PI / 2 },
+                        { name: 'Audit Bus', color: '#fbbf24', dist: R * 1.6, speed: -0.012, offset: (3 * Math.PI) / 2 }
+                    ];
+
+                    const now = Date.now() * 0.001;
+                    nodes2D.forEach(n => {
+                        const angle = rot + now * n.speed * 60 + n.offset;
+                        const nx = cx + Math.cos(angle) * n.dist;
+                        const ny = cy + Math.sin(angle) * (n.dist * 0.5);
+
+                        // Line to Core
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy);
+                        ctx.lineTo(nx, ny);
+                        ctx.strokeStyle = n.color + '44';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        // Glowing Halo
+                        ctx.beginPath();
+                        ctx.arc(nx, ny, 10, 0, Math.PI * 2);
+                        ctx.fillStyle = n.color + '33';
+                        ctx.fill();
+
+                        // Node Core
+                        ctx.beginPath();
+                        ctx.arc(nx, ny, 5, 0, Math.PI * 2);
+                        ctx.fillStyle = n.color;
+                        ctx.fill();
+
+                        // Node Label
+                        ctx.fillStyle = '#f8fafc';
+                        ctx.font = '10px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(n.name, nx, ny - 12);
+                    });
+
+                    if (!isDragging) rot += 0.003;
+                    requestAnimationFrame(render2D);
+                }
+                render2D();
+            }
         }
 
         window.addEventListener('DOMContentLoaded', () => {
