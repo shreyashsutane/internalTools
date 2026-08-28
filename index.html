@@ -1297,7 +1297,6 @@
                 <li>GCP permissions required:
                     <ul style="list-style-type: circle; margin-top: 0.25rem; padding-left: 1.25rem;">
                         <li><strong>GCP Infrastructure Manager</strong>: the BigQuery Schema Comparator only needs metadata read access (for example, <code>BigQuery Metadata Viewer</code>). Scheduled-query transfer and Datastore copy/edit tools separately require the write permissions appropriate to those operations.</li>
-                        <li><strong>Sweep</strong> &amp; <strong>Crypto Vault</strong>: 100% client-side, require no cloud permissions.</li>
                     </ul>
                 </li>
                 <li>If facing any issue, scratch here:
@@ -1709,26 +1708,6 @@
                 descFull: 'Compare BigQuery table schemas in strictly read-only mode, transfer scheduled queries, and copy Cloud Datastore entities between GCP projects. The schema comparator has no create, update, override, copy, or delete path.',
                 path: 'datastore-copier/',
                 docPath: 'docs/index.html',
-                status: 'active'
-            },
-            {
-                id: 'tool-2',
-                name: 'Sweep',
-                icon: '🧹',
-                descShort: 'Scan code locally for secrets before pasting',
-                descFull: 'Use Sweep when you need to solve a production issue urgently and want to paste code or logs into AI tools without exposing private keys (reference: <a href="https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b" target="_blank" rel="noopener noreferrer" style="color: var(--brand-orange); text-decoration: underline; word-break: break-all;">https://claude.ai/share/b0948306-bdf9-45ad-9ada-0eefedaaba7b</a>). Sweep parses code blocks for API keys, OAuth secrets, credentials, and high-entropy strings, with options to redact and copy safely. 100% client-side.',
-                path: 'tool-2/',
-                docPath: 'docs/index.html#section-sweep',
-                status: 'active'
-            },
-            {
-                id: 'tool-3',
-                name: 'Crypto Vault',
-                icon: '🔑',
-                descShort: 'Client-side AES-GCM encryption & decryption utility',
-                descFull: 'Perform secure symmetric encryption and decryption using AES-GCM. Supports passphrase-based key derivation (PBKDF2) or raw 256-bit Hex keys with customizable Initialization Vectors (IV) and Salts. 100% client-side operations.',
-                path: 'tool-3/',
-                docPath: 'docs/index.html#section-crypto-vault',
                 status: 'active'
             },
             {

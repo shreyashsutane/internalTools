@@ -1234,12 +1234,6 @@
             <button class="tab-btn" id="tab-replacer" onclick="switchMainTab('replacer')">
                 <i class="fa-solid fa-shuffle"></i> Datastore Bulk Replacer
             </button>
-            <button class="tab-btn" id="tab-sweep" onclick="switchMainTab('sweep')">
-                <i class="fa-solid fa-broom"></i> Sweep Secrets Scanner
-            </button>
-            <button class="tab-btn" id="tab-crypto" onclick="switchMainTab('crypto')">
-                <i class="fa-solid fa-key"></i> Crypto AES Vault
-            </button>
         </nav>
 
         <!-- ========================================== -->
@@ -2765,51 +2759,6 @@ return sendJson(res, 201, { ok: true, id }, origin);</code></pre>
                     NextCursor --> CheckMore{Has End Cursor?}
                     CheckMore -->|Yes| LoadBatch
                     CheckMore -->|No| Complete[Task Completed successfully]
-                </div>
-            </div>
-        </section>
-
-        <!-- ========================================== -->
-        <!-- TAB 3: SWEEP SECRETS SCANNER -->
-        <!-- ========================================== -->
-        <section class="section-content" id="sec-sweep">
-            <div class="glass-card">
-                <h2><i class="fa-solid fa-broom" style="color:var(--accent-green)"></i> Sweep Secrets Detection Engine</h2>
-                <p>Sweep is a client-side scanning utility designed to parse code blocks or trace logs to detect exposed secrets, passwords, private keys, and OAuth parameters before pasting them into generative AI tools.</p>
-                
-                <div class="alert-box alert-box-info">
-                    <i class="fa-solid fa-shield"></i>
-                    <div>
-                        <strong>100% Client-Side Separation:</strong> Scanning, redacting, and clipboard operations occur strictly in-memory inside the browser tab context. No details are transmitted across networks.
-                    </div>
-                </div>
-                
-                <h3><i class="fa-solid fa-magnifying-glass"></i> Secrets Match Detection Patterns</h3>
-                <p>Secrets are scanned using local regex matches. Matches are highlighted, redacted, and stripped from logs:</p>
-                <ul>
-                    <li><strong>Google Client Secrets / API Keys:</strong> Matches `AIzaSy[A-Za-z0-9-_]{35}`.</li>
-                    <li><strong>Standard Private RSA / SSH Keys:</strong> Matches starting headers `-----BEGIN PRIVATE KEY-----`.</li>
-                    <li><strong>Bearer Credentials / JWT Tokens:</strong> Redacts Authorization OAuth headers.</li>
-                </ul>
-            </div>
-        </section>
-
-        <!-- ========================================== -->
-        <!-- TAB 4: CRYPTO AES VAULT -->
-        <!-- ========================================== -->
-        <section class="section-content" id="sec-crypto">
-            <div class="glass-card">
-                <h2><i class="fa-solid fa-key" style="color:var(--accent-amber)"></i> Client-Side AES-GCM Encryption</h2>
-                <p>Provides highly secure symmetric encryption and decryption operations using standardized <strong>AES-GCM (Galois/Counter Mode)</strong>. Implements PBKDF2 passphrase key derivation functions directly via Web Crypto browser APIs.</p>
-                
-                <h3><i class="fa-solid fa-lock"></i> Encrypt & Decrypt Flow Diagram</h3>
-                <div class="mermaid">
-                graph TD
-                    Passphrase[User inputs Passphrase] --> Salt[Generate 16-byte random Salt]
-                    Salt --> Derive[Derive 256-bit Key via PBKDF2]
-                    Derive --> IV[Generate 12-byte random IV vector]
-                    IV --> Encrypt[Encrypt plain text via AES-GCM 256]
-                    Encrypt --> Package[Output: Salt + IV + Ciphertext in Base64]
                 </div>
             </div>
         </section>

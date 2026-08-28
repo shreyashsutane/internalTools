@@ -49,4 +49,4 @@ Once the server is running, open any web browser (Chrome, Safari, Edge, Firefox)
 http://localhost:8080
 ```
 
-From there, you can open the **GCP Infrastructure Manager**, the **Sweep Scanner**, and access the visual documentation.
+From there, you can open the **GCP Infrastructure Manager**, the **SuperAdmin Question Workbench**, and access the visual documentation.
