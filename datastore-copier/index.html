@@ -198,6 +198,116 @@
                     <div><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET LOCATION</label><input id="q-tgt-loc" class="inp" value="us"></div>
                     <div class="flex items-end"><button id="btn-q-fetch" class="btn btn-p w-full"><i class="fa-solid fa-download"></i> Fetch Scheduled Queries</button></div>
                 </div>
+
+                <!-- DETAILED BREAKDOWN: WHAT IS VS WHAT ISN'T COPIED -->
+                <div class="mt-6 pt-5 border-t border-white/10" id="sec-query-copy-breakdown">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-semibold text-fg flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-list text-cyan-400"></i>
+                            Detailed Breakdown: What Is vs. What Isn't Copied
+                        </span>
+                        <span class="badge-pill" style="font-size:10px;padding:2px 8px;background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">BigQuery Data Transfer Spec</span>
+                    </div>
+                    
+                    <p class="text-xs text-zinc-400 mb-4 leading-relaxed">
+                        When copying Scheduled Queries in the GCP Infrastructure Manager, <strong>not everything is copied blindly</strong>. The portal copies the functional definition so the query can run in the destination project, but intentionally excludes system-generated runtime metadata, credentials, and project-bound dependencies.
+                    </p>
+
+                    <div class="overflow-x-auto rounded-lg border border-white/10 bg-black/30 mb-5">
+                        <table class="w-full text-xs text-left" style="border-collapse:collapse">
+                            <thead>
+                                <tr style="background:var(--bg2); border-bottom:1px solid var(--brd2)">
+                                    <th class="px-4 py-2.5 font-semibold text-zinc-300">Configuration Component</th>
+                                    <th class="px-4 py-2.5 font-semibold text-zinc-300 w-28 text-center">Copied?</th>
+                                    <th class="px-4 py-2.5 font-semibold text-zinc-300">Details &amp; Behavior</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5 font-sans">
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Display Name (<span class="text-cyan-400">displayName</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Copied exactly as named in the source project.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Cadence / Frequency (<span class="text-cyan-400">schedule</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">The recurrence pattern (e.g., <code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-300">every 24 hours</code>, <code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-300">every day 02:00</code>, <code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-300">1st,15th sunday 14:00</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Destination Dataset (<span class="text-cyan-400">destinationDatasetId</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Name of the destination dataset in the target project.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">SQL Query Text (<span class="text-cyan-400">params.query</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes (As-Is)</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">The exact SQL statement. <em>(See critical notice below regarding hardcoded project IDs)</em>.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Destination Table Template (<span class="text-cyan-400">params.destination_table_name_template</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">The destination table pattern (e.g. <code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-300">daily_stats_{run_date}</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Write Disposition (<span class="text-cyan-400">params.write_disposition</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400"><code class="mono text-cyan-300">WRITE_TRUNCATE</code>, <code class="mono text-cyan-300">WRITE_APPEND</code>, or <code class="mono text-cyan-300">WRITE_EMPTY</code>.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Partitioning Field (<span class="text-cyan-400">params.partitioning_field</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Partition column if the target table is partitioned.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Resource ID &amp; ARN (<span class="text-rose-400">name</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">GCP generates a new unique resource ID in the destination project (<code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-400 text-[10px]">projects/{target-pid}/locations/{loc}/transferConfigs/{new_id}</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Query Ownership / Credentials (<span class="text-rose-400">userId</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">GCP automatically binds ownership to the authenticated operator / service account executing the copy in the destination project.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Historical Run Logs &amp; Execution States</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Past execution history, audit logs, and run error states remain in the source project; the new query starts fresh.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Pub/Sub Notification Topics (<span class="text-rose-400">notificationPubsubTopic</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Excluded to prevent cross-project permission errors (source Pub/Sub topic ARNs are tied to the source project).</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Email Failure Alerts (<span class="text-rose-400">emailPreferences</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Excluded; notifications should be configured per destination environment.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Schedule Start / End Bounds (<span class="text-rose-400">scheduleOptions</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Start and end bounds are not carried over; the query starts active upon creation.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- CRITICAL NOTICE CALLOUT -->
+                    <div class="p-3.5 rounded-lg border border-amber-500/30 bg-amber-500/10 space-y-2">
+                        <div class="flex items-center gap-2 text-amber-400 font-semibold text-xs">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>⚠️ Important Notice on SQL Query Content (params.query)</span>
+                        </div>
+                        <p class="text-xs text-zinc-300 leading-relaxed">
+                            The query SQL string is copied <strong>verbatim</strong>. If your source query references fully-qualified table paths such as:
+                        </p>
+                        <pre class="mono text-xs p-2.5 rounded bg-black/60 border border-amber-500/20 text-amber-200 overflow-x-auto"><code>SELECT user_id, amount 
+FROM `source-project-prod.analytics.orders`</code></pre>
+                        <p class="text-xs text-zinc-300 leading-relaxed">
+                            The copied query in the destination project will <strong>still point to <code class="mono text-amber-300">source-project-prod</code></strong> unless you update the SQL reference. Always verify that dataset and project references inside the query body match the destination project environment.
+                        </p>
+                    </div>
+                </div>
             </div>
             <!-- DATASTORE FORM -->
             <div id="form-ds" class="card" style="display:none; overflow: visible !important;">
@@ -402,6 +512,116 @@
                 <div id="q-summary" class="grid grid-cols-5 gap-3 mb-5"></div>
                 <div class="flex justify-end mb-4"><button id="btn-q-copy" class="btn btn-p" style="font-size:12px" disabled><i class="fa-solid fa-copy"></i> Copy Selected</button></div>
                 <div id="q-list" class="flex flex-col gap-2"></div>
+
+                <!-- DETAILED BREAKDOWN: WHAT IS VS WHAT ISN'T COPIED -->
+                <div class="card mt-6 pt-5" id="res-query-copy-breakdown">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-semibold text-fg flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-list text-cyan-400"></i>
+                            Detailed Breakdown: What Is vs. What Isn't Copied
+                        </span>
+                        <span class="badge-pill" style="font-size:10px;padding:2px 8px;background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">BigQuery Data Transfer Spec</span>
+                    </div>
+                    
+                    <p class="text-xs text-zinc-400 mb-4 leading-relaxed">
+                        When copying Scheduled Queries in the GCP Infrastructure Manager, <strong>not everything is copied blindly</strong>. The portal copies the functional definition so the query can run in the destination project, but intentionally excludes system-generated runtime metadata, credentials, and project-bound dependencies.
+                    </p>
+
+                    <div class="overflow-x-auto rounded-lg border border-white/10 bg-black/30 mb-5">
+                        <table class="w-full text-xs text-left" style="border-collapse:collapse">
+                            <thead>
+                                <tr style="background:var(--bg2); border-bottom:1px solid var(--brd2)">
+                                    <th class="px-4 py-2.5 font-semibold text-zinc-300">Configuration Component</th>
+                                    <th class="px-4 py-2.5 font-semibold text-zinc-300 w-28 text-center">Copied?</th>
+                                    <th class="px-4 py-2.5 font-semibold text-zinc-300">Details &amp; Behavior</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5 font-sans">
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Display Name (<span class="text-cyan-400">displayName</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Copied exactly as named in the source project.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Cadence / Frequency (<span class="text-cyan-400">schedule</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">The recurrence pattern (e.g., <code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-300">every 24 hours</code>, <code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-300">every day 02:00</code>, <code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-300">1st,15th sunday 14:00</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Destination Dataset (<span class="text-cyan-400">destinationDatasetId</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Name of the destination dataset in the target project.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">SQL Query Text (<span class="text-cyan-400">params.query</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes (As-Is)</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">The exact SQL statement. <em>(See critical notice below regarding hardcoded project IDs)</em>.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Destination Table Template (<span class="text-cyan-400">params.destination_table_name_template</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">The destination table pattern (e.g. <code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-300">daily_stats_{run_date}</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Write Disposition (<span class="text-cyan-400">params.write_disposition</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400"><code class="mono text-cyan-300">WRITE_TRUNCATE</code>, <code class="mono text-cyan-300">WRITE_APPEND</code>, or <code class="mono text-cyan-300">WRITE_EMPTY</code>.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Partitioning Field (<span class="text-cyan-400">params.partitioning_field</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-semibold">✅ Yes</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Partition column if the target table is partitioned.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Resource ID &amp; ARN (<span class="text-rose-400">name</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">GCP generates a new unique resource ID in the destination project (<code class="mono bg-white/5 px-1 py-0.5 rounded text-zinc-400 text-[10px]">projects/{target-pid}/locations/{loc}/transferConfigs/{new_id}</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Query Ownership / Credentials (<span class="text-rose-400">userId</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">GCP automatically binds ownership to the authenticated operator / service account executing the copy in the destination project.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Historical Run Logs &amp; Execution States</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Past execution history, audit logs, and run error states remain in the source project; the new query starts fresh.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Pub/Sub Notification Topics (<span class="text-rose-400">notificationPubsubTopic</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Excluded to prevent cross-project permission errors (source Pub/Sub topic ARNs are tied to the source project).</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Email Failure Alerts (<span class="text-rose-400">emailPreferences</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Excluded; notifications should be configured per destination environment.</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2.5 font-medium text-fg mono text-[11px]">Schedule Start / End Bounds (<span class="text-rose-400">scheduleOptions</span>)</td>
+                                    <td class="px-4 py-2.5 text-center"><span class="badge-pill bg-rose-500/15 text-rose-400 border border-rose-500/30 text-[10px] px-2 py-0.5 font-semibold">❌ No</span></td>
+                                    <td class="px-4 py-2.5 text-zinc-400">Start and end bounds are not carried over; the query starts active upon creation.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- CRITICAL NOTICE CALLOUT -->
+                    <div class="p-3.5 rounded-lg border border-amber-500/30 bg-amber-500/10 space-y-2">
+                        <div class="flex items-center gap-2 text-amber-400 font-semibold text-xs">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>⚠️ Important Notice on SQL Query Content (params.query)</span>
+                        </div>
+                        <p class="text-xs text-zinc-300 leading-relaxed">
+                            The query SQL string is copied <strong>verbatim</strong>. If your source query references fully-qualified table paths such as:
+                        </p>
+                        <pre class="mono text-xs p-2.5 rounded bg-black/60 border border-amber-500/20 text-amber-200 overflow-x-auto"><code>SELECT user_id, amount 
+FROM `source-project-prod.analytics.orders`</code></pre>
+                        <p class="text-xs text-zinc-300 leading-relaxed">
+                            The copied query in the destination project will <strong>still point to <code class="mono text-amber-300">source-project-prod</code></strong> unless you update the SQL reference. Always verify that dataset and project references inside the query body match the destination project environment.
+                        </p>
+                    </div>
+                </div>
             </div>
             <!-- DATASTORE RESULTS -->
             <div id="res-ds" style="display:none">

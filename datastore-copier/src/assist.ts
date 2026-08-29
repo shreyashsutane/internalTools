@@ -100,6 +100,20 @@ export class AssistManager {
                 };
             }
 
+            const queryCopyModal = modalRoot.querySelector('.from-pid-span, .to-pid-span');
+            if (queryCopyModal) {
+                return {
+                    id: 'modal-query-copy-guide',
+                    targetSelector: '#modal-root .btn-confirm, #modal-root',
+                    title: 'Confirm Scheduled Query Transfer',
+                    directive: '👉 Review & Confirm Query Transfer',
+                    explanation: 'Recreates scheduled queries in the destination project with automated rollback protection and centralized audit backup.',
+                    mascotState: 'thinking',
+                    position: 'top',
+                    inModal: true
+                };
+            }
+
             const queryModal = modalRoot.querySelector('.query-copy-modal, textarea, .sql-block');
             if (queryModal) {
                 return {
@@ -161,10 +175,10 @@ export class AssistManager {
         if (secModes && secModes.style.display !== 'none' && secModes.offsetParent !== null && !stateObj.mode) {
             return {
                 id: 'select-mode-step',
-                targetSelector: 'button[data-mode="ds"], button[data-mode="bq"]',
+                targetSelector: 'button[data-mode="bq"], button[data-mode="query"], button[data-mode="ds"]',
                 title: 'Step 2: Choose Operation Mode',
                 directive: '👉 Select an operation mode to begin',
-                explanation: 'Choose "Datastore" for entity comparison and copy, or "BQ Schema Comparator" for read-only table diffs.',
+                explanation: 'Choose "Scheduled Queries" to compare and sync BigQuery data transfer schedules, "Datastore" for entity migration, or "BQ Schema Comparator" for read-only schema diffs.',
                 mascotState: 'happy',
                 position: 'bottom'
             };
@@ -327,6 +341,84 @@ export class AssistManager {
                     position: 'right'
                 };
             }
+
+            // Scheduled Queries: Source Project
+            if (activeEl.id === 'q-src' || activeEl.closest('#dd-q-src')) {
+                return {
+                    id: 'focus-q-src',
+                    targetSelector: '#q-src',
+                    title: 'Scheduled Queries Source Project',
+                    directive: '👉 Select Source GCP Project',
+                    explanation: 'Choose the project containing your existing BigQuery scheduled queries to compare or migrate.',
+                    mascotState: 'idle',
+                    position: 'right'
+                };
+            }
+
+            // Scheduled Queries: Target Project
+            if (activeEl.id === 'q-tgt' || activeEl.closest('#dd-q-tgt')) {
+                return {
+                    id: 'focus-q-tgt',
+                    targetSelector: '#q-tgt',
+                    title: 'Scheduled Queries Target Project',
+                    directive: '👉 Select Target GCP Project',
+                    explanation: 'Choose the destination project where scheduled queries will be recreated or synced.',
+                    mascotState: 'idle',
+                    position: 'right'
+                };
+            }
+
+            // Scheduled Queries: Source Location
+            if (activeEl.id === 'q-src-loc') {
+                return {
+                    id: 'focus-q-src-loc',
+                    targetSelector: '#q-src-loc',
+                    title: 'Source Location / Region',
+                    directive: '👉 Specify Source Region (e.g. us, eu, us-central1)',
+                    explanation: 'BigQuery Data Transfer Service configs are scoped by multi-region (us, eu) or regional location.',
+                    mascotState: 'idle',
+                    position: 'top'
+                };
+            }
+
+            // Scheduled Queries: Target Location
+            if (activeEl.id === 'q-tgt-loc') {
+                return {
+                    id: 'focus-q-tgt-loc',
+                    targetSelector: '#q-tgt-loc',
+                    title: 'Target Location / Region',
+                    directive: '👉 Specify Target Region (e.g. us, eu, us-central1)',
+                    explanation: 'Ensure the destination dataset resides in this region to avoid cross-region write errors.',
+                    mascotState: 'idle',
+                    position: 'top'
+                };
+            }
+
+            // Scheduled Queries: Fetch Button
+            if (activeEl.id === 'btn-q-fetch') {
+                return {
+                    id: 'focus-q-fetch',
+                    targetSelector: '#btn-q-fetch',
+                    title: 'Fetch Scheduled Queries',
+                    directive: '👉 Click to Retrieve Scheduled Queries',
+                    explanation: 'Streams BigQuery Data Transfer configs from source and target projects simultaneously.',
+                    mascotState: 'thinking',
+                    position: 'top'
+                };
+            }
+
+            // Scheduled Queries: Copy Selected Button
+            if (activeEl.id === 'btn-q-copy') {
+                return {
+                    id: 'focus-q-copy',
+                    targetSelector: '#btn-q-copy',
+                    title: 'Copy Selected Scheduled Queries',
+                    directive: '👉 Click to Launch Query Migration Modal',
+                    explanation: 'Transfers chosen queries with automated rollback protection and centralized audit backup.',
+                    mascotState: 'happy',
+                    position: 'top'
+                };
+            }
         }
 
         // 6. PROGRESSIVE COMPLETION WORKFLOW (When no input is actively focused)
@@ -435,6 +527,45 @@ export class AssistManager {
                     position: 'top'
                 };
             }
+
+            if (currentMode === 'query') {
+                const qSrc = (document.getElementById('q-src') as HTMLInputElement | null)?.value || stateObj.query?.src;
+                const qTgt = (document.getElementById('q-tgt') as HTMLInputElement | null)?.value || stateObj.query?.tgt;
+                const qSrcLoc = (document.getElementById('q-src-loc') as HTMLInputElement | null)?.value || stateObj.query?.srcLoc || 'us';
+                const qTgtLoc = (document.getElementById('q-tgt-loc') as HTMLInputElement | null)?.value || stateObj.query?.tgtLoc || 'us';
+
+                if (!qSrc) {
+                    return {
+                        id: 'query-select-src-step',
+                        targetSelector: '#q-src',
+                        title: 'Scheduled Queries: Source Project',
+                        directive: '👉 Select Source GCP Project',
+                        explanation: 'Choose the project containing your existing BigQuery scheduled queries to compare.',
+                        mascotState: 'idle',
+                        position: 'right'
+                    };
+                }
+                if (!qTgt) {
+                    return {
+                        id: 'query-select-tgt-step',
+                        targetSelector: '#q-tgt',
+                        title: 'Scheduled Queries: Target Project',
+                        directive: '👉 Select Target GCP Project',
+                        explanation: 'Choose the destination project where scheduled queries will be compared and migrated.',
+                        mascotState: 'idle',
+                        position: 'right'
+                    };
+                }
+                return {
+                    id: 'query-ready-fetch-step',
+                    targetSelector: '#btn-q-fetch',
+                    title: 'Ready to Fetch Queries',
+                    directive: '👉 Click Fetch Scheduled Queries',
+                    explanation: `Retrieves and compares scheduled queries between ${qSrc} (${qSrcLoc}) and ${qTgt} (${qTgtLoc}).`,
+                    mascotState: 'thinking',
+                    position: 'top'
+                };
+            }
         }
 
         // 7. Screen 4: Results View
@@ -450,6 +581,60 @@ export class AssistManager {
                     explanation: 'Test transformations safely in memory with 0 writes to GCP. Click any row to open the JSON Editor.',
                     mascotState: 'happy',
                     position: 'top'
+                };
+            }
+
+            const resQuery = document.getElementById('res-query');
+            if (resQuery && resQuery.style.display !== 'none' && resQuery.offsetParent !== null) {
+                const selectedCount = stateObj.query?.selected?.size || 0;
+                const totalCount = stateObj.query?.queries?.length || 0;
+
+                // Check if user has an expanded query inspection row open
+                const expandedRow = resQuery.querySelector('.expand-row');
+                if (expandedRow) {
+                    return {
+                        id: 'query-inspecting-diffs-step',
+                        targetSelector: '#res-query .expand-row, #res-query',
+                        title: 'Inspecting Query Configuration & SQL Diffs',
+                        directive: '🔍 Side-by-Side SQL & Parameter Comparison',
+                        explanation: 'Compare schedules, destination datasets, and SQL bodies side by side. Remember to verify hardcoded project references.',
+                        mascotState: 'thinking',
+                        position: 'top'
+                    };
+                }
+
+                if (selectedCount > 0) {
+                    return {
+                        id: 'query-ready-copy-step',
+                        targetSelector: '#btn-q-copy',
+                        title: `${selectedCount} Query Config(s) Selected`,
+                        directive: '👉 Click Copy Selected to Migrate',
+                        explanation: 'Opens pre-flight verification modal with rollback backup. Ensure SQL table paths match target project.',
+                        mascotState: 'happy',
+                        position: 'top'
+                    };
+                }
+
+                if (totalCount > 0) {
+                    return {
+                        id: 'query-results-browse-step',
+                        targetSelector: '#chk-all-q, #q-table-body-rows, #res-query',
+                        title: 'Scheduled Queries Loaded',
+                        directive: '👉 Select Queries to Copy or Click to Expand Diffs',
+                        explanation: 'Click any query display name to compare SQL side-by-side, or select rows using checkboxes to copy to the target project.',
+                        mascotState: 'idle',
+                        position: 'top'
+                    };
+                }
+
+                return {
+                    id: 'query-results-empty-step',
+                    targetSelector: '#q-list',
+                    title: 'No Scheduled Queries Found',
+                    directive: 'ℹ️ No Scheduled Queries in Selected Region',
+                    explanation: 'Verify that scheduled queries exist in the selected location or try a different region (e.g. us, eu).',
+                    mascotState: 'idle',
+                    position: 'bottom'
                 };
             }
 

@@ -308,6 +308,7 @@ export const App = {
         ['bq','query','ds'].forEach(m => { Utils.hide(`form-${m}`); Utils.hide(`res-${m}`); });
         Utils.show(`form-${mode}`);
         if (mode === 'ds') UI.renderDsRules();
+        if (AssistManager.isActive()) AssistUI.render();
         void AuditLog.addLog(
             'MODE_SELECT',
             '—',
@@ -809,6 +810,7 @@ export const App = {
         }
 
         App.updateSelectAllQState();
+        if (AssistManager.isActive()) AssistUI.render();
     },
     toggleQSelect: (qId: string, el: HTMLElement): void => {
         if (State.query.selected.has(qId)) State.query.selected.delete(qId);
@@ -816,6 +818,7 @@ export const App = {
         el.classList.toggle('on');
         (Utils.$('btn-q-copy') as HTMLButtonElement).disabled = State.query.selected.size === 0;
         App.updateSelectAllQState();
+        if (AssistManager.isActive()) AssistUI.render();
     },
     toggleAllQ: (): void => {
         const copyableQueries = State.query.queries.filter(q => q.srcQuery !== null);
@@ -824,6 +827,7 @@ export const App = {
         else copyableQueries.forEach(q => State.query.selected.add(q.name));
         App.renderQueryResults();
         (Utils.$('btn-q-copy') as HTMLButtonElement).disabled = State.query.selected.size === 0;
+        if (AssistManager.isActive()) AssistUI.render();
     },
     updateSelectAllQState: (): void => {
         const chkAll = Utils.$('chk-all-q'); if(!chkAll) return;
@@ -833,7 +837,11 @@ export const App = {
     },
     toggleQueryDetails: (tr: HTMLElement, q: QueryComparison): void => {
         const existingNext = tr.nextElementSibling;
-        if (existingNext?.classList.contains('expand-row')) { existingNext.remove(); return; }
+        if (existingNext?.classList.contains('expand-row')) { 
+            existingNext.remove(); 
+            if (AssistManager.isActive()) AssistUI.render();
+            return; 
+        }
         const expTr = document.createElement('tr'); expTr.className = 'expand-row'; expTr.style.borderBottom = '1px solid var(--brd)';
 
         let html = '';
