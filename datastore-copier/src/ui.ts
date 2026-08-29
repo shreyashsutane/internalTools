@@ -55,6 +55,7 @@ const setupSimpleDD = (inpId: string, menuId: string, dataArr: string[], stateKe
 
 export const UI = {
     initDropdowns: () => {
+        UI.renderDsRules();
         const p = State.projects;
         const setupDD = (inpId: string, menuId: string, cb?: (id: string) => void) => {
             const inp = Utils.$(inpId) as HTMLInputElement | null, menu = Utils.$(menuId);
@@ -101,20 +102,24 @@ export const UI = {
         setupDD('ds-src', 'dd-ds-src', id => {
             State.ds.src = id;
             UI.loadDatabases(id, 'src');
-            const tgtInp = Utils.$('ds-mod-target') as HTMLInputElement | null;
-            if (tgtInp) {
-                tgtInp.value = id;
-                State.ds.modTarget = id;
+            if (!State.ds.modRules || State.ds.modRules.length === 0) {
+                State.ds.modRules = [{ id: 'rule-1', field: '*', target: id, replacement: State.ds.modReplace || '' }];
+            } else {
+                State.ds.modRules[0].target = id;
             }
+            State.ds.modTarget = id;
+            UI.renderDsRules();
         });
         setupDD('ds-tgt', 'dd-ds-tgt', id => {
             State.ds.tgt = id;
             UI.loadDatabases(id, 'tgt');
-            const repInp = Utils.$('ds-mod-replace') as HTMLInputElement | null;
-            if (repInp) {
-                repInp.value = id;
-                State.ds.modReplace = id;
+            if (!State.ds.modRules || State.ds.modRules.length === 0) {
+                State.ds.modRules = [{ id: 'rule-1', field: '*', target: State.ds.modTarget || '', replacement: id }];
+            } else {
+                State.ds.modRules[0].replacement = id;
             }
+            State.ds.modReplace = id;
+            UI.renderDsRules();
         });
 
         const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
@@ -509,6 +514,171 @@ export const UI = {
                     resolve();
                 }, 600);
             }, 2400);
+        });
+    },
+    renderDsRules: (containerOrId: string | HTMLElement = 'ds-rules-container', isModal = false) => {
+        const container = typeof containerOrId === 'string'
+            ? (Utils.$(containerOrId) || document.querySelector('.' + containerOrId) as HTMLElement | null)
+            : containerOrId;
+        if (!container) return;
+
+        if (!State.ds.modRules || State.ds.modRules.length === 0) {
+            State.ds.modRules = [
+                { id: 'rule-1', field: '*', target: State.ds.modTarget || '', replacement: State.ds.modReplace || '' }
+            ];
+        }
+
+        const badge = Utils.$('ds-rules-count-badge');
+        if (badge && !isModal) {
+            badge.textContent = `${State.ds.modRules.length} ${State.ds.modRules.length === 1 ? 'rule' : 'rules'}`;
+        }
+
+        container.replaceChildren();
+
+        State.ds.modRules.forEach((rule, idx) => {
+            const card = document.createElement('div');
+            card.className = 'p-2.5 rounded-lg border border-white/10 bg-black/40 space-y-2 rule-card-item transition-all';
+            card.dataset.ruleId = rule.id;
+
+            // Card Header
+            const header = document.createElement('div');
+            header.className = 'flex items-center justify-between text-[11px] font-mono border-b border-white/5 pb-1';
+            
+            const titleWrap = document.createElement('div');
+            titleWrap.className = 'flex items-center gap-1.5 text-cyan-400 font-bold';
+            titleWrap.innerHTML = `<i class="fa-solid fa-code-compare text-[10px]"></i><span>RULE ${String(idx + 1).padStart(2, '0')}</span>`;
+            header.appendChild(titleWrap);
+
+            if (State.ds.modRules.length > 1) {
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'text-rose-400 hover:text-rose-300 text-[11px] px-1.5 py-0.5 rounded hover:bg-rose-500/10 transition';
+                delBtn.title = 'Remove this rule';
+                delBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                delBtn.onclick = () => {
+                    State.ds.modRules.splice(idx, 1);
+                    if (idx === 0 && State.ds.modRules[0]) {
+                        State.ds.modField = State.ds.modRules[0].field;
+                        State.ds.modTarget = State.ds.modRules[0].target;
+                        State.ds.modReplace = State.ds.modRules[0].replacement;
+                    }
+                    UI.renderDsRules('ds-rules-container', false);
+                    const modalList = document.querySelector('.modal-ds-rules-list') as HTMLElement | null;
+                    if (modalList) UI.renderDsRules('modal-ds-rules-list', true);
+                };
+                header.appendChild(delBtn);
+            }
+            card.appendChild(header);
+
+            // Property field input with autocomplete dropdown
+            const fieldWrap = document.createElement('div');
+            fieldWrap.className = 'dropdown-wrapper';
+            
+            const fieldLabel = document.createElement('label');
+            fieldLabel.className = 'block text-[10px] uppercase tracking-wider text-zinc-400 mb-0.5';
+            fieldLabel.textContent = 'Property Field (* for all fields)';
+            fieldWrap.appendChild(fieldLabel);
+
+            const fieldInp = document.createElement('input');
+            fieldInp.type = 'text';
+            fieldInp.className = 'inp inp-rule-field w-full text-xs font-mono ' + (idx === 0 ? 'inp-field-val' : '');
+            if (idx === 0 && !isModal) fieldInp.id = 'ds-mod-field';
+            fieldInp.style.padding = '5px 8px';
+            fieldInp.placeholder = 'e.g. * or query, endpoint, role...';
+            fieldInp.value = rule.field;
+            fieldWrap.appendChild(fieldInp);
+
+            const menuEl = document.createElement('div');
+            menuEl.className = 'dropdown-menu';
+            fieldWrap.appendChild(menuEl);
+
+            const renderDD = (filter = '') => {
+                const props = ['*', ...State.ds.properties];
+                const filtered = props.filter(p => p.toLowerCase().includes(filter.toLowerCase()));
+                menuEl.replaceChildren();
+                if (filtered.length === 0) {
+                    menuEl.classList.remove('open');
+                    return;
+                }
+                filtered.forEach(p => {
+                    const it = document.createElement('div');
+                    it.className = 'dropdown-item text-xs font-mono';
+                    it.textContent = p;
+                    it.onmousedown = (ev) => {
+                        ev.preventDefault();
+                        fieldInp.value = p;
+                        rule.field = p;
+                        if (idx === 0) State.ds.modField = p;
+                        menuEl.classList.remove('open');
+                    };
+                    menuEl.appendChild(it);
+                });
+            };
+            fieldInp.onfocus = () => { renderDD(fieldInp.value); menuEl.classList.add('open'); };
+            fieldInp.oninput = (e: any) => {
+                rule.field = e.target.value;
+                if (idx === 0) State.ds.modField = e.target.value;
+                renderDD(fieldInp.value);
+                menuEl.classList.add('open');
+            };
+            fieldInp.onblur = () => setTimeout(() => menuEl.classList.remove('open'), 150);
+
+            card.appendChild(fieldWrap);
+
+            // Find (Target) & Replace Inputs (Textareas for long strings / multiline)
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-2 gap-2';
+
+            // Target (Find)
+            const colFind = document.createElement('div');
+            const lblFind = document.createElement('label');
+            lblFind.className = 'block text-[10px] uppercase tracking-wider text-zinc-400 mb-0.5';
+            lblFind.textContent = 'Find Value';
+            const txtFind = document.createElement('textarea');
+            txtFind.rows = 1;
+            txtFind.className = 'inp inp-rule-target w-full text-xs font-mono resize-y ' + (idx === 0 ? 'inp-find-val' : '');
+            if (idx === 0 && !isModal) txtFind.id = 'ds-mod-target';
+            txtFind.style.padding = '5px 8px';
+            txtFind.style.minHeight = '32px';
+            txtFind.placeholder = 'String, long value, or integer...';
+            txtFind.value = rule.target;
+            txtFind.oninput = (e: any) => {
+                rule.target = e.target.value;
+                if (idx === 0) State.ds.modTarget = e.target.value;
+                if (txtFind.scrollHeight > txtFind.clientHeight) {
+                    txtFind.style.height = 'auto';
+                    txtFind.style.height = Math.min(txtFind.scrollHeight + 2, 140) + 'px';
+                }
+            };
+            colFind.append(lblFind, txtFind);
+
+            // Replacement
+            const colRep = document.createElement('div');
+            const lblRep = document.createElement('label');
+            lblRep.className = 'block text-[10px] uppercase tracking-wider text-zinc-400 mb-0.5';
+            lblRep.textContent = 'Replace With';
+            const txtRep = document.createElement('textarea');
+            txtRep.rows = 1;
+            txtRep.className = 'inp inp-rule-replace w-full text-xs font-mono resize-y ' + (idx === 0 ? 'inp-replace-val' : '');
+            if (idx === 0 && !isModal) txtRep.id = 'ds-mod-replace';
+            txtRep.style.padding = '5px 8px';
+            txtRep.style.minHeight = '32px';
+            txtRep.placeholder = 'Replacement string or value...';
+            txtRep.value = rule.replacement;
+            txtRep.oninput = (e: any) => {
+                rule.replacement = e.target.value;
+                if (idx === 0) State.ds.modReplace = e.target.value;
+                if (txtRep.scrollHeight > txtRep.clientHeight) {
+                    txtRep.style.height = 'auto';
+                    txtRep.style.height = Math.min(txtRep.scrollHeight + 2, 140) + 'px';
+                }
+            };
+            colRep.append(lblRep, txtRep);
+
+            grid.append(colFind, colRep);
+            card.appendChild(grid);
+
+            container.appendChild(card);
         });
     }
 };

@@ -27,7 +27,8 @@ const {
     datastoreValueToEditorText,
     mapConcurrent,
     minifyJsonProperties,
-    replaceDatastoreField
+    replaceDatastoreField,
+    replaceDatastoreRules
 } = compiled.exports;
 
 test('comparison ignores object property order but preserves array order', () => {
@@ -277,6 +278,49 @@ test('deepEqual normalizes CRLF line endings, Datastore meaning metadata, blob p
     const keyRefA = { keyValue: { partitionId: { projectId: 'proj-a' }, path: [{ kind: 'User', id: '123' }] } };
     const keyRefB = { keyValue: { partitionId: { projectId: 'proj-b' }, path: [{ kind: 'User', id: '123' }] } };
     assert.equal(deepEqual(keyRefA, keyRefB), true);
+});
+
+test('replaceDatastoreRules applies multiple sequential find & replace rules including long values and 64-bit integers', () => {
+    const longSqlA = 'SELECT user_id, order_total\nFROM `source-analytics-prod.sales.orders`\nWHERE status = "COMPLETED"\nAND region = "us-east1";';
+    const longSqlExpected = 'SELECT user_id, order_total\nFROM `target-analytics-staging.sales.orders`\nWHERE status = "FINALIZED"\nAND region = "us-east1";';
+
+    const entity = {
+        key: { path: [{ kind: 'Task', id: '555' }] },
+        properties: {
+            sqlQuery: { stringValue: longSqlA },
+            endpoint: { stringValue: 'https://api.source-internal.com/v1/checkout' },
+            legacyId: { integerValue: '9876543210123' },
+            nested: {
+                mapValue: {
+                    properties: {
+                        subUrl: { stringValue: 'https://sub.source-internal.com' },
+                        subCount: { integerValue: '9876543210123' }
+                    }
+                }
+            }
+        }
+    };
+
+    const rules = [
+        { field: 'sqlQuery', target: 'source-analytics-prod', replacement: 'target-analytics-staging' },
+        { field: 'sqlQuery', target: 'COMPLETED', replacement: 'FINALIZED' },
+        { field: '*', target: 'source-internal.com', replacement: 'target-cloud.org' },
+        { field: '*', target: '9876543210123', replacement: '1122334455667' }
+    ];
+
+    const count = replaceDatastoreRules(entity, rules);
+    assert.ok(count >= 5);
+
+    // Verify long multiline SQL query was replaced accurately
+    assert.equal(entity.properties.sqlQuery.stringValue, longSqlExpected);
+
+    // Verify endpoint string was replaced
+    assert.equal(entity.properties.endpoint.stringValue, 'https://api.target-cloud.org/v1/checkout');
+
+    // Verify 64-bit integer / long value was replaced in root and nested maps
+    assert.equal(entity.properties.legacyId.integerValue, '1122334455667');
+    assert.equal(entity.properties.nested.mapValue.properties.subUrl.stringValue, 'https://sub.target-cloud.org');
+    assert.equal(entity.properties.nested.mapValue.properties.subCount.integerValue, '1122334455667');
 });
 
 

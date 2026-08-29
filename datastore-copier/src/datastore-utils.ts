@@ -391,6 +391,22 @@ export const replaceDatastoreStringValues = (value: any, target: string, replace
         replacements += Math.max(0, parts.length - 1);
         value.stringValue = parts.join(replacement);
     }
+    // Support 64-bit integer / long values in GCP Datastore REST
+    if (typeof value.integerValue === 'string') {
+        const trimmedTarget = target.trim();
+        const trimmedReplacement = replacement.trim();
+        if (value.integerValue === trimmedTarget && /^-?\d+$/.test(trimmedReplacement)) {
+            value.integerValue = trimmedReplacement;
+            replacements++;
+        } else if (value.integerValue.includes(target)) {
+            const parts = value.integerValue.split(target);
+            const candidate = parts.join(replacement);
+            if (/^-?\d+$/.test(candidate)) {
+                replacements += Math.max(0, parts.length - 1);
+                value.integerValue = candidate;
+            }
+        }
+    }
     if (Array.isArray(value.arrayValue?.values)) {
         value.arrayValue.values.forEach((nested: any) => {
             replacements += replaceDatastoreStringValues(nested, target, replacement);
@@ -444,15 +460,40 @@ export const replaceDatastoreField = (
     replacement: string
 ): number => {
     if (!properties || !target) return 0;
+    const targetObj = (properties.properties && typeof properties.properties === 'object')
+        ? properties.properties
+        : properties;
+
     const normalized = fieldPath.trim();
     if (!normalized || normalized === '*') {
-        return Object.values(properties).reduce(
-            (count, value) => count + replaceDatastoreStringValues(value, target, replacement),
+        return Object.values(targetObj).reduce(
+            (count: number, value: any): number => count + replaceDatastoreStringValues(value, target, replacement),
             0
         );
     }
     const segments = normalized.split('.').map(segment => segment.trim()).filter(Boolean);
-    return replaceAtPath(properties, segments, target, replacement);
+    return replaceAtPath(targetObj, segments, target, replacement);
+};
+
+export interface FindReplaceRuleInput {
+    field?: string;
+    target?: string;
+    replacement?: string;
+}
+
+export const replaceDatastoreRules = (
+    properties: Record<string, any>,
+    rules: FindReplaceRuleInput[]
+): number => {
+    if (!properties || !Array.isArray(rules) || rules.length === 0) return 0;
+    let total = 0;
+    for (const rule of rules) {
+        if (!rule || !rule.target) continue;
+        const field = rule.field || '*';
+        const replacement = rule.replacement !== undefined ? rule.replacement : '';
+        total += replaceDatastoreField(properties, field, rule.target, replacement);
+    }
+    return total;
 };
 
 export const isQueryKey = (key: string): boolean => {

@@ -17,6 +17,7 @@ import {
     getDatastoreEditorType,
     mapConcurrent,
     replaceDatastoreField,
+    replaceDatastoreRules,
     type DatastoreEditorType
 } from './datastore-utils';
 
@@ -133,14 +134,38 @@ export const App = {
             };
         });
 
+        const addRuleBtn = Utils.$('btn-add-ds-rule');
+        if (addRuleBtn) {
+            addRuleBtn.onclick = () => {
+                if (!State.ds.modRules) State.ds.modRules = [];
+                State.ds.modRules.push({
+                    id: 'rule-' + Date.now(),
+                    field: '*',
+                    target: '',
+                    replacement: ''
+                });
+                UI.renderDsRules('ds-rules-container', false);
+                SoundFX.playChime();
+            };
+        }
+
         const dsModField = Utils.$('ds-mod-field') as HTMLInputElement | null;
-        if (dsModField) dsModField.oninput = (e: any) => { State.ds.modField = e.target.value; };
+        if (dsModField) dsModField.oninput = (e: any) => {
+            State.ds.modField = e.target.value;
+            if (State.ds.modRules && State.ds.modRules[0]) State.ds.modRules[0].field = e.target.value;
+        };
 
         const dsModTarget = Utils.$('ds-mod-target') as HTMLInputElement | null;
-        if (dsModTarget) dsModTarget.oninput = (e: any) => { State.ds.modTarget = e.target.value; };
+        if (dsModTarget) dsModTarget.oninput = (e: any) => {
+            State.ds.modTarget = e.target.value;
+            if (State.ds.modRules && State.ds.modRules[0]) State.ds.modRules[0].target = e.target.value;
+        };
 
         const dsModReplace = Utils.$('ds-mod-replace') as HTMLInputElement | null;
-        if (dsModReplace) dsModReplace.oninput = (e: any) => { State.ds.modReplace = e.target.value; };
+        if (dsModReplace) dsModReplace.oninput = (e: any) => {
+            State.ds.modReplace = e.target.value;
+            if (State.ds.modRules && State.ds.modRules[0]) State.ds.modRules[0].replacement = e.target.value;
+        };
 
         const dsAnalyzeBtn = Utils.$('btn-ds-analyze');
         if (dsAnalyzeBtn) dsAnalyzeBtn.onclick = App.runDsAnalyze;
@@ -212,6 +237,10 @@ export const App = {
 
         AuditLog.renderLogs();
         AssistUI.init();
+        UI.renderDsRules();
+        (window as any).State = State;
+        (window as any).App = App;
+        (window as any).UI = UI;
     },
     verify: async (): Promise<void> => {
         const tokenInp = Utils.$('inp-token') as HTMLInputElement | null;
@@ -278,6 +307,7 @@ export const App = {
         Utils.show('sec-forms'); Utils.hide('sec-results');
         ['bq','query','ds'].forEach(m => { Utils.hide(`form-${m}`); Utils.hide(`res-${m}`); });
         Utils.show(`form-${mode}`);
+        if (mode === 'ds') UI.renderDsRules();
         void AuditLog.addLog(
             'MODE_SELECT',
             '—',
@@ -1380,7 +1410,10 @@ export const App = {
             const simulated = entities.map((ent: any) => {
                 const cloned = cloneDatastoreValue({ entityValue: ent }).entityValue;
                 let modified = false;
-                if (State.ds.modField && State.ds.modTarget) {
+                const activeRules = (State.ds.modRules || []).filter(r => r && r.target);
+                if (activeRules.length > 0) {
+                    modified = replaceDatastoreRules(cloned.properties || {}, activeRules) > 0;
+                } else if (State.ds.modField && State.ds.modTarget) {
                     modified = replaceDatastoreField(cloned.properties || {}, State.ds.modField, State.ds.modTarget, State.ds.modReplace) > 0;
                 }
                 return {
@@ -2032,62 +2065,24 @@ export const App = {
 
         const chkReplace = Utils.$('modal-root')!.querySelector('.chk-apply-replace') as HTMLElement;
         const replaceInputsWrap = Utils.$('modal-root')!.querySelector('.replace-inputs-wrap') as HTMLElement;
+        const modalRulesList = Utils.$('modal-root')!.querySelector('.modal-ds-rules-list') as HTMLElement | null;
 
-        const modalFieldEl = Utils.$('modal-root')!.querySelector('.inp-field-val') as HTMLInputElement | null;
-        const modalMenuEl = Utils.$('modal-root')!.querySelector('.modal-dd-ds-mod') as HTMLElement | null;
-        const modalTargetEl = Utils.$('modal-root')!.querySelector('.inp-find-val') as HTMLInputElement | null;
-        const modalReplaceEl = Utils.$('modal-root')!.querySelector('.inp-replace-val') as HTMLInputElement | null;
-
-        if (modalFieldEl) {
-            modalFieldEl.value = (Utils.$('ds-mod-field') as HTMLInputElement).value;
-        }
-        if (modalTargetEl) {
-            modalTargetEl.value = (Utils.$('ds-mod-target') as HTMLInputElement).value;
-        }
-        if (modalReplaceEl) {
-            modalReplaceEl.value = (Utils.$('ds-mod-replace') as HTMLInputElement).value;
+        if (modalRulesList) {
+            UI.renderDsRules(modalRulesList, true);
         }
 
-        if (modalFieldEl && modalMenuEl) {
-            const properties = State.ds.properties;
-            const renderModalDD = (filter = '') => {
-                const filtered = properties.filter((k: string) => k.toLowerCase().includes(filter.toLowerCase()));
-                modalMenuEl.replaceChildren();
-                if (filtered.length === 0) {
-                    const empty = document.createElement('div');
-                    empty.className = 'dropdown-item';
-                    empty.style.color = 'var(--muted)';
-                    empty.textContent = 'No results';
-                    modalMenuEl.appendChild(empty);
-                    return;
-                }
-                filtered.forEach(property => {
-                    const item = document.createElement('div');
-                    item.className = 'dropdown-item';
-                    item.dataset.id = property;
-                    const label = document.createElement('span');
-                    label.className = 'id';
-                    label.textContent = property;
-                    item.appendChild(label);
-                    item.onmousedown = e => {
-                        e.preventDefault();
-                        modalFieldEl.value = property;
-                        modalMenuEl.classList.remove('open');
-                    };
-                    modalMenuEl.appendChild(item);
+        const modalAddRuleBtn = Utils.$('modal-root')!.querySelector('.btn-modal-add-rule') as HTMLButtonElement | null;
+        if (modalAddRuleBtn) {
+            modalAddRuleBtn.onclick = () => {
+                if (!State.ds.modRules) State.ds.modRules = [];
+                State.ds.modRules.push({
+                    id: 'rule-' + Date.now(),
+                    field: '*',
+                    target: '',
+                    replacement: ''
                 });
-            };
-
-            modalFieldEl.onfocus = () => {
-                renderModalDD(modalFieldEl.value);
-                modalMenuEl.classList.add('open');
-            };
-            modalFieldEl.oninput = () => {
-                renderModalDD(modalFieldEl.value);
-                modalMenuEl.classList.add('open');
-            };
-            modalFieldEl.onblur = () => {
-                setTimeout(() => modalMenuEl.classList.remove('open'), 150);
+                if (modalRulesList) UI.renderDsRules(modalRulesList, true);
+                UI.renderDsRules('ds-rules-container', false);
             };
         }
 
@@ -2113,6 +2108,7 @@ export const App = {
     executeDsCopy: async (): Promise<void> => {
         const modalRoot = Utils.$('modal-root');
         const applyMod = modalRoot?.querySelector('.chk-apply-replace')?.classList.contains('on');
+        const activeRules = (State.ds.modRules || []).filter(r => r && r.target);
         const modalFieldEl = modalRoot?.querySelector('.inp-field-val') as HTMLInputElement | null;
         const modalTargetEl = modalRoot?.querySelector('.inp-find-val') as HTMLInputElement | null;
         const modalReplaceEl = modalRoot?.querySelector('.inp-replace-val') as HTMLInputElement | null;
@@ -2280,8 +2276,13 @@ export const App = {
                     entity.key = targetKey;
 
                     if (applyMod) {
-                        replaceDatastoreField(entity, modField, modTarget, modReplace);
-                        replacementCount++;
+                        if (activeRules.length > 0) {
+                            replaceDatastoreRules(entity, activeRules);
+                            replacementCount++;
+                        } else if (modTarget) {
+                            replaceDatastoreField(entity, modField, modTarget, modReplace);
+                            replacementCount++;
+                        }
                     }
 
                     if (entity.properties) {
@@ -2311,8 +2312,13 @@ export const App = {
                 if (batchAuditLogId) {
                     let batchDetails = `Copied batch ${batchNum}/${totalBatches} (${mutations.length} entities of kind ${State.ds.kind})${refSummary}.`;
                     if (applyMod) {
-                        const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (recursively)";
-                        batchDetails += ` Applied Find & Replace on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
+                        if (activeRules.length > 0) {
+                            const rulesSummary = activeRules.map((r, i) => `Rule ${i + 1} [field '${r.field || '*'}': "${r.target}" -> "${r.replacement}"]`).join(', ');
+                            batchDetails += ` Applied ${activeRules.length} Find & Replace rule(s): ${rulesSummary}.`;
+                        } else if (modTarget) {
+                            const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (recursively)";
+                            batchDetails += ` Applied Find & Replace on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
+                        }
                     }
                     await AuditLog.updateLog(
                         batchAuditLogId,

@@ -237,12 +237,25 @@
                     </div>
                 </div>
                 <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)" id="ds-sidebar-replace-fields">
-                    <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">MODIFICATION (FIND & REPLACE)</label>
-                    <div class="grid grid-cols-2 gap-2 mb-2">
-                        <div class="dropdown-wrapper"><input id="ds-mod-field" class="inp" placeholder="Field to Modify..."><div id="dd-ds-mod" class="dropdown-menu"></div></div>
-                        <input id="ds-mod-target" class="inp" placeholder="Target Substring">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-1.5">
+                            <label class="text-xs font-semibold" style="color:var(--muted)">MODIFICATIONS (FIND &amp; REPLACE)</label>
+                            <span id="ds-rules-count-badge" class="badge-pill" style="font-size:10px;padding:1px 6px;background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">1 rule</span>
+                        </div>
+                        <button id="btn-add-ds-rule" type="button" class="btn btn-xs py-1 px-2 text-[11px] font-semibold flex items-center gap-1" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Add Rule
+                        </button>
                     </div>
-                    <input id="ds-mod-replace" class="inp" placeholder="Replacement Substring">
+                    
+                    <!-- Dynamic Rules Container -->
+                    <div id="ds-rules-container" class="space-y-2.5 mb-2">
+                        <!-- Rendered by UI.renderDsRules() -->
+                    </div>
+
+                    <div class="text-[11px] text-zinc-400 mt-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-info text-cyan-400 text-[10px]"></i>
+                        <span>Supports multiple rules, long values, multiline text &amp; 64-bit integers.</span>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <button id="btn-ds-dry-run" class="btn btn-s w-full" style="border-color: rgba(0, 212, 255, 0.35);"><i class="fa-solid fa-flask text-cyan-400"></i> Dry Run (Simulate)</button>
@@ -607,23 +620,17 @@
                 <p class="text-sm font-semibold"><span class="selected-cnt-span"></span> entities selected to copy / overwrite:</p>
             </div>
             <div class="modal-ds-selected-entities mb-4 max-h-36 overflow-y-auto rounded-lg p-2.5 space-y-1.5" style="background:rgba(0,0,0,0.3); border:1px solid var(--brd2)"></div>
-            <div class="mb-4 flex items-center gap-2"><div class="chk on chk-apply-replace"></div><span class="text-xs">Apply Find & Replace modifications</span></div>
-            <div class="replace-inputs-wrap mb-4 flex flex-col gap-3" style="display: flex;">
-                <div class="dropdown-wrapper">
-                    <label class="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Property Field (e.g., role, *, or nested field)</label>
-                    <input type="text" class="inp inp-field-val w-full text-xs" style="padding: 6px 10px;" placeholder="Field to Modify..." />
-                    <div class="dropdown-menu modal-dd-ds-mod"></div>
+            <div class="mb-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div id="chk-ds-replace" class="chk on chk-apply-replace"></div>
+                    <span class="text-xs font-semibold">Apply Find &amp; Replace modifications</span>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Find Substring</label>
-                        <input type="text" class="inp inp-find-val w-full text-xs" style="padding: 6px 10px;" />
-                    </div>
-                    <div>
-                        <label class="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Replace Substring</label>
-                        <input type="text" class="inp inp-replace-val w-full text-xs" style="padding: 6px 10px;" />
-                    </div>
-                </div>
+                <button type="button" class="btn btn-xs py-1 px-2 text-[11px] font-semibold flex items-center gap-1 btn-modal-add-rule" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Add Rule
+                </button>
+            </div>
+            <div class="replace-inputs-wrap mb-4 flex flex-col gap-2" style="display: flex;">
+                <div class="modal-ds-rules-list space-y-2.5 max-h-60 overflow-y-auto pr-1"></div>
             </div>
             <div class="flex justify-end gap-2"><button class="btn btn-s btn-cancel">Cancel</button><button class="btn btn-p btn-confirm">Confirm Copy</button></div>
         </div>

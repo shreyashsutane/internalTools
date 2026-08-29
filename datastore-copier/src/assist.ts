@@ -302,27 +302,27 @@ export class AssistManager {
                 };
             }
 
-            // Modification: Target Substring
-            if (activeEl.id === 'ds-mod-target') {
+            // Modification: Target Substring / Long Value
+            if (activeEl.id === 'ds-mod-target' || activeEl.classList.contains('inp-rule-target')) {
                 return {
                     id: 'focus-ds-mod-target',
-                    targetSelector: '#ds-mod-target',
-                    title: 'Target Substring (Find)',
-                    directive: '👉 Enter Substring to Find',
-                    explanation: 'The exact string, URL, or project name to search for within the selected field.',
+                    targetSelector: activeEl.id ? `#${activeEl.id}` : '.inp-rule-target',
+                    title: 'Find Value (String / Long / Integer)',
+                    directive: '👉 Enter Value to Find',
+                    explanation: 'The exact string, multiline text, long value, or 64-bit integer to search for within the selected field or all fields (*).',
                     mascotState: 'idle',
                     position: 'right'
                 };
             }
 
-            // Modification: Replacement Substring
-            if (activeEl.id === 'ds-mod-replace') {
+            // Modification: Replacement Substring / Long Value
+            if (activeEl.id === 'ds-mod-replace' || activeEl.classList.contains('inp-rule-replace')) {
                 return {
                     id: 'focus-ds-mod-replace',
-                    targetSelector: '#ds-mod-replace',
-                    title: 'Replacement Substring',
-                    directive: '👉 Enter Replacement String',
-                    explanation: 'Replaces matching text across nested objects, embedded entities, and arrays losslessly.',
+                    targetSelector: activeEl.id ? `#${activeEl.id}` : '.inp-rule-replace',
+                    title: 'Replacement Value',
+                    directive: '👉 Enter Replacement Value',
+                    explanation: 'Replaces matching text or integers across nested objects, embedded entities, and arrays losslessly.',
                     mascotState: 'happy',
                     position: 'right'
                 };

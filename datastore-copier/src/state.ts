@@ -26,6 +26,13 @@ export interface DsResult {
     tgtEntity: any | null;
 }
 
+export interface FindReplaceRule {
+    id: string;
+    field: string;
+    target: string;
+    replacement: string;
+}
+
 export interface StateType {
     token: string | null;
     authEmail: string;
@@ -62,6 +69,7 @@ export interface StateType {
         modField: string;
         modTarget: string;
         modReplace: string;
+        modRules: FindReplaceRule[];
         results: DsResult[];
         filtered: DsResult[];
         stats: {
@@ -122,6 +130,9 @@ export const State: StateType = {
         modField: '',
         modTarget: '',
         modReplace: '',
+        modRules: [
+            { id: 'rule-1', field: '*', target: '', replacement: '' }
+        ],
         results: [],
         filtered: [],
         stats: { identical: 0, different: 0, missing: 0, mapped: 0, total: 0 },
