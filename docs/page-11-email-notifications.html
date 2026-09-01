@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Page 11: Real-Time Operational Email Alerts & Delivery Engine - GCP Tools Portal Technical Documentation. Interactive visual animated lifecycle, Gmail SMTP dispatch architecture, and zero-knowledge security.">
-    <title>Page 11: Email Alerts & Notification Engine | GCP Tools Portal Docs</title>
+    <meta name="description" content="Page 11: Real-Time Operational Email Alerts & Delivery Engine - Beginner & Advanced Guide. Interactive visual animated lifecycle, Gmail SMTP dispatch architecture, and zero-knowledge security.">
+    <title>Page 11: Email Alerts & Notification Engine (Beginner Guide) | GCP Tools Portal Docs</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -91,6 +91,15 @@
             border-radius: 12px;
             box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
         }
+
+        .highlight-box {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .highlight-box:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0, 212, 255, 0.5);
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -116,7 +125,7 @@
 
             <div class="flex items-center gap-2">
                 <a href="v2.html" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition font-medium">
-                    <i class="fa-solid fa-book-open"></i> Full Master Manual
+                    <i class="fa-solid fa-book-open"></i> Master Manual
                 </a>
                 <a href="../datastore-copier/index.html" class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 transition">
                     <i class="fa-solid fa-rocket"></i> Launch Portal
@@ -193,31 +202,97 @@
                 <span>/</span>
                 <span class="text-slate-200">Module 11</span>
                 <span>/</span>
-                <span class="text-cyan-400 font-semibold">Email Alerts &amp; Notification Engine</span>
+                <span class="text-cyan-400 font-semibold">Email Alerts &amp; Delivery Engine</span>
             </div>
 
             <!-- Page Title -->
             <div class="border-b border-white/10 pb-6 mb-8">
                 <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-semibold mb-3">
-                    CHAPTER 11 • OPERATIONAL TELEMETRY &amp; EMAIL DISPATCH
+                    CHAPTER 11 • BEGINNER &amp; MASTER GUIDE • EMAIL TELEMETRY
                 </div>
                 <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-3 font-title">
-                    Real-Time Operational Email Alerts &amp; Delivery Engine
+                    How Operational Email Notifications Work: From Click to Inbox
                 </h1>
                 <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
-                    A comprehensive architectural guide to how the portal securely crafts, verifies, and delivers real-time SMTP operational emails to <strong>shreyashs14102002@gmail.com</strong> whenever any user logs in, analyzes entities, commits mutations, or executes rollbacks.
+                    A clear, visual, beginner-friendly walkthrough explaining how the system automatically detects user actions (login, entity comparison, database copying, and rollback) and instantly sends a formatted email alert to <strong>shreyashs14102002@gmail.com</strong> safely without exposing any passwords.
                 </p>
             </div>
 
-            <!-- SECTION 1: INTERACTIVE ANIMATED LIFECYCLE STEPPER -->
+            <!-- SECTION 1: THE 30-SECOND BEGINNER EXPLANATION (ELI5) -->
             <section class="mb-12">
                 <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
-                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">01</span>
-                    Interactive End-to-End Email Lifecycle Stepper
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono">01</span>
+                    The 30-Second Beginner Summary (The Post Office Analogy)
+                </h2>
+                
+                <p class="text-sm text-slate-300 mb-6 leading-relaxed">
+                    If you are new to web development or cloud computing, think of how a secure postal delivery service works:
+                </p>
+
+                <!-- 3 Visual Analogy Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="glass-panel p-5 border-cyan-500/30">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-lg mb-3">
+                            <i class="fa-solid fa-user-astronaut"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-white mb-1">1. You Perform an Action</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            You click <strong>"Verify Token"</strong>, <strong>"Analyze Entities"</strong>, or <strong>"Copy Entities"</strong> in the browser. Your browser writes a short message saying: <em>"Hey, operator X just copied 42 rows!"</em>
+                        </p>
+                    </div>
+
+                    <div class="glass-panel p-5 border-purple-500/30">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-lg mb-3">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-white mb-1">2. The Cloud Security Guard</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Our serverless Cloud Function acts as an honest security guard. It checks with Google to prove who you really are, writes an unalterable audit log, and grabs the email template.
+                        </p>
+                    </div>
+
+                    <div class="glass-panel p-5 border-emerald-500/30">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg mb-3">
+                            <i class="fa-solid fa-envelope-circle-check"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-white mb-1">3. The Secure Delivery</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            The server takes the Gmail App Password from a digital vault (GCP Secret Manager), connects to Gmail via Nodemailer, and drops the email right into your inbox.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Comparison: Why Not Send from Browser? -->
+                <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-700/50">
+                    <div class="text-xs font-bold text-cyan-400 font-mono uppercase mb-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Why couldn't the browser just send the email directly?
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-slate-300">
+                            <strong class="text-red-400">❌ Sending from the Browser (Unsafe):</strong>
+                            <p class="mt-1 text-[11px] text-slate-400">
+                                Anyone could right-click "Inspect" on the web page to steal your Gmail password, or forge a fake email pretending someone else copied the database!
+                            </p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-slate-300">
+                            <strong class="text-emerald-400">✅ Our Serverless Backend (100% Safe):</strong>
+                            <p class="mt-1 text-[11px] text-slate-400">
+                                Your Gmail password is kept completely hidden in Google Secret Manager. The backend asks Google directly for the verified operator email address.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: INTERACTIVE ANIMATED LIFECYCLE STEPPER -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">02</span>
+                    Interactive End-to-End Visual Stepper
                 </h2>
                 
                 <p class="text-sm text-slate-300 mb-4 leading-relaxed">
-                    Click any stage in the pipeline to examine the payload transformation, security validations, and SMTP handshakes in real time:
+                    Click through the 6 stages below to watch how an event transforms into a delivered email in real time:
                 </p>
 
                 <!-- Interactive Stage Selector Buttons -->
@@ -283,56 +358,40 @@
                 <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-700/50 flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-play text-cyan-400"></i>
-                        <span class="text-xs font-bold text-white font-mono uppercase">Event Simulator:</span>
+                        <span class="text-xs font-bold text-white font-mono uppercase">Automated Playback:</span>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <button onclick="simulateEvent('LOGIN')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
-                            <i class="fa-solid fa-key text-cyan-400"></i> Login
+                            <i class="fa-solid fa-key text-cyan-400"></i> Play Login Flow
                         </button>
                         <button onclick="simulateEvent('ANALYZE')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
-                            <i class="fa-solid fa-magnifying-glass text-indigo-400"></i> Analysis
+                            <i class="fa-solid fa-magnifying-glass text-indigo-400"></i> Play Analysis Flow
                         </button>
                         <button onclick="simulateEvent('COPY')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
-                            <i class="fa-solid fa-copy text-emerald-400"></i> Copy
+                            <i class="fa-solid fa-copy text-emerald-400"></i> Play Copy Flow
                         </button>
                         <button onclick="simulateEvent('REVERT')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
-                            <i class="fa-solid fa-rotate-left text-amber-400"></i> Revert
+                            <i class="fa-solid fa-rotate-left text-amber-400"></i> Play Revert Flow
                         </button>
                     </div>
                 </div>
             </section>
 
-            <!-- SECTION 2: LIVE EMAIL TEMPLATE PREVIEWS -->
+            <!-- SECTION 3: INTERACTIVE EMAIL ANATOMY INSPECTOR -->
             <section class="mb-12">
                 <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
-                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono">02</span>
-                    High-Fidelity Email Template Previews
+                    <span class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono">03</span>
+                    Interactive Email Anatomy (Click Parts to Learn)
                 </h2>
 
                 <p class="text-sm text-slate-300 mb-4 leading-relaxed">
-                    Select an operational event below to inspect the exact dark-mode HTML email formatted and delivered to your inbox:
+                    Click on any element in the mockup email below to see how our backend generated that specific field:
                 </p>
 
-                <!-- Template Selector Tabs -->
-                <div class="flex border-b border-white/10 mb-4 text-xs font-mono">
-                    <button onclick="switchTemplate('COPY')" id="tab-tpl-copy" class="px-4 py-2.5 font-bold border-b-2 border-cyan-400 text-cyan-400">
-                        Datastore Copy Alert
-                    </button>
-                    <button onclick="switchTemplate('LOGIN')" id="tab-tpl-login" class="px-4 py-2.5 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-                        User Login Alert
-                    </button>
-                    <button onclick="switchTemplate('ANALYZE')" id="tab-tpl-analyze" class="px-4 py-2.5 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-                        Entity Analysis Alert
-                    </button>
-                    <button onclick="switchTemplate('REVERT')" id="tab-tpl-revert" class="px-4 py-2.5 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">
-                        Rollback Revert Alert
-                    </button>
-                </div>
-
                 <!-- Mock Email Client Wrapper -->
-                <div class="email-mockup-frame p-4 sm:p-6">
+                <div class="email-mockup-frame p-4 sm:p-6 mb-4">
                     <!-- Email Header Metadata -->
-                    <div class="border-b border-white/10 pb-4 mb-4 text-xs space-y-1.5 font-mono">
+                    <div class="border-b border-white/10 pb-4 mb-4 text-xs space-y-2 font-mono">
                         <div class="flex items-center justify-between">
                             <span class="text-slate-400">From:</span>
                             <span class="text-slate-200 font-semibold">GCP Tools Portal &lt;shreyashs14102002@gmail.com&gt;</span>
@@ -341,13 +400,9 @@
                             <span class="text-slate-400">To:</span>
                             <span class="text-cyan-400 font-semibold">shreyashs14102002@gmail.com</span>
                         </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-400">Subject:</span>
+                        <div onclick="inspectPart('subject')" class="highlight-box p-1.5 rounded bg-black/40 border border-white/10 flex items-center justify-between">
+                            <span class="text-slate-400">Subject (Click to inspect):</span>
                             <span id="preview-subject" class="text-emerald-400 font-bold">[GCP Portal] Datastore Copy: operator@example.com</span>
-                        </div>
-                        <div class="flex items-center justify-between text-[11px] text-slate-500">
-                            <span>Date:</span>
-                            <span id="preview-date">Tue, 01 Sep 2026 04:35:59 UTC (+05:30 IST)</span>
                         </div>
                     </div>
 
@@ -365,153 +420,109 @@
                                     <div class="text-[10px] font-mono text-slate-400">Infrastructure Operations Telemetry</div>
                                 </div>
                             </div>
-                            <span id="preview-status-badge" class="badge-pill bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px]">
-                                SUCCESS
+                            <span onclick="inspectPart('badge')" id="preview-status-badge" class="badge-pill bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px] highlight-box">
+                                SUCCESS (Click to inspect)
                             </span>
                         </div>
 
                         <!-- Routing Metadata Grid -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
-                            <div class="bg-black/40 p-3 rounded-lg border border-white/5">
-                                <div class="text-[10px] font-mono text-slate-400 uppercase">Operator Identity</div>
+                            <div onclick="inspectPart('operator')" class="highlight-box bg-black/40 p-3 rounded-lg border border-white/5">
+                                <div class="text-[10px] font-mono text-slate-400 uppercase">Operator Identity (Click)</div>
                                 <div id="preview-operator" class="text-white font-semibold font-mono mt-0.5">operator@example.com</div>
                             </div>
-                            <div class="bg-black/40 p-3 rounded-lg border border-white/5">
-                                <div class="text-[10px] font-mono text-slate-400 uppercase">Timestamp (UTC / IST)</div>
-                                <div id="preview-ts" class="text-white font-semibold font-mono mt-0.5">2026-09-01T04:35:59Z</div>
+                            <div onclick="inspectPart('timestamp')" class="highlight-box bg-black/40 p-3 rounded-lg border border-white/5">
+                                <div class="text-[10px] font-mono text-slate-400 uppercase">Timestamp (Click)</div>
+                                <div id="preview-ts" class="text-white font-semibold font-mono mt-0.5">2026-09-01T04:35:59Z (+05:30 IST)</div>
                             </div>
-                            <div class="bg-black/40 p-3 rounded-lg border border-white/5">
-                                <div class="text-[10px] font-mono text-slate-400 uppercase">Source Project</div>
+                            <div onclick="inspectPart('source')" class="highlight-box bg-black/40 p-3 rounded-lg border border-white/5">
+                                <div class="text-[10px] font-mono text-slate-400 uppercase">Source Project (Click)</div>
                                 <div id="preview-src" class="text-cyan-400 font-mono mt-0.5">prod-source-project (db: default)</div>
                             </div>
-                            <div class="bg-black/40 p-3 rounded-lg border border-white/5">
-                                <div class="text-[10px] font-mono text-slate-400 uppercase">Target Project</div>
+                            <div onclick="inspectPart('target')" class="highlight-box bg-black/40 p-3 rounded-lg border border-white/5">
+                                <div class="text-[10px] font-mono text-slate-400 uppercase">Target Project (Click)</div>
                                 <div id="preview-tgt" class="text-purple-400 font-mono mt-0.5">backup-target-project (db: default)</div>
                             </div>
                         </div>
 
                         <!-- Summary Details Box -->
-                        <div class="bg-black/50 p-4 rounded-xl border border-white/10 mb-4">
-                            <div class="text-[10px] font-mono text-slate-400 uppercase mb-1">Execution Summary &amp; Details</div>
+                        <div onclick="inspectPart('details')" class="highlight-box bg-black/50 p-4 rounded-xl border border-white/10 mb-4">
+                            <div class="text-[10px] font-mono text-slate-400 uppercase mb-1">Execution Summary &amp; Details (Click to inspect)</div>
                             <p id="preview-details" class="text-xs text-slate-200 leading-relaxed font-mono">
                                 Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed). Find &amp; Replace applied: 3 substitutions.
                             </p>
                         </div>
 
                         <!-- Footer Audit Hash -->
-                        <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-3 border-t border-white/5">
+                        <div onclick="inspectPart('auditid')" class="highlight-box flex items-center justify-between text-[10px] font-mono text-slate-500 pt-3 border-t border-white/5">
                             <span>Audit Record ID: <code id="preview-log-id" class="text-slate-400">log-880357903995-xyz</code></span>
                             <span class="text-emerald-400"><i class="fa-solid fa-shield-halved"></i> Verified OAuth Token</span>
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <!-- SECTION 3: DEEP DIVE ARCHITECTURE & SECURITY CONTROLS -->
-            <section class="mb-12">
-                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
-                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono">03</span>
-                    Security &amp; Non-Blocking Delivery Principles
-                </h2>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    
-                    <!-- Principle 1: Zero Client Credentials -->
-                    <div class="glass-panel p-5 border-cyan-500/30">
-                        <div class="flex items-center gap-2.5 text-cyan-400 font-bold text-sm mb-2 font-mono">
-                            <i class="fa-solid fa-key"></i> 1. Zero Client Credentials
-                        </div>
-                        <p class="text-xs text-slate-300 leading-relaxed">
-                            The Gmail App Password and SMTP credentials are never stored in browser memory, bundle files, or local storage. The secret is securely bound inside <strong>Google Cloud Secret Manager</strong> and decrypted exclusively in the serverless Cloud Functions runtime.
-                        </p>
+                <!-- Inspector Card -->
+                <div id="inspector-card" class="glass-panel p-4 border-indigo-500/40 bg-indigo-950/20">
+                    <div class="flex items-center gap-2 text-xs font-mono text-indigo-300 font-bold mb-1">
+                        <i class="fa-solid fa-circle-info"></i> <span id="inspector-title">Element Inspector: Click any element above to see how it works</span>
                     </div>
-
-                    <!-- Principle 2: Server-Side Identity Attestation -->
-                    <div class="glass-panel p-5 border-emerald-500/30">
-                        <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-sm mb-2 font-mono">
-                            <i class="fa-solid fa-id-badge"></i> 2. Server-Side Identity Attestation
-                        </div>
-                        <p class="text-xs text-slate-300 leading-relaxed">
-                            The operator email displayed in every email alert cannot be spoofed by client JSON. The backend extracts the bearer token, verifies it against Google’s OpenID <code>tokeninfo</code> server, and extracts the verified email address directly.
-                        </p>
-                    </div>
-
-                    <!-- Principle 3: Non-Blocking Graceful Resilience -->
-                    <div class="glass-panel p-5 border-amber-500/30">
-                        <div class="flex items-center gap-2.5 text-amber-400 font-bold text-sm mb-2 font-mono">
-                            <i class="fa-solid fa-bolt-slash"></i> 3. Non-Blocking Graceful Isolation
-                        </div>
-                        <p class="text-xs text-slate-300 leading-relaxed">
-                            Email dispatch runs asynchronously with comprehensive <code>.catch()</code> error boundaries. If Gmail SMTP experiences network latency or rate limits, Datastore mutations and audit log records persist with 100% reliability without throwing.
-                        </p>
-                    </div>
-
-                    <!-- Principle 4: Full HTML Sanitization -->
-                    <div class="glass-panel p-5 border-rose-500/30">
-                        <div class="flex items-center gap-2.5 text-rose-400 font-bold text-sm mb-2 font-mono">
-                            <i class="fa-solid fa-shield-virus"></i> 4. Rigorous HTML Entity Sanitization
-                        </div>
-                        <p class="text-xs text-slate-300 leading-relaxed">
-                            All user-supplied strings, Project IDs, Kind names, and details undergo rigorous HTML entity escaping (<code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&quot;</code>, <code>&#039;</code>) before rendering to eliminate email client XSS risks.
-                        </p>
-                    </div>
+                    <p id="inspector-desc" class="text-xs text-slate-300">
+                        Click the Subject, Status Badge, Operator Box, Project IDs, or Summary Details inside the email mockup to discover how our backend computes and sanitizes each piece of information.
+                    </p>
                 </div>
             </section>
 
-            <!-- SECTION 4: SOURCE CODE & UNIT TEST VERIFICATION -->
+            <!-- SECTION 4: 4 CRITICAL SECURITY QUESTIONS ANSWERED -->
             <section class="mb-12">
                 <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
-                    <span class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono">04</span>
-                    Source Code &amp; Test Suite Roster
+                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono">04</span>
+                    Frequently Asked Security Questions (Beginner FAQ)
                 </h2>
 
-                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
-                    The email notification subsystem is backed by 14 automated unit tests verifying subject generation, HTML escaping, mock SMTP transports, and fault isolation:
-                </p>
+                <div class="space-y-4">
+                    <!-- Q1 -->
+                    <div class="glass-panel p-5 border-cyan-500/30">
+                        <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-xs flex items-center justify-center font-mono">1</span>
+                            How does the system know the operator's REAL email address?
+                        </h3>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            When the user logs in, they supply a temporary Google Cloud Bearer token. When a request reaches our Cloud Function, the server does <strong>not</strong> trust any email string sent in the body. Instead, it contacts Google’s OAuth token server (<code>https://openidconnect.googleapis.com/v1/userinfo</code>) with the token. Google responds with the authoritative user profile email.
+                        </p>
+                    </div>
 
-                <div class="glass-panel p-4 overflow-hidden mb-6">
-                    <table class="w-full text-left text-xs text-slate-300 border-collapse">
-                        <thead>
-                            <tr class="border-b border-white/10 text-[11px] font-mono text-slate-400">
-                                <th class="py-2 px-3">Unit Test Description</th>
-                                <th class="py-2 px-3">Test File</th>
-                                <th class="py-2 px-3">Assertion Target</th>
-                                <th class="py-2 px-3">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-white/5 font-mono text-[11px]">
-                            <tr>
-                                <td class="py-2 px-3 text-slate-200">HTML entity sanitization &amp; null safety</td>
-                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
-                                <td class="py-2 px-3 text-cyan-400">escapeHtml()</td>
-                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
-                            </tr>
-                            <tr>
-                                <td class="py-2 px-3 text-slate-200">Subject formatting for Login, Analysis &amp; Copy</td>
-                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
-                                <td class="py-2 px-3 text-cyan-400">formatEmailSubject()</td>
-                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
-                            </tr>
-                            <tr>
-                                <td class="py-2 px-3 text-slate-200">Dark theme HTML email template rendering</td>
-                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
-                                <td class="py-2 px-3 text-cyan-400">formatEmailHtml()</td>
-                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
-                            </tr>
-                            <tr>
-                                <td class="py-2 px-3 text-slate-200">Mock SMTP transport delivery verification</td>
-                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
-                                <td class="py-2 px-3 text-cyan-400">sendMutationAlertEmail()</td>
-                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
-                            </tr>
-                            <tr>
-                                <td class="py-2 px-3 text-slate-200">Transporter failure isolation without throwing</td>
-                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
-                                <td class="py-2 px-3 text-cyan-400">Error boundary</td>
-                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <!-- Q2 -->
+                    <div class="glass-panel p-5 border-emerald-500/30">
+                        <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs flex items-center justify-center font-mono">2</span>
+                            Where is my Gmail App Password stored?
+                        </h3>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Your password is never saved in the source code or git repository. It is saved in <strong>Google Cloud Secret Manager</strong> under <code>ALERT_GMAIL_APP_PASSWORD</code>. Only our Cloud Function's dedicated service account has permission to read it during runtime execution.
+                        </p>
+                    </div>
+
+                    <!-- Q3 -->
+                    <div class="glass-panel p-5 border-amber-500/30">
+                        <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs flex items-center justify-center font-mono">3</span>
+                            What happens if Gmail SMTP is slow or times out? Will my database copy fail?
+                        </h3>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            <strong>No.</strong> The email dispatcher is wrapped in an asynchronous non-blocking error handler: <code>sendMutationAlertEmail().catch(...)</code>. If Gmail is unreachable, the audit record and database operations still complete with 100% success.
+                        </p>
+                    </div>
+
+                    <!-- Q4 -->
+                    <div class="glass-panel p-5 border-rose-500/30">
+                        <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-full bg-rose-500/20 text-rose-400 text-xs flex items-center justify-center font-mono">4</span>
+                            How do we prevent hackers from injecting malicious scripts into emails?
+                        </h3>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            All dynamic parameters (project names, kind names, error logs) pass through our <code>escapeHtml()</code> sanitizer function, which converts HTML reserved characters (<code>&lt;</code> ➔ <code>&amp;lt;</code>, <code>&gt;</code> ➔ <code>&amp;gt;</code>, <code>&quot;</code> ➔ <code>&amp;quot;</code>) to make email rendering completely safe.
+                        </p>
+                    </div>
                 </div>
             </section>
 
@@ -718,16 +729,6 @@ const document = await db.collection('audit_logs').add(record);`
             const data = templates[type];
             if (!data) return;
 
-            const tabs = ['copy', 'login', 'analyze', 'revert'];
-            tabs.forEach(t => {
-                const tabBtn = document.getElementById('tab-tpl-' + t);
-                if (t === type.toLowerCase()) {
-                    tabBtn.className = "px-4 py-2.5 font-bold border-b-2 border-cyan-400 text-cyan-400";
-                } else {
-                    tabBtn.className = "px-4 py-2.5 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200";
-                }
-            });
-
             document.getElementById('preview-subject').textContent = data.subject;
             document.getElementById('preview-operator').textContent = data.operator;
             document.getElementById('preview-src').textContent = data.src;
@@ -751,6 +752,54 @@ const document = await db.collection('audit_logs').add(record);`
                     setStage(s);
                 }
             }, 600);
+        }
+
+        // Inspector descriptions
+        const inspectorData = {
+            subject: {
+                title: "Email Subject Line",
+                desc: "Computed in formatEmailSubject(log). Automatically parses operation codes like DATASTORE_COPY into 'Datastore Copy', highlights failures with '[GCP Portal ALERT]', and includes the verified operator's name."
+            },
+            badge: {
+                title: "Status Badge (SUCCESS / FAILED / RESTORED)",
+                desc: "Rendered with color coding (Emerald for SUCCESS, Red for FAILED, Amber for PARTIAL/RESTORED). Shows at a glance if the database mutation succeeded."
+            },
+            operator: {
+                title: "Operator Identity",
+                desc: "Derived by the server from Google's OpenID userinfo endpoint using the caller's OAuth token. The user cannot manipulate this field."
+            },
+            timestamp: {
+                title: "Execution Timestamp",
+                desc: "Formatted in both UTC and Indian Standard Time (IST) directly by the backend when the audit record was stored in Cloud Firestore."
+            },
+            source: {
+                title: "Source Project & Database",
+                desc: "Identifies the origin GCP project ID and Datastore database ID (e.g. default) that was read from."
+            },
+            target: {
+                title: "Target Project & Database",
+                desc: "Identifies the destination GCP project ID that received the copied entities."
+            },
+            details: {
+                title: "Execution Summary & Find/Replace Stats",
+                desc: "Detailed string of what happened: entity count, kinds affected, number of string/integer Find & Replace substitutions applied, and error reasons if any failed."
+            },
+            auditid: {
+                title: "Audit Record ID Hash",
+                desc: "The unique Firestore Document ID of the immutable audit record. This allows admins and operators to cross-reference the email directly with the portal's Audit Log tab."
+            }
+        };
+
+        function inspectPart(key) {
+            const data = inspectorData[key];
+            if (!data) return;
+
+            document.getElementById('inspector-title').textContent = data.title;
+            document.getElementById('inspector-desc').textContent = data.desc;
+
+            const card = document.getElementById('inspector-card');
+            card.classList.add('scale-[1.01]', 'border-cyan-400');
+            setTimeout(() => card.classList.remove('scale-[1.01]', 'border-cyan-400'), 300);
         }
     </script>
 </body>
