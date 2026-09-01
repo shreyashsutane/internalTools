@@ -219,9 +219,22 @@ The portal automatically delivers real-time SMTP operational emails to **`shreya
 | **Datastore Copy** (`DATASTORE_COPY`) | `[GCP Portal] Datastore Copy: {email}` | Success/fail counts, kinds copied, Find & Replace rules breakdown, and direct audit record link. |
 | **Rollback Revert** (`DATASTORE_REVERT`) | `[GCP Portal] Datastore Revert: {email}` | 1-Click Rollback executed, pre-mutation state restored, and restore chunk telemetry. |
 
-### 2. Zero-Knowledge Security & Non-Blocking Isolation
+### 2. Enterprise Email Architecture & Itemized Breakdown
+The email notification engine generates a high-contrast, dark-theme HTML email with the following dedicated sections:
+* **Project Routing Pipeline**: High-contrast side-by-side visual boxes identifying the exact `📤 Source GCP Project & DB` and `📥 Destination GCP Project & DB`.
+* **Executive Summary Grid**: Displays verified operator OpenID, dual UTC/IST timestamps, total volume, and status badge (`SUCCESS`, `FAILED`, `RESTORED`).
+* **Entity Itemization Table**: Comprehensive table itemizing every entity touched with its:
+  - **Kind** (e.g. `UserProfile`, `Orders`)
+  - **Entity Key / ID** (e.g. `5629499534213120` or named key)
+  - **Display Name** (e.g. `"John Doe"` or `"Production Setup"`)
+  - **Action Taken** (`🟢 CREATED (New)`, `🟡 UPDATED (Replaced)`, `⏪ RESTORED`, `🗑️ DELETED`).
+* **Transformations Applied**: Explicit list of all string/integer Find & Replace substitution rules applied during the copy.
+* **Safety & Disaster Recovery**: Cloud Firestore immutable audit record ID with direct link button to the live Audit Log.
+
+### 3. Zero-Knowledge Security & Non-Blocking Isolation
 * **Zero Client Credentials**: The 16-character Google App Password (`ALERT_GMAIL_APP_PASSWORD`) resides strictly inside **GCP Secret Manager** and is injected only into the Cloud Functions runtime.
 * **Tamper-Proof Identity**: The operator email in the alert is extracted directly from Google's OpenID `tokeninfo` endpoint and cannot be forged by client JSON.
 * **Non-Blocking Fault Isolation**: Email delivery executes asynchronously with complete try/catch error boundaries. Any SMTP network timeout or quota limit is caught gracefully, guaranteeing that Datastore mutations and audit log persistence never fail.
-* **Automated Unit Testing**: Backed by 14 unit tests in `functions/test/email-notifier.test.js` covering HTML entity sanitization, mock SMTP transport delivery, and failure isolation.
+* **Automated Unit Testing**: Backed by 15 unit tests in `functions/test/email-notifier.test.js` covering HTML entity sanitization, mock SMTP transport delivery, entity parsing, and failure isolation.
+
 

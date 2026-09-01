@@ -2444,6 +2444,23 @@ export const App = {
                     ? ` [Ref: ${refNamesList.join(', ')}${Object.keys(entityDisplayNames).length > 3 ? '...' : ''}]`
                     : '';
 
+                const entitySummary = chunkBackupData.map(item => {
+                    const keyStr = item.keyStr || '';
+                    const parts = keyStr.split('/');
+                    const kind = parts.length > 1 ? parts[0] : batchKindLabel;
+                    const id = parts.length > 1 ? parts.slice(1).join('/') : keyStr;
+                    const rawDisp = entityDisplayNames[keyStr];
+                    const name = rawDisp ? (typeof rawDisp === 'object' ? rawDisp.value : rawDisp) : id;
+                    const action = item.action === 'CREATE' ? 'CREATED' : 'UPDATED';
+                    return { kind, id, key: keyStr, name, action };
+                });
+
+                const rulesSummary = activeRules.map(r => ({
+                    property: r.field || '*',
+                    target: r.target,
+                    replacement: r.replacement
+                }));
+
                 let backupState: any = {
                     type: "DATASTORE_COPY",
                     kind: batchKindLabel,
@@ -2452,7 +2469,9 @@ export const App = {
                     tgtDb: State.ds.tgtDb,
                     batch: `${batchNum}/${totalBatches}`,
                     backupData: chunkBackupData,
-                    entityDisplayNames
+                    entityDisplayNames,
+                    entitySummary,
+                    rulesSummary
                 };
 
                 // Native Gzip compression for maximum 1-click revert fidelity
@@ -2468,7 +2487,9 @@ export const App = {
                         tgtDb: State.ds.tgtDb,
                         batch: `${batchNum}/${totalBatches}`,
                         count: chunkStrs.length,
-                        entityDisplayNames
+                        entityDisplayNames,
+                        entitySummary,
+                        rulesSummary
                     };
                     if (AuditLog.canPersistPrevState(compressedState)) {
                         backupState = compressedState;

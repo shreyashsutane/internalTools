@@ -144,6 +144,7 @@ const updateOwnAuditLog = async (identity, payload) => {
             tgtProject: existing?.tgtProject || '—',
             status: payload.status,
             details: payload.details,
+            prevState: payload.hasPrevState ? payload.prevState : existing?.prevState,
             timestamp: existing?.timestamp || new Date().toISOString()
         };
     });

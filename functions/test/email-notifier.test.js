@@ -7,7 +7,9 @@ const {
     escapeHtml,
     formatEmailSubject,
     formatEmailHtml,
-    sendMutationAlertEmail
+    sendMutationAlertEmail,
+    extractEntityList,
+    extractRulesList
 } = require('../lib/email-notifier');
 
 test('escapeHtml sanitizes HTML entities and handles nulls safely', () => {
@@ -64,7 +66,7 @@ test('formatEmailSubject handles success, failure and custom statuses', () => {
     );
 });
 
-test('formatEmailHtml renders key metadata, routing and summary details', () => {
+test('formatEmailHtml renders routing pipeline, itemized entities and rules', () => {
     const html = formatEmailHtml({
         id: 'log-test-12345',
         operation: 'DATASTORE_COPY',
@@ -72,17 +74,59 @@ test('formatEmailHtml renders key metadata, routing and summary details', () => 
         user: 'shreyashs14102002@gmail.com',
         srcProject: 'prod-source-project (db: default)',
         tgtProject: 'backup-target-project',
-        details: 'Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed).',
-        timestamp: '2026-09-01T04:20:00.000Z'
+        details: 'Batch 1/1 copied 2 entities.',
+        timestamp: '2026-09-01T04:20:00.000Z',
+        entitySummary: [
+            { kind: 'UserProfile', id: '5629499534213120', name: 'John Doe', action: 'CREATED' },
+            { kind: 'Orders', id: 'ord-991', name: 'Express Shipping', action: 'UPDATED' }
+        ],
+        rulesSummary: [
+            { property: 'targetProjectId', target: 'prod-source', replacement: 'backup-target' }
+        ]
     });
 
     assert.match(html, /DATASTORE COPY Notification/);
     assert.match(html, /shreyashs14102002@gmail\.com/);
     assert.match(html, /prod-source-project \(db: default\)/);
     assert.match(html, /backup-target-project/);
-    assert.match(html, /Batch 1\/1 copied 42 entities/);
+    assert.match(html, /UserProfile/);
+    assert.match(html, /5629499534213120/);
+    assert.match(html, /John Doe/);
+    assert.match(html, /CREATED \(New\)/);
+    assert.match(html, /Orders/);
+    assert.match(html, /Express Shipping/);
+    assert.match(html, /UPDATED \(Replaced\)/);
+    assert.match(html, /targetProjectId/);
+    assert.match(html, /prod-source/);
+    assert.match(html, /backup-target/);
     assert.match(html, /log-test-12345/);
-    assert.match(html, /SUCCESS/);
+});
+
+test('extractEntityList parses uncompressed prevState backupData and displayNames', () => {
+    const list = extractEntityList({
+        prevState: {
+            kind: 'Config',
+            backupData: [
+                { keyStr: 'Config/1001', action: 'CREATE' },
+                { keyStr: 'Config/1002', action: 'UPDATE' }
+            ],
+            entityDisplayNames: {
+                'Config/1001': { fieldName: 'name', value: 'Production Setup' },
+                'Config/1002': 'Staging Setup'
+            }
+        }
+    });
+
+    assert.equal(list.length, 2);
+    assert.equal(list[0].kind, 'Config');
+    assert.equal(list[0].id, '1001');
+    assert.equal(list[0].name, 'Production Setup');
+    assert.equal(list[0].action, 'CREATED');
+
+    assert.equal(list[1].kind, 'Config');
+    assert.equal(list[1].id, '1002');
+    assert.equal(list[1].name, 'Staging Setup');
+    assert.equal(list[1].action, 'UPDATED');
 });
 
 test('sendMutationAlertEmail gracefully skips if app password is not configured', async () => {
