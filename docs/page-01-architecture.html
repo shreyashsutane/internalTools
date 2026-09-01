@@ -282,6 +282,87 @@
                         </ul>
                     </div>
                 </div>
+
+                <!-- Codebase Scale & Lines of Code Breakdown -->
+                <div class="glass-panel p-5 border-slate-700/50 bg-slate-900/40 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-code text-cyan-400"></i>
+                            <h3 class="text-sm font-bold text-white uppercase tracking-wider font-mono">Codebase Metrics &amp; Lines of Code</h3>
+                        </div>
+                        <span class="badge-pill bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px]">
+                            40,085 TOTAL LINES
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        <div class="bg-black/40 p-3 rounded-lg border border-white/5 text-center">
+                            <div class="text-xs text-slate-400">GCP Infra Manager</div>
+                            <div class="text-lg font-bold text-cyan-400 font-mono">15,094</div>
+                            <div class="text-[10px] text-slate-500">7,769 TS Source Lines</div>
+                        </div>
+                        <div class="bg-black/40 p-3 rounded-lg border border-white/5 text-center">
+                            <div class="text-xs text-slate-400">UI &amp; Guides</div>
+                            <div class="text-lg font-bold text-indigo-400 font-mono">19,219</div>
+                            <div class="text-[10px] text-slate-500">22 HTML Views &amp; Docs</div>
+                        </div>
+                        <div class="bg-black/40 p-3 rounded-lg border border-white/5 text-center">
+                            <div class="text-xs text-slate-400">Automated Tests</div>
+                            <div class="text-lg font-bold text-emerald-400 font-mono">2,383</div>
+                            <div class="text-[10px] text-slate-500">73 Test Assertions (100% Pass)</div>
+                        </div>
+                        <div class="bg-black/40 p-3 rounded-lg border border-white/5 text-center">
+                            <div class="text-xs text-slate-400">Backend Functions</div>
+                            <div class="text-lg font-bold text-purple-400 font-mono">1,138</div>
+                            <div class="text-[10px] text-slate-500">Audit &amp; Email Alerts</div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                            <thead>
+                                <tr class="border-b border-white/10 text-[11px] font-mono text-slate-400">
+                                    <th class="py-2 px-3">Module / Component</th>
+                                    <th class="py-2 px-3">Files</th>
+                                    <th class="py-2 px-3">Lines of Code</th>
+                                    <th class="py-2 px-3">Key Responsibilities</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5 font-sans">
+                                <tr>
+                                    <td class="py-2 px-3 font-semibold text-cyan-400 font-mono">GCP Infra Manager (TypeScript)</td>
+                                    <td class="py-2 px-3 font-mono">14</td>
+                                    <td class="py-2 px-3 font-mono font-bold text-white">7,769</td>
+                                    <td class="py-2 px-3 text-slate-400">Datastore streaming, AST/diff engine, Mochi companion, and batch mutations.</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-3 font-semibold text-cyan-300 font-mono">GCP Infra Manager (HTML &amp; CSS)</td>
+                                    <td class="py-2 px-3 font-mono">7</td>
+                                    <td class="py-2 px-3 font-mono font-bold text-white">7,325</td>
+                                    <td class="py-2 px-3 text-slate-400">Glassmorphic UI, rocket launcher overlay, standalone scripts, and modal views.</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-3 font-semibold text-purple-400 font-mono">SuperAdmin Hub &amp; Docs UI</td>
+                                    <td class="py-2 px-3 font-mono">20</td>
+                                    <td class="py-2 px-3 font-mono font-bold text-white">18,870</td>
+                                    <td class="py-2 px-3 text-slate-400">Compliance receipts, activity telemetry, interactive documentation suite.</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-3 font-semibold text-emerald-400 font-mono">Backend Functions &amp; Tests</td>
+                                    <td class="py-2 px-3 font-mono">18</td>
+                                    <td class="py-2 px-3 font-mono font-bold text-white">3,521</td>
+                                    <td class="py-2 px-3 text-slate-400">Secured Cloud Functions, rate-limiter, Gmail SMTP alerts, and unit test suites.</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-3 font-semibold text-slate-400 font-mono">Configs, Security Rules &amp; Docs</td>
+                                    <td class="py-2 px-3 font-mono">19</td>
+                                    <td class="py-2 px-3 font-mono font-bold text-white">2,600</td>
+                                    <td class="py-2 px-3 text-slate-400">Firestore security rules, Firebase Hosting headers, and markdown manuals.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </section>
 
             <!-- SECTION 2: FOUR-TIER ARCHITECTURAL TOPOLOGY -->

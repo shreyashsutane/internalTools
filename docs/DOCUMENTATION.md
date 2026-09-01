@@ -47,3 +47,30 @@ Every user who successfully verifies a Google Cloud access token is recorded by 
 ## External-Attack Protection
 
 The audit API accepts only exact same-origin `POST` requests and requires a bearer token in the `Authorization` header. It does not trust a client-supplied email. Payload sizes, operation names, statuses, nesting depth, object keys, and document IDs are validated. Per-user rate limiting, output encoding, no-store responses, security headers, owner checks, and least-privilege service-account access reduce token leakage, injection, cross-user access, abuse, and accidental exposure.
+
+## Codebase Metrics & Lines of Code Breakdown
+
+### 1. Overall Portal Codebase
+| Category / Layer | Files | Lines of Code | Description |
+| :--- | :---: | :---: | :--- |
+| **HTML (UI Pages & Documentation)** | 22 | **19,219** | Portal landing page, Datastore copier UI, SuperAdmin UI, and 19 interactive documentation guides. |
+| **TypeScript (Frontend Source)** | 19 | **9,734** | Core business logic, Datastore streaming, AST/diff engines, Assist AI mascot (Mochi), and audit UI. |
+| **JavaScript (Test Suites)** | 12 | **2,383** | Automated unit tests, security assertions, and backend integration test suites. |
+| **CSS (Stylesheets)** | 2 | **2,091** | Custom design system, dark-mode styling, animations, and modal overlays. |
+| **JavaScript (Backend Cloud Functions & Server)** | 6 | **1,138** | Secured Cloud Functions (`auditApi`), OAuth identity verification, rate limiting, and Gmail SMTP email alerts. |
+| **Documentation (Markdown)** | 6 | **600** | Project documentation, setup guides, and walkthroughs. |
+| **Configuration & Security Rules** | 5 | **227** | `firestore.rules`, `tsconfig.json`, `firebase.json`, and `package.json`. |
+| **Generated Bundles (esbuild)** | 2 | **996** | Minified production bundles (`datastore-copier/js/app.js`, `superadmin/js/app.js`). |
+| **Total Project Codebase** | **78** | **40,085** | *(Excluding `node_modules`, `.git`, and `.map` files)* |
+
+### 2. GCP Infrastructure Manager (`datastore-copier/`) Specifically
+| Component in GCP Infrastructure Manager | Files | Lines of Code | Description |
+| :--- | :---: | :---: | :--- |
+| **TypeScript Application Core (`src/`)** | 14 | **7,769** | `app.ts` (2,764), `ui.ts` (840), `datastore-utils.ts` (758), `assist.ts` (727), `assist-ui.ts` (563), `api.ts` (505), `audit.ts` (473), `diff.ts` (402), `easter-egg.ts` (275), `revert.ts` (216), `state.ts` (170), `utils.ts` (131), `sound.ts` (120), `config.ts` (25). |
+| **HTML UI & Component Previews** | 3 | **2,314** | `index.html` (941), `mascot-preview.html` (787), `rocket-loader-preview.html` (586). |
+| **CSS Stylesheet & Design System** | 1 | **1,858** | `css/app.css` (Glassmorphic cards, rocket launcher modal, dark grid, badge styling). |
+| **Standalone / Legacy Scripts** | 1 | **2,075** | `script.js` (Standalone browser reference implementation). |
+| **Documentation & Readme** | 1 | **54** | `README.md` |
+| **Generated Production Bundle** | 1 | **824** | `js/app.js` (Compiled with esbuild) |
+| **Total GCP Infrastructure Manager** | **21** | **15,094** | *(**14,270** lines of authored source code excluding compiled bundle)* |
+

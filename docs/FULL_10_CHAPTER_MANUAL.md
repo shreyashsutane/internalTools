@@ -33,6 +33,18 @@ The GCP Tools Portal is split into two specialized web applications sharing a co
 * **Tier 3: Direct GCP REST Mesh (Browser ↔ Google Cloud)**: All heavy Datastore and BigQuery API calls flow directly between the operator's browser and `googleapis.com` over TLS 1.3 without intermediary proxy inspection.
 * **Tier 4: Serverless Audit & Safety Bus (Cloud Functions + Firestore)**: The `auditApi` microservice verifies OAuth tokens against Google OpenID servers, enforces transaction rate-limits (120 req/min), and stores immutable audit snapshots.
 
+### 3. Codebase Metrics & Lines of Code Breakdown
+* **Overall Portal Scale**: **40,085 lines** across **78 files** (~35,392 lines of authored source code).
+* **GCP Infrastructure Manager**: **15,094 lines** across **21 files** (7,769 lines of TypeScript source across 14 modules).
+
+| Layer / Component | Files | Lines of Code | Description |
+| :--- | :---: | :---: | :--- |
+| **GCP Infra Manager (TypeScript)** | 14 | **7,769** | `app.ts` (2,764), `ui.ts` (840), `datastore-utils.ts` (758), `assist.ts` (727), `assist-ui.ts` (563), `api.ts` (505), `audit.ts` (473), etc. |
+| **GCP Infra Manager (HTML/CSS/Scripts)** | 7 | **7,325** | `index.html` (941), `css/app.css` (1,858), `script.js` (2,075), preview components (1,373), `js/app.js` bundle (824), `README.md` (54). |
+| **SuperAdmin & Shared Portal UI** | 20 | **18,870** | `superadmin/` (1,965 TS source lines), portal root index, interactive docs and tutorials. |
+| **Backend Functions & Security Tests** | 18 | **3,521** | Secured `auditApi` microservice, rate limiter, Gmail SMTP email alerts (`functions/`), and automated test suites (`tests/`). |
+| **Configuration & Policies** | 19 | **2,600** | Security headers, `firestore.rules`, JSON configs, and documentation guides. |
+
 ---
 
 ## Chapter 02: Authentication, Security & IAM Access Matrix
