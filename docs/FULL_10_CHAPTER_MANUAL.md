@@ -17,6 +17,7 @@
 8. [Chapter 08: SuperAdmin Governance Hub & Activity Telemetry](#chapter-08-superadmin-governance-hub--activity-telemetry)
 9. [Chapter 09: Mochi Companion, Web Audio FX & Easter Eggs](#chapter-09-mochi-companion-web-audio-fx--easter-eggs)
 10. [Chapter 10: Production Runbooks, Error Codes & Troubleshooting](#chapter-10-production-runbooks-error-codes--troubleshooting)
+11. [Chapter 11: Real-Time Operational Email Alerts & Delivery Engine](#chapter-11-real-time-operational-email-alerts--delivery-engine)
 
 ---
 
@@ -203,3 +204,24 @@ Entities are labeled using a prioritized property cascade:
 ### 2. Disaster Recovery Runbook
 * If an accidental overwrite occurs, locate the operation in the Audit Log and click **Revert**.
 * The portal restores previous entity values losslessly in bounded chunks.
+
+---
+
+## Chapter 11: Real-Time Operational Email Alerts & Delivery Engine
+
+### 1. Operational Event Dispatch Matrix
+The portal automatically delivers real-time SMTP operational emails to **`shreyashs14102002@gmail.com`** whenever an operator triggers any of the following lifecycle events:
+
+| Event Type | Subject Line Format | Triggered Actions & Data Payload |
+| :--- | :--- | :--- |
+| **User Login** (`AUTHENTICATION`) | `[GCP Portal] User Login: {email}` | Verified OAuth identity, sub-ID, and count of accessible GCP projects loaded. |
+| **Entity Analysis** (`DATASTORE_ANALYZE`) | `[GCP Portal] Datastore Analysis: {email}` | Source & target project IDs, kind list, total entities scanned, identical/mapped/diff/missing stats. |
+| **Datastore Copy** (`DATASTORE_COPY`) | `[GCP Portal] Datastore Copy: {email}` | Success/fail counts, kinds copied, Find & Replace rules breakdown, and direct audit record link. |
+| **Rollback Revert** (`DATASTORE_REVERT`) | `[GCP Portal] Datastore Revert: {email}` | 1-Click Rollback executed, pre-mutation state restored, and restore chunk telemetry. |
+
+### 2. Zero-Knowledge Security & Non-Blocking Isolation
+* **Zero Client Credentials**: The 16-character Google App Password (`ALERT_GMAIL_APP_PASSWORD`) resides strictly inside **GCP Secret Manager** and is injected only into the Cloud Functions runtime.
+* **Tamper-Proof Identity**: The operator email in the alert is extracted directly from Google's OpenID `tokeninfo` endpoint and cannot be forged by client JSON.
+* **Non-Blocking Fault Isolation**: Email delivery executes asynchronously with complete try/catch error boundaries. Any SMTP network timeout or quota limit is caught gracefully, guaranteeing that Datastore mutations and audit log persistence never fail.
+* **Automated Unit Testing**: Backed by 14 unit tests in `functions/test/email-notifier.test.js` covering HTML entity sanitization, mock SMTP transport delivery, and failure isolation.
+

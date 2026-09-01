@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Page 11: Real-Time Operational Email Alerts & Delivery Engine - GCP Tools Portal Technical Documentation. Interactive visual animated lifecycle, Gmail SMTP dispatch architecture, and zero-knowledge security.">
+    <title>Page 11: Email Alerts & Notification Engine | GCP Tools Portal Docs</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #060911;
+            --bg-sidebar: #0a0f1d;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #00d4ff;
+            --accent-emerald: #10b981;
+            --accent-purple: #c084fc;
+            --accent-amber: #fbbf24;
+            --accent-rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.65;
+        }
+
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .font-title { font-family: 'Space Grotesk', sans-serif; }
+
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        #reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #00d4ff, #c084fc, #f43f5e);
+            z-index: 9999;
+            transition: width 0.05s ease-out;
+        }
+
+        .sidebar-link.active {
+            background: rgba(0, 212, 255, 0.12);
+            color: #00d4ff;
+            border-left: 3px solid #00d4ff;
+            font-weight: 600;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        @keyframes flowGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(0, 212, 255, 0.6); }
+        }
+
+        .active-stage {
+            border-color: #00d4ff !important;
+            animation: flowGlow 2s infinite ease-in-out;
+        }
+
+        .email-mockup-frame {
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div id="reading-progress"></div>
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-40 bg-[#080d1a]/95 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <button id="btn-toggle-sidebar" class="lg:hidden p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <a href="../datastore-copier/index.html" class="flex items-center gap-2 text-white font-bold tracking-tight text-sm sm:text-base">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <span>GCP Tools Portal</span>
+                </a>
+                <span class="hidden sm:inline-flex badge-pill bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    Comprehensive Technical Manual • Page 11 of 11
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="v2.html" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition font-medium">
+                    <i class="fa-solid fa-book-open"></i> Full Master Manual
+                </a>
+                <a href="../datastore-copier/index.html" class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 transition">
+                    <i class="fa-solid fa-rocket"></i> Launch Portal
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-1 flex max-w-7xl mx-auto w-full">
+        
+        <!-- SIDEBAR -->
+        <aside id="doc-sidebar" class="fixed lg:sticky top-14 left-0 z-30 w-72 h-[calc(100vh-3.5rem)] bg-[#070b16] lg:bg-transparent border-r border-white/10 p-4 overflow-y-auto hidden lg:block transition-all duration-300">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-3 px-2 flex justify-between items-center">
+                <span>Documentation Modules</span>
+                <span class="text-cyan-400 font-bold">11 Pages</span>
+            </div>
+            
+            <nav class="space-y-1 text-xs">
+                <a href="page-01-architecture.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">01</span>
+                    <span class="flex-1">Architecture &amp; System Overview</span>
+                </a>
+                <a href="page-02-auth-iam.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">02</span>
+                    <span class="flex-1">Authentication, Security &amp; IAM</span>
+                </a>
+                <a href="page-03-datastore-migration.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">03</span>
+                    <span class="flex-1">Datastore Migration &amp; Batching</span>
+                </a>
+                <a href="page-04-bq-comparator.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">04</span>
+                    <span class="flex-1">BigQuery Schema Comparator</span>
+                </a>
+                <a href="page-05-sql-diff-ast.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">05</span>
+                    <span class="flex-1">SQL Diffing &amp; AST Engine</span>
+                </a>
+                <a href="page-06-safety-audit-rollback.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">06</span>
+                    <span class="flex-1">Safety, Auditing &amp; 1-Click Rollback</span>
+                </a>
+                <a href="page-07-find-replace-names.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">07</span>
+                    <span class="flex-1">Find &amp; Replace &amp; Display Names</span>
+                </a>
+                <a href="page-08-superadmin-hub.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">08</span>
+                    <span class="flex-1">SuperAdmin Hub &amp; Telemetry</span>
+                </a>
+                <a href="page-09-mochi-companion.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">09</span>
+                    <span class="flex-1">Mochi Companion &amp; Audio FX</span>
+                </a>
+                <a href="page-10-runbooks-troubleshooting.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">10</span>
+                    <span class="flex-1">Runbooks &amp; Troubleshooting</span>
+                </a>
+                <a href="page-11-email-notifications.html" class="sidebar-link active flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-cyan-400">11</span>
+                    <span class="flex-1 font-medium">Email Alerts &amp; Notifications</span>
+                    <i class="fa-solid fa-chevron-right text-[9px] text-cyan-400"></i>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 min-w-0 p-4 sm:p-8 lg:p-10 max-w-4xl">
+            
+            <!-- Breadcrumbs -->
+            <div class="flex items-center gap-2 text-xs text-slate-400 mb-4 font-mono">
+                <a href="index.html" class="hover:text-cyan-400">Documentation</a>
+                <span>/</span>
+                <span class="text-slate-200">Module 11</span>
+                <span>/</span>
+                <span class="text-cyan-400 font-semibold">Email Alerts &amp; Notification Engine</span>
+            </div>
+
+            <!-- Page Title -->
+            <div class="border-b border-white/10 pb-6 mb-8">
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono font-semibold mb-3">
+                    CHAPTER 11 • OPERATIONAL TELEMETRY &amp; EMAIL DISPATCH
+                </div>
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight mb-3 font-title">
+                    Real-Time Operational Email Alerts &amp; Delivery Engine
+                </h1>
+                <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+                    A comprehensive architectural guide to how the portal securely crafts, verifies, and delivers real-time SMTP operational emails to <strong>shreyashs14102002@gmail.com</strong> whenever any user logs in, analyzes entities, commits mutations, or executes rollbacks.
+                </p>
+            </div>
+
+            <!-- SECTION 1: INTERACTIVE ANIMATED LIFECYCLE STEPPER -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">01</span>
+                    Interactive End-to-End Email Lifecycle Stepper
+                </h2>
+                
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Click any stage in the pipeline to examine the payload transformation, security validations, and SMTP handshakes in real time:
+                </p>
+
+                <!-- Interactive Stage Selector Buttons -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button onclick="setStage(1)" id="btn-st-1" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-cyan-500 text-slate-950 transition flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-slate-900 text-cyan-400 text-[10px] flex items-center justify-center">1</span> Client Trigger
+                    </button>
+                    <button onclick="setStage(2)" id="btn-st-2" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">2</span> Identity Token
+                    </button>
+                    <button onclick="setStage(3)" id="btn-st-3" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">3</span> Audit Persistence
+                    </button>
+                    <button onclick="setStage(4)" id="btn-st-4" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">4</span> HTML Generator
+                    </button>
+                    <button onclick="setStage(5)" id="btn-st-5" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">5</span> Secret Manager
+                    </button>
+                    <button onclick="setStage(6)" id="btn-st-6" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
+                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">6</span> Gmail SMTP
+                    </button>
+                </div>
+
+                <!-- Active Stage Visual Panel -->
+                <div id="stage-panel" class="glass-panel p-6 border-cyan-500/40 relative overflow-hidden transition-all duration-300 mb-6">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div id="stage-icon-bg" class="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-lg">
+                                <i id="stage-icon" class="fa-solid fa-bolt"></i>
+                            </div>
+                            <div>
+                                <div id="stage-badge" class="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-bold">Stage 1 of 6</div>
+                                <h3 id="stage-title" class="text-base sm:text-lg font-bold text-white font-title">Operational Event Triggered in Browser</h3>
+                            </div>
+                        </div>
+                        <span id="stage-security" class="badge-pill bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px]">
+                            CLIENT RAM ONLY
+                        </span>
+                    </div>
+
+                    <p id="stage-desc" class="text-xs sm:text-sm text-slate-300 mb-4 leading-relaxed">
+                        An operator logs in, runs an entity comparison, commits a batch of Datastore entities, or clicks rollback. The client browser compiles the operational details and makes a POST request to <code>/api/audit_logs</code> with an ephemeral Bearer token in the <code>Authorization</code> header.
+                    </p>
+
+                    <!-- Dynamic Visual Code Snippet -->
+                    <div class="bg-black/60 rounded-xl p-4 border border-white/10 font-mono text-xs text-slate-300 overflow-x-auto">
+                        <div class="flex items-center justify-between text-[11px] text-slate-500 pb-2 border-b border-white/5 mb-2">
+                            <span id="code-snippet-title">datastore-copier/src/audit.ts</span>
+                            <span class="text-cyan-400">JSON Payload</span>
+                        </div>
+                        <pre id="stage-code" class="text-emerald-400"><code>await AuditLog.addLog(
+    'DATASTORE_COPY',
+    'prod-source-project',
+    'backup-target-project',
+    'Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed).',
+    'SUCCESS'
+);</code></pre>
+                    </div>
+                </div>
+
+                <!-- Simulation Action Controls -->
+                <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-700/50 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-play text-cyan-400"></i>
+                        <span class="text-xs font-bold text-white font-mono uppercase">Event Simulator:</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="simulateEvent('LOGIN')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
+                            <i class="fa-solid fa-key text-cyan-400"></i> Login
+                        </button>
+                        <button onclick="simulateEvent('ANALYZE')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
+                            <i class="fa-solid fa-magnifying-glass text-indigo-400"></i> Analysis
+                        </button>
+                        <button onclick="simulateEvent('COPY')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
+                            <i class="fa-solid fa-copy text-emerald-400"></i> Copy
+                        </button>
+                        <button onclick="simulateEvent('REVERT')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
+                            <i class="fa-solid fa-rotate-left text-amber-400"></i> Revert
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: LIVE EMAIL TEMPLATE PREVIEWS -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono">02</span>
+                    High-Fidelity Email Template Previews
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Select an operational event below to inspect the exact dark-mode HTML email formatted and delivered to your inbox:
+                </p>
+
+                <!-- Template Selector Tabs -->
+                <div class="flex border-b border-white/10 mb-4 text-xs font-mono">
+                    <button onclick="switchTemplate('COPY')" id="tab-tpl-copy" class="px-4 py-2.5 font-bold border-b-2 border-cyan-400 text-cyan-400">
+                        Datastore Copy Alert
+                    </button>
+                    <button onclick="switchTemplate('LOGIN')" id="tab-tpl-login" class="px-4 py-2.5 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                        User Login Alert
+                    </button>
+                    <button onclick="switchTemplate('ANALYZE')" id="tab-tpl-analyze" class="px-4 py-2.5 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                        Entity Analysis Alert
+                    </button>
+                    <button onclick="switchTemplate('REVERT')" id="tab-tpl-revert" class="px-4 py-2.5 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">
+                        Rollback Revert Alert
+                    </button>
+                </div>
+
+                <!-- Mock Email Client Wrapper -->
+                <div class="email-mockup-frame p-4 sm:p-6">
+                    <!-- Email Header Metadata -->
+                    <div class="border-b border-white/10 pb-4 mb-4 text-xs space-y-1.5 font-mono">
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">From:</span>
+                            <span class="text-slate-200 font-semibold">GCP Tools Portal &lt;shreyashs14102002@gmail.com&gt;</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">To:</span>
+                            <span class="text-cyan-400 font-semibold">shreyashs14102002@gmail.com</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-slate-400">Subject:</span>
+                            <span id="preview-subject" class="text-emerald-400 font-bold">[GCP Portal] Datastore Copy: operator@example.com</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] text-slate-500">
+                            <span>Date:</span>
+                            <span id="preview-date">Tue, 01 Sep 2026 04:35:59 UTC (+05:30 IST)</span>
+                        </div>
+                    </div>
+
+                    <!-- Email Body Container (Dark Theme Rendering) -->
+                    <div id="preview-body-container" class="rounded-xl bg-[#0b101d] border border-white/10 p-5 font-sans">
+                        
+                        <!-- Top Header Badge -->
+                        <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-sm font-bold">
+                                    GCP
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-white tracking-tight">GCP TOOLS PORTAL</div>
+                                    <div class="text-[10px] font-mono text-slate-400">Infrastructure Operations Telemetry</div>
+                                </div>
+                            </div>
+                            <span id="preview-status-badge" class="badge-pill bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px]">
+                                SUCCESS
+                            </span>
+                        </div>
+
+                        <!-- Routing Metadata Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
+                            <div class="bg-black/40 p-3 rounded-lg border border-white/5">
+                                <div class="text-[10px] font-mono text-slate-400 uppercase">Operator Identity</div>
+                                <div id="preview-operator" class="text-white font-semibold font-mono mt-0.5">operator@example.com</div>
+                            </div>
+                            <div class="bg-black/40 p-3 rounded-lg border border-white/5">
+                                <div class="text-[10px] font-mono text-slate-400 uppercase">Timestamp (UTC / IST)</div>
+                                <div id="preview-ts" class="text-white font-semibold font-mono mt-0.5">2026-09-01T04:35:59Z</div>
+                            </div>
+                            <div class="bg-black/40 p-3 rounded-lg border border-white/5">
+                                <div class="text-[10px] font-mono text-slate-400 uppercase">Source Project</div>
+                                <div id="preview-src" class="text-cyan-400 font-mono mt-0.5">prod-source-project (db: default)</div>
+                            </div>
+                            <div class="bg-black/40 p-3 rounded-lg border border-white/5">
+                                <div class="text-[10px] font-mono text-slate-400 uppercase">Target Project</div>
+                                <div id="preview-tgt" class="text-purple-400 font-mono mt-0.5">backup-target-project (db: default)</div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Details Box -->
+                        <div class="bg-black/50 p-4 rounded-xl border border-white/10 mb-4">
+                            <div class="text-[10px] font-mono text-slate-400 uppercase mb-1">Execution Summary &amp; Details</div>
+                            <p id="preview-details" class="text-xs text-slate-200 leading-relaxed font-mono">
+                                Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed). Find &amp; Replace applied: 3 substitutions.
+                            </p>
+                        </div>
+
+                        <!-- Footer Audit Hash -->
+                        <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-3 border-t border-white/5">
+                            <span>Audit Record ID: <code id="preview-log-id" class="text-slate-400">log-880357903995-xyz</code></span>
+                            <span class="text-emerald-400"><i class="fa-solid fa-shield-halved"></i> Verified OAuth Token</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: DEEP DIVE ARCHITECTURE & SECURITY CONTROLS -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono">03</span>
+                    Security &amp; Non-Blocking Delivery Principles
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    
+                    <!-- Principle 1: Zero Client Credentials -->
+                    <div class="glass-panel p-5 border-cyan-500/30">
+                        <div class="flex items-center gap-2.5 text-cyan-400 font-bold text-sm mb-2 font-mono">
+                            <i class="fa-solid fa-key"></i> 1. Zero Client Credentials
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            The Gmail App Password and SMTP credentials are never stored in browser memory, bundle files, or local storage. The secret is securely bound inside <strong>Google Cloud Secret Manager</strong> and decrypted exclusively in the serverless Cloud Functions runtime.
+                        </p>
+                    </div>
+
+                    <!-- Principle 2: Server-Side Identity Attestation -->
+                    <div class="glass-panel p-5 border-emerald-500/30">
+                        <div class="flex items-center gap-2.5 text-emerald-400 font-bold text-sm mb-2 font-mono">
+                            <i class="fa-solid fa-id-badge"></i> 2. Server-Side Identity Attestation
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            The operator email displayed in every email alert cannot be spoofed by client JSON. The backend extracts the bearer token, verifies it against Google’s OpenID <code>tokeninfo</code> server, and extracts the verified email address directly.
+                        </p>
+                    </div>
+
+                    <!-- Principle 3: Non-Blocking Graceful Resilience -->
+                    <div class="glass-panel p-5 border-amber-500/30">
+                        <div class="flex items-center gap-2.5 text-amber-400 font-bold text-sm mb-2 font-mono">
+                            <i class="fa-solid fa-bolt-slash"></i> 3. Non-Blocking Graceful Isolation
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Email dispatch runs asynchronously with comprehensive <code>.catch()</code> error boundaries. If Gmail SMTP experiences network latency or rate limits, Datastore mutations and audit log records persist with 100% reliability without throwing.
+                        </p>
+                    </div>
+
+                    <!-- Principle 4: Full HTML Sanitization -->
+                    <div class="glass-panel p-5 border-rose-500/30">
+                        <div class="flex items-center gap-2.5 text-rose-400 font-bold text-sm mb-2 font-mono">
+                            <i class="fa-solid fa-shield-virus"></i> 4. Rigorous HTML Entity Sanitization
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            All user-supplied strings, Project IDs, Kind names, and details undergo rigorous HTML entity escaping (<code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&quot;</code>, <code>&#039;</code>) before rendering to eliminate email client XSS risks.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 4: SOURCE CODE & UNIT TEST VERIFICATION -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono">04</span>
+                    Source Code &amp; Test Suite Roster
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    The email notification subsystem is backed by 14 automated unit tests verifying subject generation, HTML escaping, mock SMTP transports, and fault isolation:
+                </p>
+
+                <div class="glass-panel p-4 overflow-hidden mb-6">
+                    <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                        <thead>
+                            <tr class="border-b border-white/10 text-[11px] font-mono text-slate-400">
+                                <th class="py-2 px-3">Unit Test Description</th>
+                                <th class="py-2 px-3">Test File</th>
+                                <th class="py-2 px-3">Assertion Target</th>
+                                <th class="py-2 px-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5 font-mono text-[11px]">
+                            <tr>
+                                <td class="py-2 px-3 text-slate-200">HTML entity sanitization &amp; null safety</td>
+                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
+                                <td class="py-2 px-3 text-cyan-400">escapeHtml()</td>
+                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-3 text-slate-200">Subject formatting for Login, Analysis &amp; Copy</td>
+                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
+                                <td class="py-2 px-3 text-cyan-400">formatEmailSubject()</td>
+                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-3 text-slate-200">Dark theme HTML email template rendering</td>
+                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
+                                <td class="py-2 px-3 text-cyan-400">formatEmailHtml()</td>
+                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-3 text-slate-200">Mock SMTP transport delivery verification</td>
+                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
+                                <td class="py-2 px-3 text-cyan-400">sendMutationAlertEmail()</td>
+                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-3 text-slate-200">Transporter failure isolation without throwing</td>
+                                <td class="py-2 px-3 text-slate-400">email-notifier.test.js</td>
+                                <td class="py-2 px-3 text-cyan-400">Error boundary</td>
+                                <td class="py-2 px-3"><span class="badge-pill bg-emerald-500/20 text-emerald-300">PASS</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- FOOTER NAVIGATION -->
+            <div class="border-t border-white/10 pt-8 flex items-center justify-between text-xs font-mono">
+                <a href="page-10-runbooks-troubleshooting.html" class="flex items-center gap-2 text-slate-400 hover:text-cyan-400 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Page 10: Runbooks &amp; Troubleshooting</span>
+                </a>
+                <a href="v2.html" class="flex items-center gap-2 text-slate-400 hover:text-cyan-400 transition">
+                    <span>Back to Master Index</span>
+                    <i class="fa-solid fa-book-open"></i>
+                </a>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // Reading Progress Bar
+        window.addEventListener('scroll', () => {
+            const total = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (window.scrollY / total) * 100;
+            document.getElementById('reading-progress').style.width = progress + '%';
+        });
+
+        // Mobile Sidebar Toggle
+        const sidebar = document.getElementById('doc-sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+        }
+
+        // Stepper Interactive Stages Data
+        const stages = {
+            1: {
+                title: "Operational Event Triggered in Browser",
+                icon: "fa-bolt",
+                badge: "Stage 1 of 6 • Client Event",
+                security: "CLIENT RAM ONLY",
+                securityClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+                desc: "An operator logs in, compares entities, copies Datastore entities, or clicks rollback. The client browser compiles the operational details and makes a POST request to /api/audit_logs with an ephemeral Bearer token in the Authorization header.",
+                codeTitle: "datastore-copier/src/audit.ts",
+                code: `await AuditLog.addLog(
+    'DATASTORE_COPY',
+    'prod-source-project',
+    'backup-target-project',
+    'Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed).',
+    'SUCCESS'
+);`
+            },
+            2: {
+                title: "Server-Side OAuth Identity Attestation",
+                icon: "fa-shield-halved",
+                badge: "Stage 2 of 6 • Google OAuth",
+                security: "VERIFIED OPENID",
+                securityClass: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
+                desc: "The Cloud Function extracts the Bearer token and verifies it directly against Google's OAuth2 tokeninfo endpoint (https://openidconnect.googleapis.com/v1/userinfo). The operator email is derived authoritatively from Google and cannot be spoofed by the client.",
+                codeTitle: "functions/index.js",
+                code: `const verifyGoogleIdentity = async token => {
+    const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+        headers: { Authorization: \`Bearer \${token}\` }
+    });
+    const profile = await res.json();
+    return { email: profile.email, subject: profile.sub };
+};`
+            },
+            3: {
+                title: "Firestore Audit Record & Snapshot Persistence",
+                icon: "fa-database",
+                badge: "Stage 3 of 6 • Cloud Firestore",
+                security: "TRANSACTIONALLY LOCKED",
+                securityClass: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+                desc: "The audit service saves the verified operation record, timestamps, and minified revert snapshot to the audit_logs collection via the least-privilege service account (audit-logger@gcp-tools-portal.iam.gserviceaccount.com).",
+                codeTitle: "functions/index.js",
+                code: `const record = {
+    timestamp: new Date().toISOString(),
+    user: identity.email,
+    operation: payload.operation,
+    srcProject: payload.srcProject,
+    tgtProject: payload.tgtProject,
+    status: payload.status,
+    details: payload.details
+};
+const document = await db.collection('audit_logs').add(record);`
+            },
+            4: {
+                title: "HTML Template Generation & Sanitization",
+                icon: "fa-envelope-open-text",
+                badge: "Stage 4 of 6 • Template Engine",
+                security: "XSS SANITIZED",
+                securityClass: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40",
+                desc: "The email-notifier module applies rigorous entity escaping (escapeHtml) on all inputs, calculates readable subjects (e.g. '[GCP Portal] Datastore Copy: operator@example.com'), and builds the responsive dark-mode HTML template.",
+                codeTitle: "functions/lib/email-notifier.js",
+                code: `const formatEmailSubject = log => {
+    let opName = log.operation.replace(/_/g, ' ');
+    if (log.operation === 'AUTHENTICATION') opName = 'User Login';
+    if (log.operation === 'DATASTORE_ANALYZE') opName = 'Datastore Analysis';
+    return \`[GCP Portal] \${opName}: \${log.user}\`;
+};`
+            },
+            5: {
+                title: "Decryption of SMTP Secret from GCP Secret Manager",
+                icon: "fa-key",
+                badge: "Stage 5 of 6 • Secret Manager",
+                security: "ENCRYPTED AT REST",
+                securityClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+                desc: "Cloud Functions retrieves the 16-character Google App Password (ALERT_GMAIL_APP_PASSWORD) from GCP Secret Manager at runtime. The credential never touches client browsers or source repositories.",
+                codeTitle: "GCP Secret Manager Binding",
+                code: `exports.auditApi = onRequest({
+    region: 'us-central1',
+    secrets: ['ALERT_GMAIL_APP_PASSWORD'],
+    serviceAccount: 'audit-logger@gcp-tools-portal.iam.gserviceaccount.com'
+}, async (req, res) => { ... });`
+            },
+            6: {
+                title: "TLS 1.3 Gmail SMTP Dispatch & Delivery",
+                icon: "fa-paper-plane",
+                badge: "Stage 6 of 6 • Nodemailer SMTP",
+                security: "TLS 1.3 ENCRYPTED",
+                securityClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+                desc: "Nodemailer establishes an encrypted TLS 1.3 connection to smtp.gmail.com:465 and delivers the alert directly to shreyashs14102002@gmail.com. If SMTP fails, the error is logged without disrupting Datastore operations.",
+                codeTitle: "functions/lib/email-notifier.js",
+                code: `const info = await transporter.sendMail({
+    from: \`"GCP Tools Portal" <\${sender}>\`,
+    to: 'shreyashs14102002@gmail.com',
+    subject: formatEmailSubject(log),
+    html: formatEmailHtml(log)
+});`
+            }
+        };
+
+        function setStage(num) {
+            const data = stages[num];
+            if (!data) return;
+
+            for (let i = 1; i <= 6; i++) {
+                const btn = document.getElementById('btn-st-' + i);
+                if (i === num) {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-cyan-500 text-slate-950 transition flex items-center gap-1.5";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5";
+                }
+            }
+
+            document.getElementById('stage-badge').textContent = data.badge;
+            document.getElementById('stage-title').textContent = data.title;
+            document.getElementById('stage-desc').textContent = data.desc;
+            document.getElementById('stage-code').textContent = data.code;
+            document.getElementById('code-snippet-title').textContent = data.codeTitle;
+            document.getElementById('stage-icon').className = "fa-solid " + data.icon;
+            
+            const sec = document.getElementById('stage-security');
+            sec.textContent = data.security;
+            sec.className = "badge-pill text-[10px] " + data.securityClass;
+
+            const panel = document.getElementById('stage-panel');
+            panel.classList.add('active-stage');
+            setTimeout(() => panel.classList.remove('active-stage'), 400);
+        }
+
+        // Email Templates Switcher Data
+        const templates = {
+            COPY: {
+                subject: "[GCP Portal] Datastore Copy: operator@example.com",
+                badge: "SUCCESS",
+                badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+                operator: "operator@example.com",
+                src: "prod-source-project (db: default)",
+                tgt: "backup-target-project (db: default)",
+                details: "Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed). Find & Replace applied: 3 substitutions."
+            },
+            LOGIN: {
+                subject: "[GCP Portal] User Login: developer@company.com",
+                badge: "AUTHENTICATED",
+                badgeClass: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
+                operator: "developer@company.com",
+                src: "—",
+                tgt: "—",
+                details: "User verified Google OAuth2 token successfully. Loaded 14 accessible GCP projects."
+            },
+            ANALYZE: {
+                subject: "[GCP Portal] Datastore Analysis: auditor@company.com",
+                badge: "COMPLETED",
+                badgeClass: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40",
+                operator: "auditor@company.com",
+                src: "analytics-prod (db: default)",
+                tgt: "analytics-stage (db: default)",
+                details: "Analyzed 4 kinds (AppConfig, FeatureFlags, Transactions, Logs). Total: 180; identical: 150; mapped: 20; different: 10; missing: 0."
+            },
+            REVERT: {
+                subject: "[GCP Portal] Datastore Revert: admin@example.com",
+                badge: "RESTORED",
+                badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+                operator: "admin@example.com",
+                src: "backup-target-project",
+                tgt: "prod-source-project",
+                details: "1-Click Rollback executed for batch ID batch-9981. Restored 42 entities to previous state."
+            }
+        };
+
+        function switchTemplate(type) {
+            const data = templates[type];
+            if (!data) return;
+
+            const tabs = ['copy', 'login', 'analyze', 'revert'];
+            tabs.forEach(t => {
+                const tabBtn = document.getElementById('tab-tpl-' + t);
+                if (t === type.toLowerCase()) {
+                    tabBtn.className = "px-4 py-2.5 font-bold border-b-2 border-cyan-400 text-cyan-400";
+                } else {
+                    tabBtn.className = "px-4 py-2.5 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+                }
+            });
+
+            document.getElementById('preview-subject').textContent = data.subject;
+            document.getElementById('preview-operator').textContent = data.operator;
+            document.getElementById('preview-src').textContent = data.src;
+            document.getElementById('preview-tgt').textContent = data.tgt;
+            document.getElementById('preview-details').textContent = data.details;
+            
+            const badge = document.getElementById('preview-status-badge');
+            badge.textContent = data.badge;
+            badge.className = "badge-pill text-[10px] " + data.badgeClass;
+        }
+
+        function simulateEvent(type) {
+            switchTemplate(type);
+            setStage(1);
+            let s = 1;
+            const timer = setInterval(() => {
+                s++;
+                if (s > 6) {
+                    clearInterval(timer);
+                } else {
+                    setStage(s);
+                }
+            }, 600);
+        }
+    </script>
+</body>
+</html>
