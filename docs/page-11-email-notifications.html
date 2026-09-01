@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Page 11: Real-Time Operational Email Alerts & Delivery Engine - Beginner & Advanced Guide. Interactive visual animated lifecycle, Gmail SMTP dispatch architecture, and zero-knowledge security.">
+    <meta name="description" content="Page 11: Real-Time Operational Email Alerts & Delivery Engine - Beginner & Advanced Guide. Interactive visual animated lifecycle, Gmail SMTP dispatch architecture, HTML formation engine, and zero-knowledge security.">
     <title>Page 11: Email Alerts & Notification Engine (Beginner Guide) | GCP Tools Portal Docs</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -284,104 +284,114 @@
                 </div>
             </section>
 
-            <!-- SECTION 2: INTERACTIVE ANIMATED LIFECYCLE STEPPER -->
+            <!-- SECTION 2: SEQUENCE FLOW CHART -->
             <section class="mb-12">
                 <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
                     <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">02</span>
-                    Interactive End-to-End Visual Stepper
+                    Interactive Sequence Flow Chart
                 </h2>
                 
                 <p class="text-sm text-slate-300 mb-4 leading-relaxed">
-                    Click through the 6 stages below to watch how an event transforms into a delivered email in real time:
+                    Here is the exact message flow showing how each system component interacts securely:
                 </p>
 
-                <!-- Interactive Stage Selector Buttons -->
-                <div class="flex flex-wrap gap-2 mb-6">
-                    <button onclick="setStage(1)" id="btn-st-1" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-cyan-500 text-slate-950 transition flex items-center gap-1.5">
-                        <span class="w-4 h-4 rounded-full bg-slate-900 text-cyan-400 text-[10px] flex items-center justify-center">1</span> Client Trigger
-                    </button>
-                    <button onclick="setStage(2)" id="btn-st-2" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
-                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">2</span> Identity Token
-                    </button>
-                    <button onclick="setStage(3)" id="btn-st-3" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
-                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">3</span> Audit Persistence
-                    </button>
-                    <button onclick="setStage(4)" id="btn-st-4" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
-                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">4</span> HTML Generator
-                    </button>
-                    <button onclick="setStage(5)" id="btn-st-5" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
-                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">5</span> Secret Manager
-                    </button>
-                    <button onclick="setStage(6)" id="btn-st-6" class="px-3 py-1.5 rounded-lg text-xs font-mono font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition flex items-center gap-1.5">
-                        <span class="w-4 h-4 rounded-full bg-white/10 text-slate-400 text-[10px] flex items-center justify-center">6</span> Gmail SMTP
-                    </button>
+                <!-- Mermaid Diagram -->
+                <div class="glass-panel p-6 mb-6 overflow-x-auto">
+                    <pre class="mermaid text-xs font-mono">
+sequenceDiagram
+    autonumber
+    actor User as Operator (Browser)
+    participant CF as Cloud Function (auditApi)
+    participant GoogleAuth as Google OAuth (tokeninfo)
+    participant Firestore as Cloud Firestore
+    participant SecretMgr as GCP Secret Manager
+    participant Nodemailer as Email Engine (Nodemailer)
+    actor Inbox as Your Inbox (shreyashs14102002@gmail.com)
+
+    User->>CF: 1. Action Triggered (Login / Analyze / Copy / Revert)
+    Note over User,CF: POST /api/audit_logs with Bearer Token in Header
+    CF->>GoogleAuth: 2. Verify Bearer Token against Google OpenID
+    GoogleAuth-->>CF: 3. Returns Verified Email ("operator@example.com")
+    CF->>Firestore: 4. Persist Audit Record & Revert Snapshot
+    Note over CF,SecretMgr: 5. Fetch Gmail App Password from Secret Vault
+    CF->>Nodemailer: 6. Build HTML Template & Format Subject Line
+    Nodemailer->>Inbox: 7. Deliver via TLS 1.3 Gmail SMTP (Port 465)
+                    </pre>
                 </div>
+            </section>
 
-                <!-- Active Stage Visual Panel -->
-                <div id="stage-panel" class="glass-panel p-6 border-cyan-500/40 relative overflow-hidden transition-all duration-300 mb-6">
-                    <div class="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
-                        <div class="flex items-center gap-3">
-                            <div id="stage-icon-bg" class="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-lg">
-                                <i id="stage-icon" class="fa-solid fa-bolt"></i>
-                            </div>
-                            <div>
-                                <div id="stage-badge" class="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-bold">Stage 1 of 6</div>
-                                <h3 id="stage-title" class="text-base sm:text-lg font-bold text-white font-title">Operational Event Triggered in Browser</h3>
-                            </div>
+            <!-- SECTION 3: HOW THE HTML IS FORMED & ASSEMBLED -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono">03</span>
+                    How the HTML Email is Formed &amp; Rendered
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    Instead of sending heavy raw database snapshots or plain unformatted text, the backend dynamically builds a <strong>responsive, dark-mode HTML email</strong> using a 4-step assembly pipeline:
+                </p>
+
+                <!-- 4 Steps of HTML Formation -->
+                <div class="space-y-4 mb-6">
+                    <!-- Step A -->
+                    <div class="glass-panel p-5 border-cyan-500/30">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold font-mono text-cyan-400 uppercase">Step A: Extracting &amp; Sanitizing Data</span>
+                            <span class="badge-pill bg-cyan-500/10 text-cyan-300 font-mono text-[10px]">escapeHtml()</span>
                         </div>
-                        <span id="stage-security" class="badge-pill bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px]">
-                            CLIENT RAM ONLY
-                        </span>
-                    </div>
-
-                    <p id="stage-desc" class="text-xs sm:text-sm text-slate-300 mb-4 leading-relaxed">
-                        An operator logs in, runs an entity comparison, commits a batch of Datastore entities, or clicks rollback. The client browser compiles the operational details and makes a POST request to <code>/api/audit_logs</code> with an ephemeral Bearer token in the <code>Authorization</code> header.
-                    </p>
-
-                    <!-- Dynamic Visual Code Snippet -->
-                    <div class="bg-black/60 rounded-xl p-4 border border-white/10 font-mono text-xs text-slate-300 overflow-x-auto">
-                        <div class="flex items-center justify-between text-[11px] text-slate-500 pb-2 border-b border-white/5 mb-2">
-                            <span id="code-snippet-title">datastore-copier/src/audit.ts</span>
-                            <span class="text-cyan-400">JSON Payload</span>
+                        <p class="text-xs text-slate-300 mb-2 leading-relaxed">
+                            All dynamic user values (project IDs, entity counts, error messages) pass through <code>escapeHtml()</code> to convert reserved characters like <code>&lt;</code>, <code>&gt;</code>, and <code>&amp;</code> into HTML entities so malicious code can never run.
+                        </p>
+                        <div class="bg-black/60 p-2 rounded text-[11px] font-mono text-emerald-400">
+                            const safeDetails = escapeHtml(log.details);
                         </div>
-                        <pre id="stage-code" class="text-emerald-400"><code>await AuditLog.addLog(
-    'DATASTORE_COPY',
-    'prod-source-project',
-    'backup-target-project',
-    'Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed).',
-    'SUCCESS'
-);</code></pre>
                     </div>
-                </div>
 
-                <!-- Simulation Action Controls -->
-                <div class="p-4 rounded-xl bg-slate-900/50 border border-slate-700/50 flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-play text-cyan-400"></i>
-                        <span class="text-xs font-bold text-white font-mono uppercase">Automated Playback:</span>
+                    <!-- Step B -->
+                    <div class="glass-panel p-5 border-emerald-500/30">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold font-mono text-emerald-400 uppercase">Step B: Dynamic Theme Colors &amp; Badges</span>
+                            <span class="badge-pill bg-emerald-500/10 text-emerald-300 font-mono text-[10px]">Status Badge</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-2 leading-relaxed">
+                            The server computes the badge text and accent color depending on the execution outcome:
+                        </p>
+                        <ul class="text-xs text-slate-400 space-y-1 font-mono">
+                            <li>• <strong class="text-emerald-400">SUCCESS:</strong> Green badge (<code>#10b981</code>)</li>
+                            <li>• <strong class="text-red-400">FAILED:</strong> Red badge (<code>#ef4444</code>)</li>
+                            <li>• <strong class="text-amber-400">RESTORED / PARTIAL:</strong> Amber badge (<code>#f59e0b</code>)</li>
+                        </ul>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button onclick="simulateEvent('LOGIN')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
-                            <i class="fa-solid fa-key text-cyan-400"></i> Play Login Flow
-                        </button>
-                        <button onclick="simulateEvent('ANALYZE')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
-                            <i class="fa-solid fa-magnifying-glass text-indigo-400"></i> Play Analysis Flow
-                        </button>
-                        <button onclick="simulateEvent('COPY')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
-                            <i class="fa-solid fa-copy text-emerald-400"></i> Play Copy Flow
-                        </button>
-                        <button onclick="simulateEvent('REVERT')" class="px-2.5 py-1 rounded bg-white/5 border border-white/10 text-xs text-slate-300 hover:text-white hover:bg-white/10 font-mono">
-                            <i class="fa-solid fa-rotate-left text-amber-400"></i> Play Revert Flow
-                        </button>
+
+                    <!-- Step C -->
+                    <div class="glass-panel p-5 border-purple-500/30">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold font-mono text-purple-400 uppercase">Step C: Universal Inline CSS Styling</span>
+                            <span class="badge-pill bg-purple-500/10 text-purple-300 font-mono text-[10px]">Cross-Client CSS</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            Email clients (like Gmail on mobile, Apple Mail, and Outlook) often strip external stylesheet files. Therefore, our HTML uses <strong>inline CSS rules</strong> and responsive table/div structures so the email renders cleanly on any device.
+                        </p>
+                    </div>
+
+                    <!-- Step D -->
+                    <div class="glass-panel p-5 border-amber-500/30">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold font-mono text-amber-400 uppercase">Step D: Why HTML Summary instead of Raw Snapshot?</span>
+                            <span class="badge-pill bg-amber-500/10 text-amber-300 font-mono text-[10px]">Efficiency &amp; Speed</span>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">
+                            A raw database backup can be hundreds of kilobytes or megabytes. Instead of clogging your email inbox with huge JSON attachments, the email delivers a <strong>concise human summary</strong>, while the complete 1-Click Rollback snapshot is preserved safely in <strong>Cloud Firestore</strong>.
+                        </p>
                     </div>
                 </div>
             </section>
 
-            <!-- SECTION 3: INTERACTIVE EMAIL ANATOMY INSPECTOR -->
+            <!-- SECTION 4: INTERACTIVE EMAIL ANATOMY INSPECTOR -->
             <section class="mb-12">
                 <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
-                    <span class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-mono">03</span>
-                    Interactive Email Anatomy (Click Parts to Learn)
+                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">04</span>
+                    Interactive Email Anatomy (Click Parts to Inspect)
                 </h2>
 
                 <p class="text-sm text-slate-300 mb-4 leading-relaxed">
@@ -472,10 +482,10 @@
                 </div>
             </section>
 
-            <!-- SECTION 4: 4 CRITICAL SECURITY QUESTIONS ANSWERED -->
+            <!-- SECTION 5: 4 CRITICAL SECURITY QUESTIONS -->
             <section class="mb-12">
                 <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
-                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono">04</span>
+                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm font-mono">05</span>
                     Frequently Asked Security Questions (Beginner FAQ)
                 </h2>
 
@@ -555,6 +565,11 @@
         const toggleBtn = document.getElementById('btn-toggle-sidebar');
         if (toggleBtn && sidebar) {
             toggleBtn.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+        }
+
+        // Initialize Mermaid
+        if (typeof mermaid !== 'undefined') {
+            mermaid.initialize({ startOnLoad: true, theme: 'dark' });
         }
 
         // Stepper Interactive Stages Data
@@ -683,75 +698,6 @@ const document = await db.collection('audit_logs').add(record);`
             const panel = document.getElementById('stage-panel');
             panel.classList.add('active-stage');
             setTimeout(() => panel.classList.remove('active-stage'), 400);
-        }
-
-        // Email Templates Switcher Data
-        const templates = {
-            COPY: {
-                subject: "[GCP Portal] Datastore Copy: operator@example.com",
-                badge: "SUCCESS",
-                badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
-                operator: "operator@example.com",
-                src: "prod-source-project (db: default)",
-                tgt: "backup-target-project (db: default)",
-                details: "Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed). Find & Replace applied: 3 substitutions."
-            },
-            LOGIN: {
-                subject: "[GCP Portal] User Login: developer@company.com",
-                badge: "AUTHENTICATED",
-                badgeClass: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
-                operator: "developer@company.com",
-                src: "—",
-                tgt: "—",
-                details: "User verified Google OAuth2 token successfully. Loaded 14 accessible GCP projects."
-            },
-            ANALYZE: {
-                subject: "[GCP Portal] Datastore Analysis: auditor@company.com",
-                badge: "COMPLETED",
-                badgeClass: "bg-indigo-500/20 text-indigo-300 border-indigo-500/40",
-                operator: "auditor@company.com",
-                src: "analytics-prod (db: default)",
-                tgt: "analytics-stage (db: default)",
-                details: "Analyzed 4 kinds (AppConfig, FeatureFlags, Transactions, Logs). Total: 180; identical: 150; mapped: 20; different: 10; missing: 0."
-            },
-            REVERT: {
-                subject: "[GCP Portal] Datastore Revert: admin@example.com",
-                badge: "RESTORED",
-                badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/40",
-                operator: "admin@example.com",
-                src: "backup-target-project",
-                tgt: "prod-source-project",
-                details: "1-Click Rollback executed for batch ID batch-9981. Restored 42 entities to previous state."
-            }
-        };
-
-        function switchTemplate(type) {
-            const data = templates[type];
-            if (!data) return;
-
-            document.getElementById('preview-subject').textContent = data.subject;
-            document.getElementById('preview-operator').textContent = data.operator;
-            document.getElementById('preview-src').textContent = data.src;
-            document.getElementById('preview-tgt').textContent = data.tgt;
-            document.getElementById('preview-details').textContent = data.details;
-            
-            const badge = document.getElementById('preview-status-badge');
-            badge.textContent = data.badge;
-            badge.className = "badge-pill text-[10px] " + data.badgeClass;
-        }
-
-        function simulateEvent(type) {
-            switchTemplate(type);
-            setStage(1);
-            let s = 1;
-            const timer = setInterval(() => {
-                s++;
-                if (s > 6) {
-                    clearInterval(timer);
-                } else {
-                    setStage(s);
-                }
-            }, 600);
         }
 
         // Inspector descriptions
