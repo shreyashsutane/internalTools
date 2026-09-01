@@ -86,30 +86,20 @@
         }
 
         .email-mockup-frame {
-            background: #0f172a;
+            background: #0b0f19;
             border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+            border-radius: 14px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
         }
 
         .highlight-box {
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
             cursor: pointer;
         }
         .highlight-box:hover {
             transform: translateY(-2px);
-            border-color: rgba(0, 212, 255, 0.5);
-            background: rgba(0, 212, 255, 0.08);
-        }
-
-        /* Animated Flow Node */
-        .flow-node {
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .flow-node.active {
-            transform: scale(1.04);
-            border-color: #00d4ff;
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+            border-color: rgba(0, 212, 255, 0.5) !important;
+            background-color: rgba(0, 212, 255, 0.08) !important;
         }
     </style>
 </head>
@@ -225,7 +215,7 @@
                     Real-Time Operational Email Alerts: Architecture, Formation &amp; Delivery
                 </h1>
                 <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
-                    The definitive end-to-end technical guide explaining how user interactions (login, entity analysis, database migrations, and rollbacks) are captured, verified against Google OAuth, converted into responsive dark-mode HTML, and delivered to <strong>shreyashs14102002@gmail.com</strong> via encrypted Gmail SMTP without storing passwords in browser code.
+                    The definitive end-to-end technical guide explaining how user interactions (login, entity analysis, database migrations, and rollbacks) are captured, verified against Google OAuth, converted into responsive dark-mode HTML with itemized entity tables, and delivered to <strong>shreyashs14102002@gmail.com</strong> via encrypted Gmail SMTP without storing passwords in browser code.
                 </p>
             </div>
 
@@ -354,7 +344,7 @@ sequenceDiagram
                         </p>
                         <div class="text-[11px] font-mono text-slate-400 bg-black/50 p-2 rounded">
                             Subject: [GCP Portal] User Login: operator@company.com<br>
-                            Details: Verified token successfully. Loaded 14 accessible projects.
+                            Details: Verified token successfully. Loaded accessible projects.
                         </div>
                     </div>
 
@@ -384,7 +374,7 @@ sequenceDiagram
                         </p>
                         <div class="text-[11px] font-mono text-slate-400 bg-black/50 p-2 rounded">
                             Subject: [GCP Portal] Datastore Copy: operator@example.com<br>
-                            Details: Batch 1/1 copied 42 entities across kinds: UserProfile, Orders.
+                            Details: Batch 1/1 copied entities with itemized keys, kinds and names.
                         </div>
                     </div>
 
@@ -399,7 +389,7 @@ sequenceDiagram
                         </p>
                         <div class="text-[11px] font-mono text-slate-400 bg-black/50 p-2 rounded">
                             Subject: [GCP Portal] Datastore Revert: admin@example.com<br>
-                            Details: 1-Click Rollback executed for batch-9981. Restored 42 entities.
+                            Details: 1-Click Rollback executed for batch-9981. Restored previous records.
                         </div>
                     </div>
                 </div>
@@ -427,9 +417,6 @@ sequenceDiagram
                         <p class="text-xs text-slate-300 mb-2 leading-relaxed">
                             All dynamic user values (project IDs, entity counts, error messages) pass through <code>escapeHtml()</code> to convert reserved characters like <code>&lt;</code>, <code>&gt;</code>, and <code>&amp;</code> into HTML entities so malicious code can never run.
                         </p>
-                        <div class="bg-black/60 p-2.5 rounded text-[11px] font-mono text-emerald-400">
-                            const safeDetails = escapeHtml(log.details);
-                        </div>
                     </div>
 
                     <!-- Step B -->
@@ -466,7 +453,7 @@ sequenceDiagram
                             <span class="badge-pill bg-amber-500/10 text-amber-300 font-mono text-[10px]">Efficiency &amp; Speed</span>
                         </div>
                         <p class="text-xs text-slate-300 leading-relaxed">
-                            A raw database backup can be hundreds of kilobytes or megabytes. Instead of clogging your email inbox with huge JSON attachments, the email delivers a <strong>concise human summary</strong>, while the complete 1-Click Rollback snapshot is preserved safely in <strong>Cloud Firestore</strong>.
+                            A raw database backup can be hundreds of kilobytes or megabytes. Instead of clogging your email inbox with huge JSON attachments, the email delivers a <strong>concise human summary and itemization table</strong>, while the complete 1-Click Rollback snapshot is preserved safely in <strong>Cloud Firestore</strong>.
                         </p>
                     </div>
                 </div>
@@ -476,11 +463,11 @@ sequenceDiagram
             <section class="mb-12">
                 <h2 class="text-xl sm:text-2xl font-bold text-white mb-3 flex items-center gap-2.5 font-title">
                     <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">05</span>
-                    Interactive Email Anatomy (Click Parts to Inspect)
+                    Interactive Enterprise Email Mockup (Click Parts to Inspect)
                 </h2>
 
                 <p class="text-sm text-slate-300 mb-4 leading-relaxed">
-                    Click on any element in the mockup email below to see how our backend generated that specific field:
+                    Click on any element in the live mockup email below to see how our backend generated that specific field:
                 </p>
 
                 <!-- Mock Email Client Wrapper -->
@@ -495,24 +482,24 @@ sequenceDiagram
                             <span class="text-slate-400">To:</span>
                             <span class="text-cyan-400 font-semibold">shreyashs14102002@gmail.com</span>
                         </div>
-                        <div onclick="inspectPart('subject')" class="highlight-box p-1.5 rounded bg-black/40 border border-white/10 flex items-center justify-between">
+                        <div onclick="inspectPart('subject')" class="highlight-box p-2 rounded bg-black/40 border border-white/10 flex items-center justify-between">
                             <span class="text-slate-400">Subject (Click to inspect):</span>
                             <span id="preview-subject" class="text-emerald-400 font-bold">[GCP Portal] Datastore Copy: operator@example.com</span>
                         </div>
                     </div>
 
                     <!-- Email Body Container (Dark Theme Rendering) -->
-                    <div id="preview-body-container" class="rounded-xl bg-[#0b101d] border border-white/10 p-5 font-sans">
+                    <div id="preview-body-container" class="rounded-xl bg-[#0b0f19] border border-white/10 p-5 font-sans">
                         
-                        <!-- Top Header Badge -->
+                        <!-- Top Header Banner -->
                         <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
                             <div class="flex items-center gap-2.5">
                                 <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-sm font-bold">
-                                    GCP
+                                    ☁️
                                 </div>
                                 <div>
-                                    <div class="text-xs font-bold text-white tracking-tight">GCP TOOLS PORTAL</div>
-                                    <div class="text-[10px] font-mono text-slate-400">Infrastructure Operations Telemetry</div>
+                                    <div class="text-xs font-bold text-white tracking-tight">GCP TOOLS PORTAL • OPERATIONAL TELEMETRY</div>
+                                    <div class="text-[10px] font-mono text-slate-400">Datastore Copy Notification</div>
                                 </div>
                             </div>
                             <span onclick="inspectPart('badge')" id="preview-status-badge" class="badge-pill bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono text-[10px] highlight-box">
@@ -520,38 +507,91 @@ sequenceDiagram
                             </span>
                         </div>
 
-                        <!-- Routing Metadata Grid -->
+                        <!-- Project Routing Pipeline Banner -->
+                        <div onclick="inspectPart('routing')" class="highlight-box bg-black/50 border border-white/10 rounded-xl p-4 mb-4">
+                            <div class="text-[10px] font-mono text-slate-400 uppercase mb-2">📍 Project Routing Pipeline (Click to inspect)</div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+                                <div class="p-2.5 rounded-lg bg-[#0c192c] border border-cyan-500/40 text-cyan-300">
+                                    <div class="text-[9px] uppercase text-cyan-400 font-bold">📤 Source Project</div>
+                                    <div id="preview-src" class="font-bold mt-0.5 text-white">prod-analytics-us-east (db: default)</div>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-[#0c221a] border border-emerald-500/40 text-emerald-300">
+                                    <div class="text-[9px] uppercase text-emerald-400 font-bold">📥 Destination Project</div>
+                                    <div id="preview-tgt" class="font-bold mt-0.5 text-white">backup-analytics (db: default)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Executive Summary Grid -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-xs">
                             <div onclick="inspectPart('operator')" class="highlight-box bg-black/40 p-3 rounded-lg border border-white/5">
                                 <div class="text-[10px] font-mono text-slate-400 uppercase">Operator Identity (Click)</div>
-                                <div id="preview-operator" class="text-white font-semibold font-mono mt-0.5">operator@example.com</div>
+                                <div id="preview-operator" class="text-cyan-400 font-semibold font-mono mt-0.5">operator@example.com</div>
                             </div>
                             <div onclick="inspectPart('timestamp')" class="highlight-box bg-black/40 p-3 rounded-lg border border-white/5">
                                 <div class="text-[10px] font-mono text-slate-400 uppercase">Timestamp (Click)</div>
-                                <div id="preview-ts" class="text-white font-semibold font-mono mt-0.5">2026-09-01T04:35:59Z (+05:30 IST)</div>
-                            </div>
-                            <div onclick="inspectPart('source')" class="highlight-box bg-black/40 p-3 rounded-lg border border-white/5">
-                                <div class="text-[10px] font-mono text-slate-400 uppercase">Source Project (Click)</div>
-                                <div id="preview-src" class="text-cyan-400 font-mono mt-0.5">prod-source-project (db: default)</div>
-                            </div>
-                            <div onclick="inspectPart('target')" class="highlight-box bg-black/40 p-3 rounded-lg border border-white/5">
-                                <div class="text-[10px] font-mono text-slate-400 uppercase">Target Project (Click)</div>
-                                <div id="preview-tgt" class="text-purple-400 font-mono mt-0.5">backup-target-project (db: default)</div>
+                                <div id="preview-ts" class="text-white font-semibold font-mono mt-0.5">2026-09-01 22:04:41 UTC (+05:30 IST)</div>
                             </div>
                         </div>
 
-                        <!-- Summary Details Box -->
-                        <div onclick="inspectPart('details')" class="highlight-box bg-black/50 p-4 rounded-xl border border-white/10 mb-4">
-                            <div class="text-[10px] font-mono text-slate-400 uppercase mb-1">Execution Summary &amp; Details (Click to inspect)</div>
-                            <p id="preview-details" class="text-xs text-slate-200 leading-relaxed font-mono">
-                                Batch 1/1 copied 42 entities across kinds: UserProfile, Orders (0 failed). Find &amp; Replace applied: 3 substitutions.
-                            </p>
+                        <!-- Itemized Entities Table Mockup -->
+                        <div onclick="inspectPart('itemization')" class="highlight-box bg-black/40 border border-white/10 rounded-xl p-4 mb-4">
+                            <div class="text-[10px] font-mono text-slate-400 uppercase mb-2">📋 Itemization: Exact Entities Processed (Click to inspect)</div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs font-mono">
+                                    <thead class="text-[10px] text-slate-400 uppercase border-b border-white/10">
+                                        <tr>
+                                            <th class="py-1 px-2">Kind</th>
+                                            <th class="py-1 px-2">Entity Key / ID</th>
+                                            <th class="py-1 px-2">Display Name</th>
+                                            <th class="py-1 px-2 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-slate-300 divide-y divide-white/5">
+                                        <tr>
+                                            <td class="py-2 px-2 text-cyan-300 font-bold">UserProfile</td>
+                                            <td class="py-2 px-2 text-slate-400">5629499534213120</td>
+                                            <td class="py-2 px-2 text-white">"John Doe"</td>
+                                            <td class="py-2 px-2 text-right"><span class="badge-pill bg-emerald-500/20 text-emerald-300 text-[9px]">CREATED</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-2 px-2 text-cyan-300 font-bold">Orders</td>
+                                            <td class="py-2 px-2 text-slate-400">ord_2026_09_001</td>
+                                            <td class="py-2 px-2 text-white">"Express Shipping"</td>
+                                            <td class="py-2 px-2 text-right"><span class="badge-pill bg-amber-500/20 text-amber-300 text-[9px]">UPDATED</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-2 px-2 text-cyan-300 font-bold">Config</td>
+                                            <td class="py-2 px-2 text-slate-400">main-feature-flags</td>
+                                            <td class="py-2 px-2 text-white">"Production Config"</td>
+                                            <td class="py-2 px-2 text-right"><span class="badge-pill bg-amber-500/20 text-amber-300 text-[9px]">UPDATED</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Find & Replace Rules Box -->
+                        <div onclick="inspectPart('rules')" class="highlight-box bg-black/40 p-3 rounded-xl border border-white/5 mb-4">
+                            <div class="text-[10px] font-mono text-cyan-400 uppercase mb-1">🔄 Find &amp; Replace Rules Applied (Click to inspect)</div>
+                            <div class="text-xs text-slate-300 font-mono">
+                                • Rule 1 [Property: <code class="text-cyan-400">targetProjectId</code>]: <span class="text-rose-400">"prod-analytics"</span> ➔ <span class="text-emerald-400">"backup-analytics"</span>
+                            </div>
+                        </div>
+
+                        <!-- 1-Click Rollback Action Button -->
+                        <div onclick="inspectPart('rollback')" class="highlight-box bg-slate-900/60 p-4 rounded-xl border border-cyan-500/30 text-center mb-4">
+                            <div class="text-xs font-bold text-white mb-1">🛡️ 1-Click Rollback &amp; Audit Trail Available</div>
+                            <div class="text-[10px] font-mono text-slate-400 mb-3">Audit Record ID: <code id="preview-log-id" class="text-cyan-400">log-880357903995-xyz</code></div>
+                            <span class="inline-block px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold text-xs uppercase tracking-wide">
+                                🚀 Open Portal &amp; Inspect Audit Trail
+                            </span>
                         </div>
 
                         <!-- Footer Audit Hash -->
-                        <div onclick="inspectPart('auditid')" class="highlight-box flex items-center justify-between text-[10px] font-mono text-slate-500 pt-3 border-t border-white/5">
-                            <span>Audit Record ID: <code id="preview-log-id" class="text-slate-400">log-880357903995-xyz</code></span>
-                            <span class="text-emerald-400"><i class="fa-solid fa-shield-halved"></i> Verified OAuth Token</span>
+                        <div class="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-3 border-t border-white/5">
+                            <span>🔒 Verified via Google Cloud OAuth2 OpenID Connect</span>
+                            <span class="text-emerald-400">Tamper-Proof Telemetry</span>
                         </div>
                     </div>
                 </div>
@@ -559,10 +599,10 @@ sequenceDiagram
                 <!-- Inspector Card -->
                 <div id="inspector-card" class="glass-panel p-4 border-indigo-500/40 bg-indigo-950/20">
                     <div class="flex items-center gap-2 text-xs font-mono text-indigo-300 font-bold mb-1">
-                        <i class="fa-solid fa-circle-info"></i> <span id="inspector-title">Element Inspector: Click any element above to see how it works</span>
+                        <i class="fa-solid fa-circle-info"></i> <span id="inspector-title">Element Inspector: Click any element in the mockup above to see how it works</span>
                     </div>
                     <p id="inspector-desc" class="text-xs text-slate-300">
-                        Click the Subject, Status Badge, Operator Box, Project IDs, or Summary Details inside the email mockup to discover how our backend computes and sanitizes each piece of information.
+                        Click the Subject, Status Badge, Project Routing Pipeline, Operator Box, Itemized Entities Table, Find &amp; Replace Rules, or Rollback Button inside the email mockup to discover how our backend computes and formats each piece of information.
                     </p>
                 </div>
             </section>
@@ -667,6 +707,10 @@ sequenceDiagram
                 title: "Status Badge (SUCCESS / FAILED / RESTORED)",
                 desc: "Rendered with color coding (Emerald for SUCCESS, Red for FAILED, Amber for PARTIAL/RESTORED). Shows at a glance if the database mutation succeeded."
             },
+            routing: {
+                title: "Project Routing Pipeline",
+                desc: "High-contrast side-by-side visual boxes identifying the exact origin Source GCP Project and Destination Target GCP Project & Database ID."
+            },
             operator: {
                 title: "Operator Identity",
                 desc: "Derived by the server from Google's OpenID userinfo endpoint using the caller's OAuth token. The user cannot manipulate this field."
@@ -675,21 +719,17 @@ sequenceDiagram
                 title: "Execution Timestamp",
                 desc: "Formatted in both UTC and Indian Standard Time (IST) directly by the backend when the audit record was stored in Cloud Firestore."
             },
-            source: {
-                title: "Source Project & Database",
-                desc: "Identifies the origin GCP project ID and Datastore database ID (e.g. default) that was read from."
+            itemization: {
+                title: "Itemized Entities Table",
+                desc: "Comprehensive table listing every touched record with its Kind, 64-bit ID / Named Key, Display Name (extracted via smart name parsing), and Action Taken (CREATED, UPDATED, or RESTORED)."
             },
-            target: {
-                title: "Target Project & Database",
-                desc: "Identifies the destination GCP project ID that received the copied entities."
+            rules: {
+                title: "Find & Replace Transformations",
+                desc: "Lists any strings, variables, or long integers that were replaced across properties during the batch copy operation."
             },
-            details: {
-                title: "Execution Summary & Find/Replace Stats",
-                desc: "Detailed string of what happened: entity count, kinds affected, number of string/integer Find & Replace substitutions applied, and error reasons if any failed."
-            },
-            auditid: {
-                title: "Audit Record ID Hash",
-                desc: "The unique Firestore Document ID of the immutable audit record. This allows admins and operators to cross-reference the email directly with the portal's Audit Log tab."
+            rollback: {
+                title: "1-Click Rollback Link & Audit ID",
+                desc: "Provides the unique Firestore Document ID of the immutable audit record with a direct button to jump into the web portal and execute a lossless 1-Click Rollback."
             }
         };
 
