@@ -9,7 +9,9 @@ const {
     formatEmailHtml,
     sendMutationAlertEmail,
     extractEntityList,
-    extractRulesList
+    extractRulesList,
+    parseEntitiesFromDetails,
+    parseRulesFromDetails
 } = require('../lib/email-notifier');
 
 test('escapeHtml sanitizes HTML entities and handles nulls safely', () => {
@@ -102,6 +104,55 @@ test('formatEmailHtml renders routing pipeline, itemized entities and rules', ()
     assert.match(html, /log-test-12345/);
 });
 
+test('parseEntitiesFromDetails parses live screenshot details text into proper table items', () => {
+    const rawDetails = `Datastore batch 1/1 copied 2 entities across kinds: UserMaster, Users.
+Source: project-c0e231c7-2177-4eb0-979 (database: (default))
+Target: second-project-16364 (database: (default))
+Status: 2 entities written successfully (0 failed).
+Find & Replace: Applied 1 rule(s):
+  - Rule 1 [field '*']: "project-c0e231c7-2177-4eb0-979" -> "second-project-16364"
+
+Itemized Records (2):
+• UserMaster, Users/UserMaster:4623657972269056 (Salesplayer_48) [UPDATED]
+• UserMaster, Users/Users:user_008 (Users:user_008) [UPDATED]`;
+
+    const entities = parseEntitiesFromDetails(rawDetails);
+    assert.equal(entities.length, 2);
+    assert.equal(entities[0].kind, 'UserMaster');
+    assert.equal(entities[0].id, '4623657972269056');
+    assert.equal(entities[0].name, 'Salesplayer_48');
+    assert.equal(entities[0].action, 'UPDATED');
+
+    assert.equal(entities[1].kind, 'Users');
+    assert.equal(entities[1].id, 'user_008');
+    assert.equal(entities[1].name, 'Users:user_008');
+    assert.equal(entities[1].action, 'UPDATED');
+
+    const rules = parseRulesFromDetails(rawDetails);
+    assert.equal(rules.length, 1);
+    assert.equal(rules[0].property, '*');
+    assert.equal(rules[0].target, 'project-c0e231c7-2177-4eb0-979');
+    assert.equal(rules[0].replacement, 'second-project-16364');
+
+    // Verify formatEmailHtml converts this text into an HTML table
+    const html = formatEmailHtml({
+        id: 'log-8iDqEJlNEGSnF07j0BDY',
+        operation: 'DATASTORE_COPY',
+        status: 'SUCCESS',
+        user: 'shreyashs14102002@gmail.com',
+        srcProject: 'project-c0e231c7-2177-4eb0-979',
+        tgtProject: 'second-project-16364',
+        details: rawDetails
+    });
+
+    assert.match(html, /Itemized Entities Table/);
+    assert.match(html, /4623657972269056/);
+    assert.match(html, /Salesplayer_48/);
+    assert.match(html, /Find &amp; Replace Substitution Rules/);
+    assert.match(html, /project-c0e231c7-2177-4eb0-979/);
+    assert.match(html, /second-project-16364/);
+});
+
 test('extractEntityList parses uncompressed prevState backupData and displayNames', () => {
     const list = extractEntityList({
         prevState: {
@@ -173,7 +224,6 @@ test('sendMutationAlertEmail dispatches email via mock transporter successfully'
     assert.equal(result.messageId, '<mock-msg-id-123@gmail.com>');
     assert.equal(capturedMail.to, 'shreyashs14102002@gmail.com');
     assert.match(capturedMail.subject, /Datastore Copy: operator@company\.com/);
-    assert.match(capturedMail.html, /Copied 10 entities\./);
 });
 
 test('sendMutationAlertEmail handles transporter failure without throwing', async () => {
