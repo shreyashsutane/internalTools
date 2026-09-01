@@ -45,6 +45,24 @@ The GCP Tools Portal is split into two specialized web applications sharing a co
 | **Backend Functions & Security Tests** | 18 | **3,521** | Secured `auditApi` microservice, rate limiter, Gmail SMTP email alerts (`functions/`), and automated test suites (`tests/`). |
 | **Configuration & Policies** | 19 | **2,600** | Security headers, `firestore.rules`, JSON configs, and documentation guides. |
 
+#### GCP Infrastructure Manager Core Modules
+| Module | Lines | Role |
+| :--- | :---: | :--- |
+| `src/app.ts` | **2,764** | Main orchestrator, Datastore streaming, batch loops, UI transitions, post-copy modals. |
+| `src/ui.ts` | **840** | View manager, GQL live preview, filter synchronization, modal controllers, toasts. |
+| `src/datastore-utils.ts` | **758** | AST diff engine, BigQuery SQL formatter, semantic JSON normalizer, property serializers. |
+| `src/assist.ts` | **727** | Assist context evaluation, multi-screen state analysis, smart suggestion heuristics. |
+| `src/assist-ui.ts` | **563** | Mochi mascot DOM rendering, reactive state animations, cursor evasion physics. |
+| `src/api.ts` | **505** | Google Cloud REST API client, entity lookups/commits, system kind filters (`__*__`). |
+| `src/audit.ts` | **473** | Centralized audit client, revert snapshot compression, multi-kind history rendering. |
+| `src/diff.ts` | **402** | Property-level semantic diff visualizer, line-by-line syntax highlighters. |
+| `src/easter-egg.ts` | **275** | Interactive developer features, canvas particles, and keyboard combos. |
+| `src/revert.ts` | **216** | 1-Click rollback engine, pre-mutation state decompression, chunked restoration. |
+| `src/state.ts` | **170** | In-memory application state manager, active filter memory, ephemeral token holder. |
+| `src/utils.ts` | **131** | DOM helpers, string escaping, date formatters, ErrorBoundary handler. |
+| `src/sound.ts` | **120** | Web Audio API synthesizer for tactile UI audio effects and completion chimes. |
+| `src/config.ts` | **25** | Central API routing and Cloud Functions audit endpoints configuration. |
+
 ---
 
 ## Chapter 02: Authentication, Security & IAM Access Matrix

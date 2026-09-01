@@ -74,3 +74,29 @@ The audit API accepts only exact same-origin `POST` requests and requires a bear
 | **Generated Production Bundle** | 1 | **824** | `js/app.js` (Compiled with esbuild) |
 | **Total GCP Infrastructure Manager** | **21** | **15,094** | *(**14,270** lines of authored source code excluding compiled bundle)* |
 
+### 3. GCP Infrastructure Manager Source File Roster
+| File Path | Lines | Type | Primary Role & Responsibilities |
+| :--- | :---: | :---: | :--- |
+| `datastore-copier/src/app.ts` | **2,764** | TypeScript | Main application orchestrator, Datastore streaming, batch loops, UI transitions, post-copy modals. |
+| `datastore-copier/src/ui.ts` | **840** | TypeScript | View manager, GQL live preview, filter synchronization, modal controllers, toasts. |
+| `datastore-copier/src/datastore-utils.ts` | **758** | TypeScript | AST diff engine, BigQuery SQL formatter, semantic JSON normalizer, property serializers. |
+| `datastore-copier/src/assist.ts` | **727** | TypeScript | Assist context evaluation, multi-screen state analysis, smart suggestion heuristics. |
+| `datastore-copier/src/assist-ui.ts` | **563** | TypeScript | Mochi mascot DOM rendering, reactive state animations, cursor evasion physics. |
+| `datastore-copier/src/api.ts` | **505** | TypeScript | Google Cloud REST API client, entity lookups/commits, system kind filters (`__*__`). |
+| `datastore-copier/src/audit.ts` | **473** | TypeScript | Centralized audit client, revert snapshot compression, multi-kind history rendering. |
+| `datastore-copier/src/diff.ts` | **402** | TypeScript | Property-level semantic diff visualizer, line-by-line syntax highlighters. |
+| `datastore-copier/src/easter-egg.ts` | **275** | TypeScript | Interactive developer features, canvas particles, and keyboard combos. |
+| `datastore-copier/src/revert.ts` | **216** | TypeScript | 1-Click rollback engine, pre-mutation state decompression, chunked restoration. |
+| `datastore-copier/src/state.ts` | **170** | TypeScript | In-memory application state manager, active filter memory, ephemeral token holder. |
+| `datastore-copier/src/utils.ts` | **131** | TypeScript | DOM helpers, string escaping, date formatters, ErrorBoundary handler. |
+| `datastore-copier/src/sound.ts` | **120** | TypeScript | Web Audio API synthesizer for tactile UI audio effects and completion chimes. |
+| `datastore-copier/src/config.ts` | **25** | TypeScript | Central API routing and Cloud Functions audit endpoints configuration. |
+| `datastore-copier/index.html` | **941** | HTML | Primary application interface, accessible tabs, dynamic filter builders, and modals. |
+| `datastore-copier/mascot-preview.html` | **787** | HTML | Standalone interactive canvas and animation preview for Mochi assistant. |
+| `datastore-copier/rocket-loader-preview.html` | **586** | HTML | High-fidelity rocket launch animation testing sandbox. |
+| `datastore-copier/css/app.css` | **1,858** | CSS | Complete design system, glassmorphic cards, rocket loader animations, badge pills. |
+| `datastore-copier/script.js` | **2,075** | JavaScript | Standalone legacy/reference browser implementation. |
+| `datastore-copier/README.md` | **54** | Markdown | Tool documentation and architecture guide. |
+| `datastore-copier/js/app.js` | **824** | Bundle | Bundled and minified production distribution (generated via esbuild). |
+
+
