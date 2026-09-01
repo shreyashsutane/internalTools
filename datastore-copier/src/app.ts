@@ -2568,16 +2568,26 @@ export const App = {
                 }
 
                 if (batchAuditLogId) {
-                    let batchDetails = `Copied batch ${batchNum}/${totalBatches} (${mutations.length} entities of kind ${batchKindLabel})${refSummary}.`;
+                    const entityNamesList = entitySummary.slice(0, 20).map(e => `${e.kind}/${e.id} (${e.name}) [${e.action}]`);
+                    const overflowNote = entitySummary.length > 20 ? `\n... and ${entitySummary.length - 20} more entities` : '';
+                    const itemizedSummaryText = `\nItemized Records (${entitySummary.length}):\n• ` + entityNamesList.join('\n• ') + overflowNote;
+
+                    let batchDetails = `Datastore batch ${batchNum}/${totalBatches} copied ${mutations.length} entities across kinds: ${batchKindLabel}.\n` +
+                        `Source: ${State.ds.src} (database: ${State.ds.srcDb || '(default)'})\n` +
+                        `Target: ${State.ds.tgt} (database: ${State.ds.tgtDb || '(default)'})\n` +
+                        `Status: ${mutations.length} entities written successfully (0 failed).\n`;
+
                     if (applyMod) {
                         if (activeRules.length > 0) {
-                            const rulesSummary = activeRules.map((r, i) => `Rule ${i + 1} [field '${r.field || '*'}': "${r.target}" -> "${r.replacement}"]`).join(', ');
-                            batchDetails += ` Applied ${activeRules.length} Find & Replace rule(s): ${rulesSummary}.`;
+                            const rulesSummary = activeRules.map((r, i) => `\n  - Rule ${i + 1} [field '${r.field || '*'}']: "${r.target}" -> "${r.replacement}"`).join('');
+                            batchDetails += `Find & Replace: Applied ${activeRules.length} rule(s):${rulesSummary}\n`;
                         } else if (modTarget) {
-                            const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (recursively)";
-                            batchDetails += ` Applied Find & Replace on ${fieldText}: "${modTarget}" -> "${modReplace}".`;
+                            const fieldText = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields";
+                            batchDetails += `Find & Replace: Applied on ${fieldText}: "${modTarget}" -> "${modReplace}"\n`;
                         }
                     }
+                    batchDetails += itemizedSummaryText;
+
                     await AuditLog.updateLog(
                         batchAuditLogId,
                         'SUCCESS',

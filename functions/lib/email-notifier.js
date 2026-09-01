@@ -326,10 +326,10 @@ const formatEmailHtml = log => {
                             <!-- Find & Replace Rules Section -->
                             ${rulesTableHtml}
 
-                            <!-- Raw Execution Details -->
+                            <!-- Comprehensive Execution Summary & Detailed Breakdown -->
                             <div style="margin-bottom: 24px;">
                                 <div style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
-                                    📝 Execution Summary &amp; Diagnostic Details
+                                    📝 Comprehensive Execution Description &amp; Breakdown
                                 </div>
                                 <div style="background-color: #060911; border: 1px solid #1e293b; border-radius: 8px; padding: 14px 16px; font-size: 12px; line-height: 1.6; color: #cbd5e1; font-family: monospace; white-space: pre-wrap; word-break: break-all;">${details}</div>
                             </div>
