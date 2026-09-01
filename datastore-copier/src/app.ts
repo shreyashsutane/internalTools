@@ -2446,12 +2446,31 @@ export const App = {
 
                 const entitySummary = chunkBackupData.map(item => {
                     const keyStr = item.keyStr || '';
-                    const parts = keyStr.split('/');
-                    const kind = parts.length > 1 ? parts[0] : batchKindLabel;
-                    const id = parts.length > 1 ? parts.slice(1).join('/') : keyStr;
+                    let kind = batchKindLabel;
+                    let id = keyStr;
+
+                    if (keyStr.includes(' | ')) {
+                        const segs = keyStr.split(' | ');
+                        const lastSeg = segs[segs.length - 1];
+                        const colonIdx = lastSeg.indexOf(':');
+                        if (colonIdx !== -1) {
+                            kind = lastSeg.slice(0, colonIdx);
+                            id = lastSeg.slice(colonIdx + 1);
+                        }
+                    } else if (keyStr.includes(':')) {
+                        const colonIdx = keyStr.indexOf(':');
+                        kind = keyStr.slice(0, colonIdx);
+                        id = keyStr.slice(colonIdx + 1);
+                    } else if (keyStr.includes('/')) {
+                        const slashIdx = keyStr.indexOf('/');
+                        kind = keyStr.slice(0, slashIdx);
+                        id = keyStr.slice(slashIdx + 1);
+                    }
+
                     const rawDisp = entityDisplayNames[keyStr];
                     const name = rawDisp ? (typeof rawDisp === 'object' ? rawDisp.value : rawDisp) : id;
-                    const action = item.action === 'CREATE' ? 'CREATED' : 'UPDATED';
+                    const isNewEntity = item.action === 'delete' || item.action === 'CREATE' || item.action === 'CREATED';
+                    const action = isNewEntity ? 'CREATED' : 'UPDATED';
                     return { kind, id, key: keyStr, name, action };
                 });
 
@@ -2568,7 +2587,7 @@ export const App = {
                 }
 
                 if (batchAuditLogId) {
-                    const entityNamesList = entitySummary.slice(0, 20).map(e => `${e.kind}/${e.id} (${e.name}) [${e.action}]`);
+                    const entityNamesList = entitySummary.slice(0, 20).map(e => `${e.kind}:${e.id} (${e.name}) [${e.action}]`);
                     const overflowNote = entitySummary.length > 20 ? `\n... and ${entitySummary.length - 20} more entities` : '';
                     const itemizedSummaryText = `\nItemized Records (${entitySummary.length}):\n• ` + entityNamesList.join('\n• ') + overflowNote;
 
