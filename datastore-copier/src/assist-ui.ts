@@ -397,6 +397,13 @@ export const AssistUI = {
 
         // Update Mascot SVG & state
         const mascotSvg = document.getElementById('assist-mascot-svg');
+        const modalRoot = document.getElementById('modal-root');
+        const modalOpen = modalRoot && modalRoot.style.display !== 'none';
+        if (modalOpen && !step.inModal) {
+            card.style.display = 'none';
+            return;
+        }
+
         if (mascotSvg) {
             mascotSvg.className = `assist-mascot mascot-${step.mascotState}`;
             mascotSvg.innerHTML = AssistUI.getMascotSvg(step.mascotState);
@@ -442,7 +449,7 @@ export const AssistUI = {
             const cardWidth = 360;
             const cardHeight = 150;
 
-            const isFilterProp = targetEl.classList.contains('filter-prop');
+            const isFilterProp = targetEl.classList.contains('filter-prop') || targetEl.classList.contains('filter-kind');
             const isFilterControl = targetEl.classList.contains('filter-op') ||
                                     targetEl.classList.contains('filter-type') ||
                                     targetEl.classList.contains('filter-val');
@@ -452,11 +459,16 @@ export const AssistUI = {
             let arrowClass = 'assist-pointer-arrow arrow-top';
 
             if (step.inModal) {
-                // IN-MODAL GUIDANCE: Dock neatly to the top-right corner of the modal
+                // IN-MODAL GUIDANCE: Place card neatly centered right above or to the top-right of the modal
                 const modalBox = targetEl.closest('.modal') || targetEl;
                 const mRect = modalBox.getBoundingClientRect();
-                top = Math.max(16, mRect.top + 16);
-                left = Math.max(16, mRect.right - cardWidth - 24);
+                top = Math.max(16, mRect.top - cardHeight - 16);
+                if (top < 16) {
+                    top = 20;
+                    left = Math.min(window.innerWidth - cardWidth - 20, mRect.right + 20);
+                } else {
+                    left = Math.max(16, Math.min(window.innerWidth - cardWidth - 20, mRect.left + (mRect.width - cardWidth) / 2));
+                }
                 if (arrow) arrow.style.display = 'none';
             } else if (isFilterProp) {
                 // FILTER COLUMN SELECTOR: Always anchor to LEFT FLANK so entire operator & value controls remain 100% visible!

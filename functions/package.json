@@ -7,11 +7,12 @@
     "node": "22"
   },
   "scripts": {
-    "check": "node --check index.js && node --check lib/audit-core.js && node --test test/*.test.js",
+    "check": "node --check index.js && node --check lib/audit-core.js && node --check lib/email-notifier.js && node --test test/*.test.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "firebase-admin": "^13.10.0",
-    "firebase-functions": "^7.2.5"
+    "firebase-functions": "^7.2.5",
+    "nodemailer": "^6.9.16"
   }
 }

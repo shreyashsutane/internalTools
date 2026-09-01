@@ -99,6 +99,17 @@ export const mapConcurrent = async <T, R>(
 
 export const deepEqual = (a: any, b: any): boolean => {
     if (Object.is(a, b)) return true;
+    if (a === b) return true;
+
+    // Fast-path for Datastore property wrappers with identical primitive values
+    if (typeof a === 'object' && a !== null && typeof b === 'object' && b !== null) {
+        if ('stringValue' in a && 'stringValue' in b && a.stringValue === b.stringValue) return true;
+        if ('integerValue' in a && 'integerValue' in b && a.integerValue === b.integerValue) return true;
+        if ('booleanValue' in a && 'booleanValue' in b && a.booleanValue === b.booleanValue) return true;
+        if ('timestampValue' in a && 'timestampValue' in b && a.timestampValue === b.timestampValue) return true;
+        if ('doubleValue' in a && 'doubleValue' in b && a.doubleValue === b.doubleValue) return true;
+        if ('nullValue' in a && 'nullValue' in b) return true;
+    }
 
     // 1. Primitive string comparisons (semantic JSON, ISO timestamps, CRLF whitespace)
     if (typeof a === 'string' && typeof b === 'string') {

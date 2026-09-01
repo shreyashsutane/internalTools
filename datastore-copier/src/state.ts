@@ -17,6 +17,7 @@ export interface QueryComparison {
 }
 
 export interface DsResult {
+    kind?: string;
     keyStr: string;
     rawKey: any;
     status: 'different' | 'missing' | 'identical' | 'mapped';
@@ -66,6 +67,7 @@ export interface StateType {
         srcDb: string;
         tgtDb: string;
         kind: string;
+        selectedKinds: Set<string>;
         modField: string;
         modTarget: string;
         modReplace: string;
@@ -82,9 +84,12 @@ export interface StateType {
         page: number;
         perPage: number;
         filterStatus: string;
+        filterKind: string;
         selected: Set<string>;
+        collapsedKinds: Set<string>;
         kinds: string[];
         properties: string[];
+        kindProperties: Record<string, string[]>;
         databasesSrc: string[];
         databasesTgt: string[];
     };
@@ -127,6 +132,7 @@ export const State: StateType = {
         srcDb: '(default)',
         tgtDb: '(default)',
         kind: '',
+        selectedKinds: new Set<string>(),
         modField: '',
         modTarget: '',
         modReplace: '',
@@ -139,9 +145,12 @@ export const State: StateType = {
         page: 1,
         perPage: 50,
         filterStatus: 'all',
+        filterKind: 'all',
         selected: new Set<string>(),
+        collapsedKinds: new Set<string>(),
         kinds: [],
         properties: [],
+        kindProperties: {},
         databasesSrc: [],
         databasesTgt: []
     },

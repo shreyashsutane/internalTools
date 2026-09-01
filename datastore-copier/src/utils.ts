@@ -32,11 +32,23 @@ export const Utils = {
 
     show: (id: string): void => {
         const el = Utils.$(id);
-        if (el) el.style.display = '';
+        if (el) {
+            if (id === 'sec-loading') {
+                el.classList.add('active-overlay');
+                el.style.display = 'flex';
+            } else {
+                el.style.display = '';
+            }
+        }
     },
     hide: (id: string): void => {
         const el = Utils.$(id);
-        if (el) el.style.display = 'none';
+        if (el) {
+            if (id === 'sec-loading') {
+                el.classList.remove('active-overlay');
+            }
+            el.style.display = 'none';
+        }
     },
     toast: (msg: string, type: 'info' | 'ok' | 'warn' | 'err' = 'info'): void => {
         const c = Utils.$('toast-container');

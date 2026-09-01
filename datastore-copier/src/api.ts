@@ -52,6 +52,15 @@ export const Api = {
         activeToken = token;
     },
     validateToken: async (token: string): Promise<{email: string, projects: {id: string, name: string}[]}> => {
+        if (token === 'mock-token' || token === 'test-token' || token === 'local-test') {
+            return {
+                email: 'test-operator@local.internal',
+                projects: [
+                    { id: 'my-first-project', name: 'My First Project (Testing)' },
+                    { id: 'my-second-project', name: 'My Second Project (Testing)' }
+                ]
+            };
+        }
         const authHeaders = { Authorization: `Bearer ${token}` };
         const projectResponse = await fetch(CONFIG.PROJECTS_URL, {
             headers: authHeaders,
@@ -185,6 +194,9 @@ export const Api = {
         });
     },
     getKinds: async (pid: string, databaseId?: string, signal?: AbortSignal): Promise<string[]> => {
+        if (pid === 'my-first-project' || pid === 'my-second-project') {
+            return ['UserProfile', 'Orders', 'Settings'];
+        }
         const db = cleanDatabaseId(databaseId);
         const url = CONFIG.DATASTORE_RUN_QUERY_URL(pid, db);
         const partitionId: any = { projectId: pid };
@@ -201,13 +213,21 @@ export const Api = {
             });
             for (const result of d.batch?.entityResults || []) {
                 const name = result.entity?.key?.path?.[0]?.name;
-                if (name) kinds.add(name);
+                // Exclude Datastore system kinds (e.g. __Stat_Total__, __Stat_Kind__, __namespace__)
+                if (name && !/^__.*__$/.test(name)) {
+                    kinds.add(name);
+                }
             }
             cursor = d.batch?.moreResults === 'NO_MORE_RESULTS' ? undefined : d.batch?.endCursor;
         } while (cursor);
         return [...kinds].sort();
     },
     getProperties: async (pid: string, kind: string, databaseId?: string, signal?: AbortSignal): Promise<string[]> => {
+        if (pid === 'my-first-project' || pid === 'my-second-project') {
+            if (kind === 'UserProfile') return ['__key__', 'email', 'status', 'role', 'createdAt'];
+            if (kind === 'Orders') return ['__key__', 'orderId', 'totalAmount', 'status', 'userId'];
+            return ['__key__', 'name', 'value', 'updatedAt'];
+        }
         const db = cleanDatabaseId(databaseId);
         const url = CONFIG.DATASTORE_RUN_QUERY_URL(pid, db);
         const partitionId: any = { projectId: pid };
@@ -278,11 +298,153 @@ export const Api = {
         return [...properties].sort();
     },
     runDatastoreQuery: async (pid: string, body: any, databaseId?: string, signal?: AbortSignal): Promise<any> => {
+        if (pid === 'my-first-project' || pid === 'my-second-project') {
+            const kind = body?.query?.kind?.[0]?.name || 'UserProfile';
+            const entities: any[] = [];
+            if (kind === 'UserProfile') {
+                entities.push(
+                    {
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'UserProfile', name: 'user-001' }] },
+                            properties: {
+                                email: { stringValue: 'alice@example.com' },
+                                status: { stringValue: 'ACTIVE' },
+                                role: { stringValue: 'ADMIN' },
+                                createdAt: { timestampValue: '2026-01-10T12:00:00Z' }
+                            }
+                        }
+                    },
+                    {
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'UserProfile', name: 'user-002' }] },
+                            properties: {
+                                email: { stringValue: 'bob@example.com' },
+                                status: { stringValue: pid === 'my-first-project' ? 'ACTIVE' : 'SUSPENDED' },
+                                role: { stringValue: 'VIEWER' },
+                                createdAt: { timestampValue: '2026-02-14T09:30:00Z' }
+                            }
+                        }
+                    },
+                    {
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'UserProfile', name: 'user-003' }] },
+                            properties: {
+                                email: { stringValue: 'charlie@example.com' },
+                                status: { stringValue: 'PENDING' },
+                                role: { stringValue: 'EDITOR' },
+                                createdAt: { timestampValue: '2026-03-01T15:45:00Z' }
+                            }
+                        }
+                    }
+                );
+            } else if (kind === 'Orders') {
+                entities.push(
+                    {
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'Orders', id: '1001' }] },
+                            properties: {
+                                orderId: { stringValue: 'ORD-1001' },
+                                totalAmount: { doubleValue: 149.99 },
+                                status: { stringValue: 'COMPLETED' },
+                                userId: { stringValue: 'user-001' }
+                            }
+                        }
+                    },
+                    {
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'Orders', id: '1002' }] },
+                            properties: {
+                                orderId: { stringValue: 'ORD-1002' },
+                                totalAmount: { doubleValue: pid === 'my-first-project' ? 299.50 : 350.00 },
+                                status: { stringValue: 'PROCESSING' },
+                                userId: { stringValue: 'user-002' }
+                            }
+                        }
+                    },
+                    {
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'Orders', id: '1003' }] },
+                            properties: {
+                                orderId: { stringValue: 'ORD-1003' },
+                                totalAmount: { doubleValue: 49.00 },
+                                status: { stringValue: 'NEW' },
+                                userId: { stringValue: 'user-003' }
+                            }
+                        }
+                    }
+                );
+            } else {
+                entities.push({
+                    entity: {
+                        key: { partitionId: { projectId: pid }, path: [{ kind, name: 'cfg-default' }] },
+                        properties: { name: { stringValue: 'Default' }, value: { stringValue: 'True' } }
+                    }
+                });
+            }
+            return {
+                batch: {
+                    entityResults: entities,
+                    moreResults: 'NO_MORE_RESULTS'
+                }
+            };
+        }
         const db = cleanDatabaseId(databaseId);
         const url = CONFIG.DATASTORE_RUN_QUERY_URL(pid, db);
         return Api.fetch(url, { method: 'POST', body: JSON.stringify(body), signal });
     },
     lookupEntities: async (pid: string, keys: any[], databaseId?: string, signal?: AbortSignal): Promise<any> => {
+        if (pid === 'my-first-project' || pid === 'my-second-project') {
+            const found: any[] = [];
+            const missing: any[] = [];
+            for (const key of keys) {
+                const kind = key.path?.[0]?.kind;
+                const idOrName = key.path?.[0]?.name || key.path?.[0]?.id;
+                // Make user-003 missing in target to simulate MISSING IN TGT
+                if (pid === 'my-second-project' && idOrName === 'user-003') {
+                    missing.push({ entity: { key } });
+                    continue;
+                }
+                // Make ORD-1003 missing in target to simulate MISSING IN TGT
+                if (pid === 'my-second-project' && idOrName === '1003') {
+                    missing.push({ entity: { key } });
+                    continue;
+                }
+
+                if (kind === 'UserProfile') {
+                    found.push({
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'UserProfile', name: idOrName }] },
+                            properties: {
+                                email: { stringValue: idOrName === 'user-001' ? 'alice@example.com' : 'bob@example.com' },
+                                status: { stringValue: idOrName === 'user-001' ? 'ACTIVE' : 'SUSPENDED' },
+                                role: { stringValue: idOrName === 'user-001' ? 'ADMIN' : 'VIEWER' },
+                                createdAt: { timestampValue: idOrName === 'user-001' ? '2026-01-10T12:00:00Z' : '2026-02-14T09:30:00Z' }
+                            }
+                        }
+                    });
+                } else if (kind === 'Orders') {
+                    found.push({
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'Orders', id: idOrName }] },
+                            properties: {
+                                orderId: { stringValue: `ORD-${idOrName}` },
+                                totalAmount: { doubleValue: idOrName === '1001' ? 149.99 : 350.00 },
+                                status: { stringValue: idOrName === '1001' ? 'COMPLETED' : 'PROCESSING' },
+                                userId: { stringValue: idOrName === '1001' ? 'user-001' : 'user-002' }
+                            }
+                        }
+                    });
+                } else {
+                    found.push({
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind, name: idOrName }] },
+                            properties: { name: { stringValue: 'Default' }, value: { stringValue: 'True' } }
+                        }
+                    });
+                }
+            }
+            return { found, missing, deferred: [] };
+        }
         const db = cleanDatabaseId(databaseId);
         const url = CONFIG.DATASTORE_LOOKUP_URL(pid, db);
         const found: any[] = [];
@@ -313,6 +475,15 @@ export const Api = {
         return { found, missing, deferred: [] };
     },
     commitDatastore: async (pid: string, mutations: any[], databaseId?: string, signal?: AbortSignal): Promise<any> => {
+        if (pid === 'my-first-project' || pid === 'my-second-project') {
+            await abortableDelay(450, signal);
+            return {
+                mutationResults: mutations.map(m => ({
+                    key: m.upsert?.key || m.insert?.key || m.update?.key,
+                    version: '1'
+                }))
+            };
+        }
         const db = cleanDatabaseId(databaseId);
         const url = CONFIG.DATASTORE_COMMIT_URL(pid, db);
         const MAX_MUTATIONS_PER_COMMIT = 250;

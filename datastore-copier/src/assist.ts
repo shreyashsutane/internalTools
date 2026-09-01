@@ -100,6 +100,21 @@ export class AssistManager {
                 };
             }
 
+            const dsCopyModal = modalRoot.querySelector('.selected-entities-list, .chk-apply-replace');
+            if (dsCopyModal) {
+                const selectedCount = stateObj.ds?.selected?.size || 0;
+                return {
+                    id: 'modal-ds-copy-guide',
+                    targetSelector: '#modal-root .btn-confirm, #modal-root',
+                    title: `Confirm Datastore Copy (${selectedCount} Entities)`,
+                    directive: '👉 Review Entities, Rules & Confirm Migration',
+                    explanation: 'Replaces matching property values losslessly using AST mutation rules and copies selected entities to the destination with automated rollback backup.',
+                    mascotState: 'happy',
+                    position: 'top',
+                    inModal: true
+                };
+            }
+
             const queryCopyModal = modalRoot.querySelector('.from-pid-span, .to-pid-span');
             if (queryCopyModal) {
                 return {
@@ -131,15 +146,18 @@ export class AssistManager {
 
         // 2. Check if App is in Loading state
         const secLoading = document.getElementById('sec-loading');
-        if (secLoading && secLoading.style.display !== 'none' && secLoading.offsetParent !== null) {
+        if (secLoading && (secLoading.style.display !== 'none' || secLoading.classList.contains('active-overlay')) && secLoading.offsetParent !== null) {
             const loadTitle = document.getElementById('load-title')?.textContent || 'Processing';
+            const isCopying = loadTitle.toLowerCase().includes('copy');
             return {
                 id: 'app-loading-rocket',
                 targetSelector: '#btn-toggle-assist',
-                title: 'Operation in Progress',
+                title: isCopying ? 'Rocket Launch: Copying Entities!' : 'Operation in Progress',
                 directive: `🚀 ${loadTitle}...`,
-                explanation: 'Streaming live data from Google Cloud APIs and executing high-performance in-memory AST transforms.',
-                mascotState: 'thinking',
+                explanation: isCopying
+                    ? 'Blast off! High-performance AST transforms and transactional batches are writing directly to target GCP projects.'
+                    : 'Streaming live data from Google Cloud APIs and executing high-performance in-memory AST transforms.',
+                mascotState: isCopying ? 'happy' : 'thinking',
                 position: 'bottom'
             };
         }
@@ -246,6 +264,19 @@ export class AssistManager {
                     title: 'Entity Kind Selection',
                     directive: '👉 Choose or Type Entity Kind',
                     explanation: 'Selecting a Kind fetches its live schema and synchronizes all filter property dropdowns automatically.',
+                    mascotState: 'thinking',
+                    position: 'right'
+                };
+            }
+
+            // Filter Kind Dropdown (Filter Scope)
+            if (activeEl.classList.contains('filter-kind')) {
+                return {
+                    id: 'focus-filter-kind',
+                    targetSelector: '.filter-kind:focus, .filter-kind',
+                    title: 'Filter Kind Scope',
+                    directive: '👉 Select Kind Scope for Filter',
+                    explanation: 'Target this property filter to a specific Entity Kind or apply universally across all selected kinds.',
                     mascotState: 'thinking',
                     position: 'right'
                 };
@@ -453,13 +484,14 @@ export class AssistManager {
                         position: 'right'
                     };
                 }
-                if (!dsKind) {
+                const hasKinds = (stateObj.ds?.selectedKinds && stateObj.ds.selectedKinds.size > 0) || Boolean(dsKind);
+                if (!hasKinds) {
                     return {
                         id: 'ds-select-kind-step',
                         targetSelector: '#ds-kind',
-                        title: 'Select Entity Kind',
-                        directive: '👉 Select or type an Entity Kind',
-                        explanation: 'Picking a Kind fetches its schema and synchronizes all filter column dropdowns in real time.',
+                        title: 'Select Entity Kinds',
+                        directive: '👉 Select one or more Entity Kinds',
+                        explanation: 'Pick one or multiple Kinds to compare entities across kinds with auto-synced schema filters.',
                         mascotState: 'thinking',
                         position: 'right'
                     };
@@ -573,6 +605,34 @@ export class AssistManager {
         if (secResults && secResults.style.display !== 'none' && secResults.offsetParent !== null) {
             const resDs = document.getElementById('res-ds');
             if (resDs && resDs.style.display !== 'none' && resDs.offsetParent !== null) {
+                const selectedCount = stateObj.ds?.selected?.size || 0;
+                const totalCount = stateObj.ds?.results?.length || 0;
+
+                if (selectedCount > 0) {
+                    return {
+                        id: 'ds-results-ready-copy',
+                        targetSelector: '#btn-ds-copy',
+                        title: `${selectedCount} Entity(s) Selected`,
+                        directive: `👉 Click "Copy Selected (${selectedCount})" to Migrate`,
+                        explanation: 'Opens pre-flight verification modal with rollback backup. Configure find & replace mutation rules or proceed directly.',
+                        mascotState: 'happy',
+                        position: 'top'
+                    };
+                }
+
+                const kindAccordions = document.querySelectorAll('.kind-accordion');
+                if (kindAccordions.length > 1) {
+                    return {
+                        id: 'ds-results-multi-kind-accordions',
+                        targetSelector: '#btn-ds-expand-all, #ds-kind-filter, #btn-ds-dry-run',
+                        title: 'Multi-Kind Entity Comparison',
+                        directive: '👉 Inspect Kind Accordions or Simulate Dry Run',
+                        explanation: `Compared ${totalCount} entities across ${kindAccordions.length} kinds. Use Expand/Collapse All or filter by Kind to organize your view.`,
+                        mascotState: 'happy',
+                        position: 'top'
+                    };
+                }
+
                 return {
                     id: 'ds-results-diff-step',
                     targetSelector: '#btn-ds-dry-run',

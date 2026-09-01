@@ -102,6 +102,7 @@ export const UI = {
         setupDD('ds-src', 'dd-ds-src', id => {
             State.ds.src = id;
             UI.loadDatabases(id, 'src');
+            UI.loadKinds(id, State.ds.srcDb);
             if (!State.ds.modRules || State.ds.modRules.length === 0) {
                 State.ds.modRules = [{ id: 'rule-1', field: '*', target: id, replacement: State.ds.modReplace || '' }];
             } else {
@@ -110,6 +111,16 @@ export const UI = {
             State.ds.modTarget = id;
             UI.renderDsRules();
         });
+
+        const dsSrcInp = Utils.$('ds-src') as HTMLInputElement | null;
+        if (dsSrcInp) {
+            dsSrcInp.addEventListener('change', () => {
+                if (dsSrcInp.value) {
+                    State.ds.src = dsSrcInp.value;
+                    UI.loadKinds(dsSrcInp.value, State.ds.srcDb);
+                }
+            });
+        }
         setupDD('ds-tgt', 'dd-ds-tgt', id => {
             State.ds.tgt = id;
             UI.loadDatabases(id, 'tgt');
@@ -125,40 +136,39 @@ export const UI = {
         const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
         const kMenu = Utils.$('dd-ds-kind');
         if (kInp && kMenu) {
-            let kindDebounceTimer: any = null;
-            const handleKindChange = (val: string) => {
-                State.ds.kind = val;
-                UI.updateGqlPreview();
-                if (kindDebounceTimer) clearTimeout(kindDebounceTimer);
-                kindDebounceTimer = setTimeout(() => {
-                    if (State.ds.src && val) {
-                        UI.loadProperties();
-                    }
-                }, 200);
-            };
-
             const renderKinds = () => {
                 const f = kInp.value.toLowerCase();
                 const ft = State.ds.kinds.filter(kind => kind.toLowerCase().includes(f));
                 if (ft.length === 0) {
-                    renderEmptyMenu(kMenu);
+                    renderEmptyMenu(kMenu, 'No matching kinds');
                 } else {
                     kMenu.replaceChildren();
-                    ft.forEach(kind => appendSimpleMenuItem(kMenu, kind, targetId => {
-                        kInp.value = targetId;
-                        kMenu.classList.remove('open');
-                        handleKindChange(targetId);
-                    }));
+                    ft.forEach(kind => {
+                        const checked = State.ds.selectedKinds.has(kind);
+                        const item = document.createElement('div');
+                        item.className = 'dropdown-item flex items-center justify-between';
+                        item.dataset.id = kind;
+                        item.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <div class="chk ${checked ? 'on' : ''}" style="pointer-events:none"></div>
+                                <span class="id">${Utils.escapeHtml(kind)}</span>
+                            </div>
+                        `;
+                        item.onmousedown = (e) => {
+                            e.preventDefault();
+                            UI.toggleKind(kind);
+                            renderKinds();
+                        };
+                        kMenu.appendChild(item);
+                    });
                 }
                 kMenu.classList.add('open');
             };
             kInp.onfocus = renderKinds;
-            kInp.onblur = () => setTimeout(() => kMenu.classList.remove('open'), 150);
+            kInp.onblur = () => setTimeout(() => kMenu.classList.remove('open'), 180);
             kInp.oninput = () => {
                 renderKinds();
-                handleKindChange(kInp.value.trim());
             };
-            kInp.onchange = () => handleKindChange(kInp.value.trim());
         }
 
         setupSimpleDD('ds-mod-field', 'dd-ds-mod', State.ds.properties, 'modField', null);
@@ -168,17 +178,74 @@ export const UI = {
         if (State.ds.databasesSrc) setupSimpleDD('ds-src-db', 'dd-ds-src-db', State.ds.databasesSrc, 'srcDb', null, async (dbId) => {
             const kindInp = Utils.getInput('ds-kind');
             kindInp.value = '';
+            State.ds.selectedKinds.clear();
             State.ds.kind = '';
             State.ds.properties = [];
+            UI.renderKindChips();
             UI.refreshAllFilterPropertyDropdowns();
             UI.updateGqlPreview();
             await UI.loadKinds(State.ds.src, dbId);
         });
         if (State.ds.databasesTgt) setupSimpleDD('ds-tgt-db', 'dd-ds-tgt-db', State.ds.databasesTgt, 'tgtDb', null);
     },
-    loadDatabases: async (projectId: string, side: 'src' | 'tgt') => {
+    toggleKind: (kind: string) => {
+        if (State.ds.selectedKinds.has(kind)) {
+            State.ds.selectedKinds.delete(kind);
+        } else {
+            State.ds.selectedKinds.add(kind);
+        }
+        State.ds.kind = [...State.ds.selectedKinds].join(',');
+        UI.renderKindChips();
+        UI.updateGqlPreview();
+        UI.loadProperties();
+    },
+    renderKindChips: () => {
+        const c = Utils.$('ds-kind-chips');
+        if (!c) return;
+        c.replaceChildren();
+        State.ds.selectedKinds.forEach(k => {
+            const chip = document.createElement('span');
+            chip.className = 'kind-chip';
+            chip.innerHTML = `${Utils.escapeHtml(k)} <button type="button" title="Remove"><i class="fa-solid fa-xmark"></i></button>`;
+            chip.querySelector('button')!.onclick = () => {
+                UI.toggleKind(k);
+            };
+            c.appendChild(chip);
+        });
+        if (State.ds.selectedKinds.size === 0) {
+            const placeholder = document.createElement('span');
+            placeholder.className = 'text-xs italic';
+            placeholder.style.color = 'var(--muted)';
+            placeholder.textContent = 'No kinds selected (select at least one)';
+            c.appendChild(placeholder);
+        }
+    },
+    selectAllKinds: () => {
+        State.ds.kinds.forEach(k => State.ds.selectedKinds.add(k));
+        State.ds.kind = [...State.ds.selectedKinds].join(',');
+        UI.renderKindChips();
+        UI.updateGqlPreview();
+        UI.loadProperties();
+    },
+    clearAllKinds: () => {
+        State.ds.selectedKinds.clear();
+        State.ds.kind = '';
+        UI.renderKindChips();
+        UI.updateGqlPreview();
+        UI.loadProperties();
+    },
+    loadDatabases: async (pid: string, side: 'src' | 'tgt') => {
+        if (!pid) return;
+        if (pid === 'my-first-project' || pid === 'my-second-project') {
+            if (side === 'src') State.ds.databasesSrc = ['(default)'];
+            else State.ds.databasesTgt = ['(default)'];
+            UI.initDropdowns();
+            return;
+        }
+        const dbInp = Utils.getInput(`ds-${side}-db`);
+        dbInp.placeholder = "Loading databases...";
         try {
-            const res = await Api.fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases`);
+            const res = await Api.fetch(`https://firestore.googleapis.com/v1/projects/${pid}/databases`);
             const dbs = (res.databases || []).map((db: any) => db.name.split('/').pop());
             if (dbs.length === 0) {
                 dbs.push('(default)');
@@ -207,7 +274,10 @@ export const UI = {
         kindInp.placeholder = "Loading kinds...";
         try {
             State.ds.kinds = await Api.getKinds(pid, databaseId);
-            kindInp.placeholder = "Select Kind...";
+            kindInp.placeholder = "Search and select kinds...";
+            State.ds.selectedKinds.clear();
+            State.ds.kind = '';
+            UI.renderKindChips();
             UI.initDropdowns();
         } catch (e: any) {
             const { ErrorBoundary } = await import('./utils');
@@ -216,17 +286,37 @@ export const UI = {
         }
     },
     loadProperties: async () => {
-        if (!State.ds.src || !State.ds.kind) return;
-        try {
-            State.ds.properties = await Api.getProperties(State.ds.src, State.ds.kind, State.ds.srcDb);
+        if (!State.ds.src || State.ds.selectedKinds.size === 0) {
+            State.ds.properties = [];
+            State.ds.kindProperties = {};
             UI.initDropdowns();
             UI.refreshAllFilterPropertyDropdowns();
             UI.updateGqlPreview();
-            Utils.toast(`Loaded ${State.ds.properties.length} properties for "${State.ds.kind}"`, "ok");
+            return;
+        }
+        try {
+            const kinds = [...State.ds.selectedKinds];
+            const propSets = await Promise.all(
+                kinds.map(k => Api.getProperties(State.ds.src, k, State.ds.srcDb))
+            );
+            const unionProps = new Set<string>();
+            const kindPropsMap: Record<string, string[]> = {};
+            kinds.forEach((k, idx) => {
+                const ps = propSets[idx] || [];
+                kindPropsMap[k] = ps;
+                ps.forEach(p => unionProps.add(p));
+            });
+            State.ds.kindProperties = kindPropsMap;
+            State.ds.properties = [...unionProps].sort();
+            UI.initDropdowns();
+            UI.refreshAllFilterPropertyDropdowns();
+            UI.updateGqlPreview();
+            Utils.toast(`Loaded ${State.ds.properties.length} unique properties across selected kinds`, "ok");
         } catch (e: any) {
             const { ErrorBoundary } = await import('./utils');
             await ErrorBoundary.handle(e, 'UI.loadProperties');
             State.ds.properties = [];
+            State.ds.kindProperties = {};
             UI.refreshAllFilterPropertyDropdowns();
             UI.updateGqlPreview();
         }
@@ -235,15 +325,43 @@ export const UI = {
         const c = Utils.$('ds-filters-container');
         if (!c) return;
         const rows = c.querySelectorAll('.filter-row');
-        const properties = State.ds.properties;
-        const props = ['__key__', ...properties.filter((p: string) => p !== '__key__')];
+        const selectedKinds = [...State.ds.selectedKinds];
 
         rows.forEach(r => {
+            const kindSelect = r.querySelector('.filter-kind') as HTMLSelectElement | null;
+            if (kindSelect) {
+                const currentKind = kindSelect.value;
+                kindSelect.replaceChildren();
+                const allOpt = document.createElement('option');
+                allOpt.value = 'all';
+                allOpt.textContent = 'All Kinds';
+                kindSelect.appendChild(allOpt);
+
+                selectedKinds.forEach(k => {
+                    const opt = document.createElement('option');
+                    opt.value = k;
+                    opt.textContent = k;
+                    kindSelect.appendChild(opt);
+                });
+
+                if (currentKind && (currentKind === 'all' || selectedKinds.includes(currentKind))) {
+                    kindSelect.value = currentKind;
+                } else {
+                    kindSelect.value = 'all';
+                }
+            }
+
             const propSelect = r.querySelector('.filter-prop') as HTMLSelectElement | null;
             if (!propSelect) return;
-            const currentVal = propSelect.value;
-            propSelect.replaceChildren();
+            const currentProp = propSelect.value;
+            const chosenKind = kindSelect?.value || 'all';
 
+            const properties = chosenKind !== 'all' && State.ds.kindProperties?.[chosenKind]
+                ? State.ds.kindProperties[chosenKind]
+                : State.ds.properties;
+            const props = ['__key__', ...properties.filter((p: string) => p !== '__key__')];
+
+            propSelect.replaceChildren();
             props.forEach(property => {
                 const option = document.createElement('option');
                 option.value = property;
@@ -251,8 +369,8 @@ export const UI = {
                 propSelect.appendChild(option);
             });
 
-            if (currentVal && props.includes(currentVal)) {
-                propSelect.value = currentVal;
+            if (currentProp && props.includes(currentProp)) {
+                propSelect.value = currentProp;
             } else {
                 propSelect.value = '__key__';
             }
@@ -267,6 +385,7 @@ export const UI = {
         const conditions: string[] = [];
 
         rows.forEach(r => {
+            const kScope = (r.querySelector('.filter-kind') as HTMLSelectElement)?.value || 'all';
             const prop = (r.querySelector('.filter-prop') as HTMLSelectElement)?.value || '__key__';
             const op = (r.querySelector('.filter-op') as HTMLSelectElement)?.value || 'EQUAL';
             const type = (r.querySelector('.filter-type') as HTMLSelectElement)?.value || 'auto';
@@ -290,30 +409,59 @@ export const UI = {
                 valStr = `KEY(${val || '...'})`;
             }
 
-            conditions.push(`${prop} ${opSym} ${valStr}`);
+            const prefix = kScope !== 'all' ? `[${kScope}] ` : '';
+            conditions.push(`${prefix}${prop} ${opSym} ${valStr}`);
         });
 
         const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(' AND ')}` : '';
         previewEl.textContent = `SELECT * FROM ${kind}${whereClause} ORDER BY __key__ ASC`;
     },
-    addDsFilter: (presetProp?: string, presetOp?: string, presetType?: string, presetVal?: string) => {
+    addDsFilter: (presetProp?: string, presetOp?: string, presetType?: string, presetVal?: string, presetKind?: string) => {
         const c = Utils.$('ds-filters-container');
         if (!c) return;
         const tmpl = Utils.$('template-ds-filter-row') as HTMLTemplateElement;
         if (!tmpl) return;
         const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
 
+        const kindSelect = fragment.querySelector('.filter-kind') as HTMLSelectElement;
         const propSelect = fragment.querySelector('.filter-prop') as HTMLSelectElement;
         const opSelect = fragment.querySelector('.filter-op') as HTMLSelectElement;
         const typeSelect = fragment.querySelector('.filter-type') as HTMLSelectElement;
         const valContainer = fragment.querySelector('.filter-val-container') as HTMLElement;
 
-        if (propSelect) {
-            const properties = State.ds.properties || [];
+        const selectedKinds = [...State.ds.selectedKinds];
+        if (kindSelect) {
+            kindSelect.replaceChildren();
+            const allOpt = document.createElement('option');
+            allOpt.value = 'all';
+            allOpt.textContent = 'All Kinds';
+            kindSelect.appendChild(allOpt);
+
+            selectedKinds.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.textContent = k;
+                if (presetKind && presetKind === k) opt.selected = true;
+                kindSelect.appendChild(opt);
+            });
+
+            kindSelect.onchange = () => {
+                populateProps();
+                UI.updateGqlPreview();
+            };
+        }
+
+        const populateProps = () => {
+            if (!propSelect) return;
+            const chosenKind = kindSelect?.value || 'all';
+            const properties = chosenKind !== 'all' && State.ds.kindProperties?.[chosenKind]
+                ? State.ds.kindProperties[chosenKind]
+                : (State.ds.properties || []);
             const props = ['__key__', ...properties.filter((p: string) => p !== '__key__')];
             if (presetProp && !props.includes(presetProp)) {
                 props.push(presetProp);
             }
+            const currentProp = propSelect.value;
             propSelect.replaceChildren();
             props.forEach(property => {
                 const option = document.createElement('option');
@@ -322,6 +470,13 @@ export const UI = {
                 if (presetProp && property === presetProp) option.selected = true;
                 propSelect.appendChild(option);
             });
+            if (currentProp && props.includes(currentProp)) {
+                propSelect.value = currentProp;
+            }
+        };
+
+        if (propSelect) {
+            populateProps();
             propSelect.onchange = () => UI.updateGqlPreview();
         }
 
@@ -394,7 +549,7 @@ export const UI = {
         const root = Utils.$('modal-root');
         if (!root) return;
         root.style.display = '';
-        root.innerHTML = `<div class="modal-bg"><div class="card modal ${isLarge ? 'modal-large' : ''}" style="padding:0"></div></div>`;
+        root.innerHTML = `<div class="modal-bg"><div class="modal ${isLarge ? 'modal-large' : ''}" style="padding:0; background:#0c101d; border:1px solid var(--brd2); box-shadow:0 25px 60px -12px rgba(0,0,0,0.95); border-radius:16px;"></div></div>`;
 
         const modalBg = root.querySelector('.modal-bg') as HTMLElement;
         modalBg.onclick = (e) => {

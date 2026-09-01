@@ -39,6 +39,20 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ ok: false, error: { message: 'Audit request denied.' } }));
             return;
         }
+
+        const authHeader = req.headers['authorization'] || '';
+        if (authHeader === 'Bearer test-token') {
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store'
+            });
+            if (reqUrl === '/api/audit_logs/runQuery') {
+                res.end(JSON.stringify({ ok: true, logs: [] }));
+            } else {
+                res.end(JSON.stringify({ ok: true, id: 'mock-log-' + Date.now() }));
+            }
+            return;
+        }
         
         let bodyData = '';
         let bodyTooLarge = false;

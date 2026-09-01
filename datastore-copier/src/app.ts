@@ -167,6 +167,23 @@ export const App = {
             if (State.ds.modRules && State.ds.modRules[0]) State.ds.modRules[0].replacement = e.target.value;
         };
 
+        const dsSelectAllKindsBtn = Utils.$('btn-ds-select-all-kinds');
+        if (dsSelectAllKindsBtn) dsSelectAllKindsBtn.onclick = UI.selectAllKinds;
+
+        const dsClearKindsBtn = Utils.$('btn-ds-clear-kinds');
+        if (dsClearKindsBtn) dsClearKindsBtn.onclick = UI.clearAllKinds;
+
+        const dsKindFilter = Utils.$('ds-kind-filter') as HTMLSelectElement | null;
+        if (dsKindFilter) {
+            dsKindFilter.onchange = () => App.setDsKindFilter(dsKindFilter.value);
+        }
+
+        const dsExpandAllBtn = Utils.$('btn-ds-expand-all');
+        if (dsExpandAllBtn) dsExpandAllBtn.onclick = () => App.toggleAllAccordions(true);
+
+        const dsCollapseAllBtn = Utils.$('btn-ds-collapse-all');
+        if (dsCollapseAllBtn) dsCollapseAllBtn.onclick = () => App.toggleAllAccordions(false);
+
         const dsAnalyzeBtn = Utils.$('btn-ds-analyze');
         if (dsAnalyzeBtn) dsAnalyzeBtn.onclick = App.runDsAnalyze;
 
@@ -1057,19 +1074,30 @@ export const App = {
     runDsAnalyze: async (): Promise<void> => {
         State.ds.src = (Utils.$('ds-src') as HTMLInputElement).value;
         State.ds.tgt = (Utils.$('ds-tgt') as HTMLInputElement).value;
-        State.ds.kind = (Utils.$('ds-kind') as HTMLInputElement).value;
         State.ds.srcDb = (Utils.$('ds-src-db') as HTMLInputElement).value;
         State.ds.tgtDb = (Utils.$('ds-tgt-db') as HTMLInputElement).value;
-        if (!State.ds.src || !State.ds.tgt || !State.ds.kind) return Utils.toast("Fill required fields", "err");
+
+        const kindsToProcess = State.ds.selectedKinds.size > 0
+            ? [...State.ds.selectedKinds]
+            : ((Utils.$('ds-kind') as HTMLInputElement).value ? (Utils.$('ds-kind') as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+        if (!State.ds.src || !State.ds.tgt || kindsToProcess.length === 0) {
+            return Utils.toast("Please select Source Project, Target Project, and at least one Kind.", "err");
+        }
 
         State.ds.results = [];
         State.ds.filtered = [];
         State.ds.selected.clear();
         State.ds.stats = {identical:0, different:0, missing:0, mapped:0, total:0};
         State.cancelDs = false;
+
         const copyButton = Utils.$('btn-ds-copy') as HTMLButtonElement | null;
         if (copyButton) copyButton.disabled = true;
-        Utils.hide('sec-forms'); Utils.show('sec-loading'); Utils.show('load-ds-stats'); Utils.show('btn-cancel-ds');
+
+        Utils.hide('sec-forms');
+        Utils.show('sec-loading');
+        Utils.show('load-ds-stats');
+        Utils.show('btn-cancel-ds');
         Utils.$('load-title')!.textContent = "Analyzing Entities...";
 
         const parseVal = (v: string) => {
@@ -1118,73 +1146,44 @@ export const App = {
                 case 'boolean':
                     return { booleanValue: trimmed.toLowerCase() === 'true' };
                 case 'timestamp': {
-                    const d = new Date(trimmed);
-                    if (isNaN(d.getTime())) {
-                        throw new Error(`Invalid Timestamp value: "${v}". Use ISO format e.g. 2026-08-19T00:00:00Z`);
-                    }
-                    return { timestampValue: d.toISOString() };
+                    if (!trimmed) throw new Error("Timestamp value cannot be empty");
+                    const date = new Date(trimmed);
+                    if (isNaN(date.getTime())) throw new Error(`Invalid ISO timestamp: "${v}"`);
+                    return { timestampValue: date.toISOString() };
                 }
                 case 'null':
-                    return { nullValue: 'NULL_VALUE' };
+                    return { nullValue: null };
                 case 'auto':
                 default:
                     return parseVal(v);
             }
         };
 
-        const parseKeyFilterVal = (str: string) => {
-            if (str.includes(':')) {
-                return parseAncestorKey(str);
-            }
-            const path = [];
-            const isNum = !isNaN(Number(str)) && str.trim() !== '';
-            if (isNum) {
-                path.push({ kind: State.ds.kind, id: str.trim() });
-            } else {
-                path.push({ kind: State.ds.kind, name: str.trim() });
-            }
-            const db = (State.ds.srcDb === '(default)' || !State.ds.srcDb) ? '' : State.ds.srcDb;
-            const partitionId: any = { projectId: State.ds.src };
-            if (db) partitionId.databaseId = db;
-            return { keyValue: { path, partitionId } };
-        };
-
-        const srcDbClean = (State.ds.srcDb === '(default)' || !State.ds.srcDb) ? '' : State.ds.srcDb;
-        const srcPartitionId: any = { projectId: State.ds.src };
-        if (srcDbClean) srcPartitionId.databaseId = srcDbClean;
-        const body: any = { partitionId: srcPartitionId, query: { kind: [{ name: State.ds.kind }] } };
-        const filters = Utils.$('ds-filters-container')!.querySelectorAll('.filter-row');
-        if (filters.length > 0) {
-            const props: any[] = [];
+        const filterElements = Utils.$('ds-filters-container')?.querySelectorAll('.filter-row');
+        const parsedFilters: { kindScope: string; filterObj: any }[] = [];
+        if (filterElements && filterElements.length > 0) {
             try {
-                filters.forEach(r => {
+                filterElements.forEach((r: any) => {
+                    const kindScope = (r.querySelector('.filter-kind') as HTMLSelectElement)?.value || 'all';
                     const prop = (r.querySelector('.filter-prop') as HTMLSelectElement)?.value;
                     const op = (r.querySelector('.filter-op') as HTMLSelectElement)?.value;
                     const type = (r.querySelector('.filter-type') as HTMLSelectElement)?.value || 'auto';
-                    const valEl = (r.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement);
-                    const val = valEl ? valEl.value : '';
+                    const valInput = r.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | null;
+                    const val = valInput ? valInput.value : '';
 
-                    if (prop && (val !== '' || type === 'null')) {
-                        if (prop === '__key__') {
-                            if (op === 'IN' || op === 'NOT_IN') {
-                                const parts = val.split(',').map(x => x.trim()).filter(Boolean);
-                                const keyValues = parts.map(part => parseKeyFilterVal(part).keyValue);
-                                const arrayVal = { arrayValue: { values: keyValues.map(kv => ({ keyValue: kv })) } };
-                                props.push({ propertyFilter: { property: { name: '__key__' }, op: op, value: arrayVal } });
-                            } else {
-                                const keyValueObj = parseKeyFilterVal(val);
-                                props.push({ propertyFilter: { property: { name: '__key__' }, op: op, value: keyValueObj } });
-                            }
-                        } else if (op === 'HAS_ANCESTOR') {
+                    if (prop && (val || type === 'null')) {
+                        let filterObj: any;
+                        if (op === 'HAS_ANCESTOR') {
                             const keyValue = parseAncestorKey(val);
-                            props.push({ propertyFilter: { property: { name: '__key__' }, op: 'HAS_ANCESTOR', value: keyValue } });
+                            filterObj = { propertyFilter: { property: { name: '__key__' }, op: 'HAS_ANCESTOR', value: keyValue } };
                         } else if (op === 'IN' || op === 'NOT_IN') {
                             const vals = val.split(',').map(x => x.trim()).filter(x => x !== '');
                             const arrayVal = { arrayValue: { values: vals.map(v => parseTypedVal(v, type)) } };
-                            props.push({ propertyFilter: { property: { name: prop }, op: op, value: arrayVal } });
+                            filterObj = { propertyFilter: { property: { name: prop }, op: op, value: arrayVal } };
                         } else {
-                            props.push({ propertyFilter: { property: { name: prop }, op: op, value: parseTypedVal(val, type) } });
+                            filterObj = { propertyFilter: { property: { name: prop }, op: op, value: parseTypedVal(val, type) } };
                         }
+                        parsedFilters.push({ kindScope, filterObj });
                     }
                 });
             } catch (err: any) {
@@ -1193,89 +1192,154 @@ export const App = {
                 Utils.show('sec-forms');
                 return;
             }
-            if (props.length === 1) {
-                body.query.filter = props[0];
-            } else if (props.length > 1) {
-                body.query.filter = { compositeFilter: { op: 'AND', filters: props } };
-            }
         }
 
         const controller = beginDsOperation();
         const discoveredProperties = new Set(State.ds.properties);
         try {
-            let cursor = null; let totalScanned = 0;
-            do {
-                if (cursor) body.query.startCursor = cursor;
-                Utils.$('load-msg')!.textContent = `Scanned ${totalScanned} entities... (Fetching batch)`;
-                const res = await Api.runDatastoreQuery(State.ds.src, body, State.ds.srcDb, controller.signal);
-                const srcEntities = res.batch?.entityResults || [];
-                cursor = res.batch?.moreResults === 'NO_MORE_RESULTS' ? null : (res.batch?.endCursor || null);
-                if (srcEntities.length === 0) break;
+            let totalScanned = 0;
 
-                for (let i = 0; i < srcEntities.length; i += 100) {
-                    if (State.cancelDs) throw new DOMException("Process Cancelled", 'AbortError');
-                    const chunk = srcEntities.slice(i, i + 100);
-                    chunk.forEach((result: any) => {
-                        Object.keys(result.entity?.properties || {}).forEach(name => discoveredProperties.add(name));
-                    });
-                    const keysToLookup = chunk.map((e: any) => {
-                        const keyCopy = cloneDatastoreValue(e.entity.key);
-                        const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
-                        const tgtPartitionId: any = { projectId: State.ds.tgt };
-                        if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
-                        keyCopy.partitionId = tgtPartitionId;
-                        return keyCopy;
-                    });
-
-                    Utils.$('load-msg')!.textContent = `Scanned ${totalScanned} entities... (Comparing batch)`;
-                    const tgtRes = await Api.lookupEntities(State.ds.tgt, keysToLookup, State.ds.tgtDb, controller.signal);
-
-                    const tgtMap = new Map((tgtRes.found||[]).map((e: any) => [App.formatKey(e.entity.key), e.entity]));
-                    const missingSet = new Set((tgtRes.missing||[]).map((e: any) => App.formatKey(e.entity.key)));
-
-                    for (const srcE of chunk) {
-                        const kStr = App.formatKey(srcE.entity.key);
-                        State.ds.stats.total++;
-                        const tgtEnt = tgtMap.get(kStr);
-                        if (missingSet.has(kStr) || !tgtEnt) {
-                            State.ds.stats.missing++;
-                            State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'missing', diffSum: 'Missing in Target', srcEntity: srcE.entity, tgtEntity: null });
-                        } else {
-                            const diff = App.compareEntities(srcE.entity, tgtEnt);
-                            const hasRealDiff = diff.some(d => d.type !== 'mapped');
-                            const hasMapped = diff.some(d => d.type === 'mapped');
-
-                            if (hasRealDiff) {
-                                State.ds.stats.different++;
-                                const diffSum = diff.filter(d => d.type !== 'mapped').map(d=>d.prop).join(', ');
-                                State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'different', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
-                            } else if (hasMapped) {
-                                State.ds.stats.mapped++;
-                                const diffSum = diff.map(d => `${d.prop} (project mapped)`).join(', ');
-                                State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'mapped', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
-                            } else {
-                                State.ds.stats.identical++;
-                                State.ds.results.push({ keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff:[], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt });
-                            }
-                        }
-                        totalScanned++;
-                    }
-                }
-
+            const updateStatsDisplay = () => {
                 Utils.$('ld-identical')!.textContent = String(State.ds.stats.identical);
                 Utils.$('ld-different')!.textContent = String(State.ds.stats.different);
                 Utils.$('ld-missing')!.textContent = String(State.ds.stats.missing);
-                await new Promise(resolve => setTimeout(resolve, 0));
-            } while(cursor);
+            };
+
+            // Process kinds concurrently with bounded concurrency (up to 3 parallel streams)
+            await mapConcurrent(kindsToProcess, Math.min(3, kindsToProcess.length), async (currentKind, kIdx) => {
+                if (State.cancelDs || controller.signal.aborted) return;
+                const kindPrefix = `[${kIdx + 1}/${kindsToProcess.length}] Kind "${currentKind}"`;
+
+                // Filter props that are either for 'all' kinds or specifically for this kind
+                const applicableFilters = parsedFilters
+                    .filter(f => f.kindScope === 'all' || f.kindScope === currentKind)
+                    .map(f => f.filterObj);
+
+                const srcPartitionId: any = { projectId: State.ds.src };
+                const dbClean = (State.ds.srcDb === '(default)' || !State.ds.srcDb) ? '' : State.ds.srcDb;
+                if (dbClean) srcPartitionId.databaseId = dbClean;
+
+                const body: any = { partitionId: srcPartitionId, query: { kind: [{ name: currentKind }] } };
+                if (applicableFilters.length === 1) {
+                    body.query.filter = applicableFilters[0];
+                } else if (applicableFilters.length > 1) {
+                    body.query.filter = { compositeFilter: { op: 'AND', filters: applicableFilters } };
+                }
+
+                let cursor = null;
+                let nextBatchPromise: Promise<any> | null = null;
+
+                do {
+                    if (State.cancelDs || controller.signal.aborted) throw new DOMException("Process Cancelled", 'AbortError');
+
+                    Utils.$('load-msg')!.textContent = `${kindPrefix}: Fetching batch (${totalScanned} scanned)...`;
+
+                    // Pipelined fetch: use pre-fetched batch if available, otherwise fetch
+                    const res = nextBatchPromise
+                        ? await nextBatchPromise
+                        : await Api.runDatastoreQuery(State.ds.src, body, State.ds.srcDb, controller.signal);
+
+                    const srcEntities = res.batch?.entityResults || [];
+                    cursor = res.batch?.moreResults === 'NO_MORE_RESULTS' ? null : (res.batch?.endCursor || null);
+
+                    // Pipeline: If there is a next cursor, start pre-fetching it in parallel while we process current batch
+                    if (cursor) {
+                        const nextBody = { ...body, query: { ...body.query, startCursor: cursor } };
+                        nextBatchPromise = Api.runDatastoreQuery(State.ds.src, nextBody, State.ds.srcDb, controller.signal);
+                    } else {
+                        nextBatchPromise = null;
+                    }
+
+                    if (srcEntities.length === 0) break;
+
+                    // Collect property names
+                    srcEntities.forEach((result: any) => {
+                        Object.keys(result.entity?.properties || {}).forEach(name => discoveredProperties.add(name));
+                    });
+
+                    // Prepare 100-key chunks for parallel lookup
+                    const CHUNK_SIZE = 100;
+                    const chunks: any[][] = [];
+                    for (let i = 0; i < srcEntities.length; i += CHUNK_SIZE) {
+                        chunks.push(srcEntities.slice(i, i + CHUNK_SIZE));
+                    }
+
+                    Utils.$('load-msg')!.textContent = `${kindPrefix}: Comparing ${srcEntities.length} entities in parallel...`;
+
+                    // Parallel target lookup across all chunks with Promise.all
+                    const lookupResults = await Promise.all(
+                        chunks.map(chunk => {
+                            const keysToLookup = chunk.map((e: any) => {
+                                const keyCopy = cloneDatastoreValue(e.entity.key);
+                                const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
+                                const tgtPartitionId: any = { projectId: State.ds.tgt };
+                                if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
+                                keyCopy.partitionId = tgtPartitionId;
+                                return keyCopy;
+                            });
+                            return Api.lookupEntities(State.ds.tgt, keysToLookup, State.ds.tgtDb, controller.signal);
+                        })
+                    );
+
+                    // Process results per chunk
+                    chunks.forEach((chunk, cIdx) => {
+                        const tgtRes = lookupResults[cIdx];
+                        const tgtMap = new Map((tgtRes.found || []).map((e: any) => [App.formatKey(e.entity.key), e.entity]));
+                        const missingSet = new Set((tgtRes.missing || []).map((e: any) => App.formatKey(e.entity.key)));
+
+                        for (const srcE of chunk) {
+                            const kStr = App.formatKey(srcE.entity.key);
+                            State.ds.stats.total++;
+                            totalScanned++;
+                            const tgtEnt = tgtMap.get(kStr);
+                            if (missingSet.has(kStr) || !tgtEnt) {
+                                State.ds.stats.missing++;
+                                State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'missing', diffSum: 'Missing in Target', srcEntity: srcE.entity, tgtEntity: null });
+                            } else {
+                                const diff = App.compareEntities(srcE.entity, tgtEnt);
+                                const hasRealDiff = diff.some(d => d.type !== 'mapped');
+                                const hasMapped = diff.some(d => d.type === 'mapped');
+
+                                if (hasRealDiff) {
+                                    State.ds.stats.different++;
+                                    const diffSum = diff.filter(d => d.type !== 'mapped').map(d => d.prop).join(', ');
+                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'different', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
+                                } else if (hasMapped) {
+                                    State.ds.stats.mapped++;
+                                    const diffSum = diff.map(d => `${d.prop} (project mapped)`).join(', ');
+                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'mapped', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
+                                } else {
+                                    State.ds.stats.identical++;
+                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff: [], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt });
+                                }
+                            }
+                        }
+                    });
+
+                    updateStatsDisplay();
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                } while (cursor);
+            });
 
             State.ds.properties = [...discoveredProperties].sort();
             UI.initDropdowns();
+
+            // Populate kind filter dropdown in results
+            const uniqueKindsInResults = [...new Set(State.ds.results.map(r => r.kind).filter(Boolean))];
+            const filterDropdown = Utils.$('ds-kind-filter') as HTMLSelectElement | null;
+            if (filterDropdown) {
+                filterDropdown.innerHTML = `<option value="all">All Kinds (${uniqueKindsInResults.length})</option>` +
+                    uniqueKindsInResults.map(k => `<option value="${Utils.escapeHtml(k!)}">${Utils.escapeHtml(k!)}</option>`).join('');
+                filterDropdown.value = 'all';
+            }
+            State.ds.filterKind = 'all';
+
             Utils.hide('sec-loading'); Utils.show('sec-results'); Utils.show('res-ds'); App.filterDsResults('all');
             const logged = await AuditLog.addLog(
                 'DATASTORE_ANALYZE',
                 State.ds.src,
                 State.ds.tgt,
-                `Analyzed kind ${State.ds.kind}. Total: ${State.ds.stats.total}; identical: ${State.ds.stats.identical}; mapped: ${State.ds.stats.mapped}; different: ${State.ds.stats.different}; missing: ${State.ds.stats.missing}.`,
+                `Analyzed ${kindsToProcess.length} kinds (${kindsToProcess.join(', ')}). Total: ${State.ds.stats.total}; identical: ${State.ds.stats.identical}; mapped: ${State.ds.stats.mapped}; different: ${State.ds.stats.different}; missing: ${State.ds.stats.missing}.`,
                 'SUCCESS'
             );
             if (!logged) Utils.toast('Datastore analysis completed, but the action could not be logged.', 'warn');
@@ -1287,7 +1351,7 @@ export const App = {
                     'DATASTORE_ANALYZE',
                     State.ds.src || '—',
                     State.ds.tgt || '—',
-                    `Cancelled analysis for kind ${State.ds.kind || 'not selected'}.`,
+                    `Cancelled analysis for kinds ${State.ds.kind || 'not selected'}.`,
                     'CANCELLED'
                 );
             } else {
@@ -1302,30 +1366,47 @@ export const App = {
     formatKey: (key: any): string => { return key.path.map((p: any) => `${p.kind}:${p.name||p.id}`).join(' | '); },
     compareEntities: (src: any, tgt: any): any[] => {
         const diffs: any[] = [];
-        const allKeys = new Set([...Object.keys(src?.properties || {}), ...Object.keys(tgt?.properties || {})]);
+        const srcProps = src?.properties || {};
+        const tgtProps = tgt?.properties || {};
+        const allKeys = new Set([...Object.keys(srcProps), ...Object.keys(tgtProps)]);
+
         for (const k of allKeys) {
-            const sVal = src?.properties?.[k];
-            const tVal = tgt?.properties?.[k];
-            if (!App.valsEqual(sVal, tVal)) {
-                // If it's a query property, check semantic SQL match
-                if (Diff.isQueryKey(k)) {
-                    const sStr = typeof sVal?.stringValue === 'string' ? sVal.stringValue : '';
-                    const tStr = typeof tVal?.stringValue === 'string' ? tVal.stringValue : '';
-                    if (sStr && tStr) {
-                        const queryDiff = Diff.isQuerySemanticallyEqual(sStr, tStr, State.ds.src, State.ds.tgt);
-                        if (queryDiff.match && queryDiff.type === 'identical') {
-                            continue; // Semantically identical query! No difference.
-                        }
-                        if (queryDiff.match && queryDiff.type === 'project_mapped') {
-                            diffs.push({ prop: k, type: 'mapped', src: App.formatVal(sVal), tgt: App.formatVal(tVal) });
-                            continue;
-                        }
+            const sVal = srcProps[k];
+            const tVal = tgtProps[k];
+
+            // 1. Instant reference equality or missing side
+            if (sVal === tVal) continue;
+            if (!sVal && tVal) {
+                diffs.push({ prop: k, type: 'added', src: '—', tgt: App.formatVal(tVal) });
+                continue;
+            }
+            if (sVal && !tVal) {
+                diffs.push({ prop: k, type: 'removed', src: App.formatVal(sVal), tgt: '—' });
+                continue;
+            }
+
+            // 2. Fast-path check: if deepEqual returns true, properties match identically
+            if (App.valsEqual(sVal, tVal)) {
+                continue;
+            }
+
+            // 3. If it's a query property, check semantic SQL match
+            if (Diff.isQueryKey(k)) {
+                const sStr = typeof sVal?.stringValue === 'string' ? sVal.stringValue : '';
+                const tStr = typeof tVal?.stringValue === 'string' ? tVal.stringValue : '';
+                if (sStr && tStr) {
+                    const queryDiff = Diff.isQuerySemanticallyEqual(sStr, tStr, State.ds.src, State.ds.tgt);
+                    if (queryDiff.match && queryDiff.type === 'identical') {
+                        continue; // Semantically identical query! No difference.
+                    }
+                    if (queryDiff.match && queryDiff.type === 'project_mapped') {
+                        diffs.push({ prop: k, type: 'mapped', src: App.formatVal(sVal), tgt: App.formatVal(tVal) });
+                        continue;
                     }
                 }
-
-                let type: 'added' | 'removed' | 'modified' | 'mapped' = (!sVal && tVal) ? 'added' : (sVal && !tVal) ? 'removed' : 'modified';
-                diffs.push({ prop: k, type, src: App.formatVal(sVal), tgt: App.formatVal(tVal) });
             }
+
+            diffs.push({ prop: k, type: 'modified', src: App.formatVal(sVal), tgt: App.formatVal(tVal) });
         }
         return diffs;
     },
@@ -1337,25 +1418,31 @@ export const App = {
     },
 
     exportDsCsv: (): void => {
-        const rows = [['Key','Status','Diff Summary']]; State.ds.results.forEach(r => rows.push([r.keyStr, r.status, r.diffSum]));
+        const rows = [['Kind', 'Key', 'Status', 'Diff Summary']];
+        State.ds.results.forEach(r => rows.push([r.kind || '—', r.keyStr, r.status, r.diffSum]));
         const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-        const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download=`ds_compare_${State.ds.kind}.csv`; a.click();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+        const kindLabel = State.ds.selectedKinds.size > 0 ? [...State.ds.selectedKinds].join('_') : (State.ds.kind || 'all');
+        a.download = `ds_compare_${kindLabel}.csv`;
+        a.click();
         void AuditLog.addLog(
             'DATASTORE_CSV_EXPORT',
             State.ds.src || '—',
             State.ds.tgt || '—',
-            `Exported ${State.ds.results.length} Datastore comparison rows for kind ${State.ds.kind || 'not selected'}.`,
+            `Exported ${State.ds.results.length} Datastore comparison rows for kinds: ${kindLabel}.`,
             'SUCCESS'
         ).then(logged => {
             if (!logged) Utils.toast('CSV exported, but the export action could not be logged.', 'warn');
         });
     },
     exportDsMarkdown: (): void => {
+        const kindLabel = State.ds.selectedKinds.size > 0 ? [...State.ds.selectedKinds].join(', ') : (State.ds.kind || 'All');
         const lines = [
-            `# Datastore Comparison Report (${State.ds.kind || 'Export'})`,
+            `# Datastore Comparison Report (${kindLabel})`,
             `* **Source Project:** \`${State.ds.src || '—'}\``,
             `* **Target Project:** \`${State.ds.tgt || '—'}\``,
-            `* **Entity Kind:** \`${State.ds.kind || '—'}\``,
+            `* **Entity Kinds:** \`${kindLabel}\``,
             `* **Total Analyzed:** ${State.ds.stats.total}`,
             `* **Identical:** ${State.ds.stats.identical}`,
             `* **Different:** ${State.ds.stats.different}`,
@@ -1363,16 +1450,16 @@ export const App = {
             `* **Project Mapped:** ${State.ds.stats.mapped}`,
             `* **Generated At:** ${new Date().toISOString()}`,
             '',
-            `| Entity Key | Status | Diff Summary |`,
-            `| :--- | :--- | :--- |`
+            `| Kind | Entity Key | Status | Diff Summary |`,
+            `| :--- | :--- | :--- | :--- |`
         ];
         State.ds.results.forEach(r => {
-            lines.push(`| \`${r.keyStr}\` | **${r.status.toUpperCase()}** | ${r.diffSum} |`);
+            lines.push(`| \`${r.kind || '—'}\` | \`${r.keyStr}\` | **${r.status.toUpperCase()}** | ${r.diffSum} |`);
         });
         const md = lines.join('\n');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
-        a.download = `datastore_report_${State.ds.kind || 'export'}.md`;
+        a.download = `datastore_report_${State.ds.selectedKinds.size > 0 ? [...State.ds.selectedKinds].join('_') : (State.ds.kind || 'export')}.md`;
         a.click();
         Utils.toast('Markdown report exported', 'ok');
     },
@@ -1483,9 +1570,17 @@ export const App = {
             if (AssistManager.isActive()) AssistUI.render();
         }
     },
+    setDsKindFilter: (kind: string): void => {
+        State.ds.filterKind = kind;
+        App.filterDsResults(State.ds.filterStatus);
+    },
     filterDsResults: (status: string): void => {
         State.ds.filterStatus = status;
-        State.ds.filtered = status === 'all' ? State.ds.results : State.ds.results.filter(r => r.status === status);
+        let filtered = status === 'all' ? State.ds.results : State.ds.results.filter(r => r.status === status);
+        if (State.ds.filterKind && State.ds.filterKind !== 'all') {
+            filtered = filtered.filter(r => r.kind === State.ds.filterKind);
+        }
+        State.ds.filtered = filtered;
         Utils.$('ds-cnt-all')!.textContent = String(State.ds.stats.total);
         Utils.$('ds-cnt-diff')!.textContent = String(State.ds.stats.different);
         const mappedCnt = Utils.$('ds-cnt-mapped');
@@ -1494,66 +1589,181 @@ export const App = {
         Utils.$('ds-cnt-eq')!.textContent = String(State.ds.stats.identical);
         State.ds.page = 1; App.renderDsTable();
     },
-    renderDsTable: (): void => {
-        const start = (State.ds.page - 1) * State.ds.perPage;
-        const pageData = State.ds.filtered.slice(start, start + State.ds.perPage);
-        const tbody = Utils.$('ds-table-body');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-
-        pageData.forEach(r => {
-            const stCfg = {
-                different: { l: 'DIFFERENT', c: 'var(--warn)', b: 'var(--warn-dim)' },
-                missing: { l: 'MISSING IN TGT', c: 'var(--danger)', b: 'var(--danger-dim)' },
-                identical: { l: 'IDENTICAL', c: 'var(--ok)', b: 'var(--ok-dim)' },
-                mapped: { l: 'PROJECT MAPPED', c: '#10b981', b: 'rgba(16,185,129,0.15)' }
-            }[r.status];
-
-            const sel = State.ds.selected.has(r.keyStr);
-            const tr = document.createElement('tr'); tr.style.borderBottom = '1px solid var(--brd)';
-            tr.innerHTML = `
-                <td class="px-4 py-3"><div class="chk ${sel?'on':''}"></div></td>
-                <td class="px-4 py-3 cursor-pointer" style="color:var(--fg)">${Utils.escapeHtml(r.keyStr)} <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:4px"></i></td>
-                <td class="px-4 py-3"><span class="badge font-semibold" style="background:${stCfg.b};color:${stCfg.c}">${stCfg.l}</span></td>
-                <td class="px-4 py-3" style="color:var(--muted)">${Utils.escapeHtml(r.diffSum)}</td>`;
-
-            const chk = tr.querySelector('.chk') as HTMLElement;
-            chk.onclick = () => App.toggleDsSelect(r.keyStr, chk);
-
-            const keyTd = tr.querySelectorAll('td')[1] as HTMLElement;
-            keyTd.onclick = () => App.toggleDsRowExpand(tr, r.keyStr);
-
-            tbody.appendChild(tr);
+    toggleAllAccordions: (expand: boolean): void => {
+        const accordions = document.querySelectorAll('.kind-accordion-card');
+        accordions.forEach(acc => {
+            const kind = acc.getAttribute('data-kind');
+            if (expand) {
+                acc.classList.add('open');
+                if (kind) State.ds.collapsedKinds.delete(kind);
+                // Trigger lazy population if tbody is empty
+                const tbody = acc.querySelector('.kind-table-body');
+                if (tbody && tbody.children.length === 0 && kind) {
+                    App.renderDsTable();
+                }
+            } else {
+                acc.classList.remove('open');
+                if (kind) State.ds.collapsedKinds.add(kind);
+            }
         });
+    },
+    toggleKindSelectAll: (kind: string, checked: boolean): void => {
+        const entitiesOfKind = State.ds.filtered.filter(r => (r.kind || 'Unknown') === kind);
+        entitiesOfKind.forEach(r => {
+            if (checked) State.ds.selected.add(r.keyStr);
+            else State.ds.selected.delete(r.keyStr);
+        });
+        App.renderDsTable();
+        (Utils.$('btn-ds-copy') as HTMLButtonElement).disabled = State.ds.selected.size === 0;
+    },
+    renderDsTable: (): void => {
+        const container = Utils.$('ds-accordions-container');
+        if (!container) return;
+        container.innerHTML = '';
 
-        const totalPages = Math.ceil(State.ds.filtered.length / State.ds.perPage);
-        Utils.$('ds-pagination')!.innerHTML = totalPages > 1 ? `<button class="btn btn-s btn-ds-prev">Prev</button><span class="mono text-xs" style="color:var(--muted);padding:0 12px">Page ${State.ds.page} of ${totalPages}</span><button class="btn btn-s btn-ds-next">Next</button>` : '';
-
-        if (totalPages > 1) {
-            const prevBtn = Utils.$('ds-pagination')!.querySelector('.btn-ds-prev') as HTMLButtonElement | null;
-            if (prevBtn) {
-                prevBtn.disabled = State.ds.page === 1;
-                prevBtn.onclick = () => App.dsPage(State.ds.page - 1);
-            }
-            const nextBtn = Utils.$('ds-pagination')!.querySelector('.btn-ds-next') as HTMLButtonElement | null;
-            if (nextBtn) {
-                nextBtn.disabled = State.ds.page === totalPages;
-                nextBtn.onclick = () => App.dsPage(State.ds.page + 1);
-            }
+        if (State.ds.filtered.length === 0) {
+            container.innerHTML = `
+                <div class="card p-8 text-center" style="color:var(--muted)">
+                    <i class="fa-solid fa-filter text-2xl mb-2 block"></i>
+                    No entities found matching the current filter.
+                </div>
+            `;
+            const pagination = Utils.$('ds-pagination');
+            if (pagination) pagination.innerHTML = '';
+            return;
         }
 
+        // Group filtered entities by Kind
+        const kindGroups = new Map<string, typeof State.ds.filtered>();
+        State.ds.filtered.forEach(r => {
+            const k = r.kind || 'Unknown';
+            if (!kindGroups.has(k)) kindGroups.set(k, []);
+            kindGroups.get(k)!.push(r);
+        });
+
+        kindGroups.forEach((items, kind) => {
+            const isCollapsed = State.ds.collapsedKinds.has(kind);
+            const total = items.length;
+            const identical = items.filter(x => x.status === 'identical').length;
+            const different = items.filter(x => x.status === 'different').length;
+            const missing = items.filter(x => x.status === 'missing').length;
+            const mapped = items.filter(x => x.status === 'mapped').length;
+
+            const kindSelectedCount = items.filter(x => State.ds.selected.has(x.keyStr)).length;
+            const allKindSelected = total > 0 && kindSelectedCount === total;
+
+            const card = document.createElement('div');
+            card.className = `kind-accordion kind-accordion-card ${isCollapsed ? '' : 'open'}`;
+            card.setAttribute('data-kind', kind);
+
+            card.innerHTML = `
+                <div class="kind-accordion-header">
+                    <div class="kind-accordion-title">
+                        <div class="chk chk-kind-all ${allKindSelected ? 'on' : ''}" title="Select all ${Utils.escapeHtml(kind)}"></div>
+                        <i class="fa-solid fa-folder-tree text-cyan-400"></i>
+                        <span>KIND: <span class="text-cyan-300 mono">${Utils.escapeHtml(kind)}</span></span>
+                        <span class="badge" style="background:var(--accent-dim);color:var(--accent);font-size:11px">${total}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 text-xs mono">
+                            ${identical > 0 ? `<span style="color:var(--ok)">${identical} Identical</span>` : ''}
+                            ${different > 0 ? `<span style="color:var(--warn)">${different} Diff</span>` : ''}
+                            ${missing > 0 ? `<span style="color:var(--danger)">${missing} Missing</span>` : ''}
+                            ${mapped > 0 ? `<span style="color:#10b981">${mapped} Mapped</span>` : ''}
+                        </div>
+                        <i class="fa-solid fa-chevron-down kind-accordion-chevron"></i>
+                    </div>
+                </div>
+                <div class="kind-accordion-content">
+                    <table class="w-full text-xs mono" style="border-collapse:collapse">
+                        <thead>
+                            <tr style="background:var(--bg2);border-bottom:1px solid var(--brd)">
+                                <th class="text-left px-4 py-2.5 w-10"></th>
+                                <th class="text-left px-4 py-2.5" style="color:var(--muted)">Key</th>
+                                <th class="text-left px-4 py-2.5 w-32" style="color:var(--muted)">Status</th>
+                                <th class="text-left px-4 py-2.5 w-64" style="color:var(--muted)">Diff Summary</th>
+                            </tr>
+                        </thead>
+                        <tbody class="kind-table-body"></tbody>
+                    </table>
+                </div>
+            `;
+
+            // Populate rows lazily: only render rows if accordion is open!
+            const tbody = card.querySelector('.kind-table-body') as HTMLElement;
+            const populateRows = () => {
+                if (tbody.children.length > 0) return; // already rendered
+                items.forEach(r => {
+                    const stCfg = {
+                        different: { l: 'DIFFERENT', c: 'var(--warn)', b: 'var(--warn-dim)' },
+                        missing: { l: 'MISSING IN TGT', c: 'var(--danger)', b: 'var(--danger-dim)' },
+                        identical: { l: 'IDENTICAL', c: 'var(--ok)', b: 'var(--ok-dim)' },
+                        mapped: { l: 'PROJECT MAPPED', c: '#10b981', b: 'rgba(16,185,129,0.15)' }
+                    }[r.status];
+
+                    const sel = State.ds.selected.has(r.keyStr);
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--brd)';
+                    tr.innerHTML = `
+                        <td class="px-4 py-3"><div class="chk chk-row ${sel ? 'on' : ''}" data-key="${Utils.escapeHtml(r.keyStr)}"></div></td>
+                        <td class="px-4 py-3 cursor-pointer" style="color:var(--fg)">${Utils.escapeHtml(r.keyStr)} <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:4px"></i></td>
+                        <td class="px-4 py-3"><span class="badge font-semibold" style="background:${stCfg.b};color:${stCfg.c}">${stCfg.l}</span></td>
+                        <td class="px-4 py-3" style="color:var(--muted)">${Utils.escapeHtml(r.diffSum)}</td>
+                    `;
+
+                    const chk = tr.querySelector('.chk') as HTMLElement;
+                    chk.onclick = () => App.toggleDsSelect(r.keyStr, chk);
+
+                    const keyTd = tr.querySelectorAll('td')[1] as HTMLElement;
+                    keyTd.onclick = () => App.toggleDsRowExpand(tr, r.keyStr);
+
+                    tbody.appendChild(tr);
+                });
+            };
+
+            if (!isCollapsed) {
+                populateRows();
+            }
+
+            // Accordion toggle click
+            const header = card.querySelector('.kind-accordion-header') as HTMLElement;
+            header.onclick = (e) => {
+                const target = e.target as HTMLElement;
+                if (target.closest('.chk-kind-all')) return; // let checkbox click handle selection
+                const open = card.classList.toggle('open');
+                if (open) {
+                    State.ds.collapsedKinds.delete(kind);
+                    populateRows();
+                } else {
+                    State.ds.collapsedKinds.add(kind);
+                }
+            };
+
+            // Select all inside kind
+            const chkKindAll = card.querySelector('.chk-kind-all') as HTMLElement;
+            chkKindAll.onclick = (e) => {
+                e.stopPropagation();
+                populateRows();
+                App.toggleKindSelectAll(kind, !allKindSelected);
+            };
+
+            container.appendChild(card);
+        });
+
+        const pagination = Utils.$('ds-pagination');
+        if (pagination) pagination.innerHTML = '';
         App.updateSelectAllDsState();
     },
-    dsPage: (p: number): void => { State.ds.page = p; App.renderDsTable(); },
     toggleDsSelect: (keyStr: string, el: HTMLElement): void => {
         if (State.ds.selected.has(keyStr)) State.ds.selected.delete(keyStr); else State.ds.selected.add(keyStr);
         el.classList.toggle('on');
         (Utils.$('btn-ds-copy') as HTMLButtonElement).disabled = State.ds.selected.size === 0;
         App.updateSelectAllDsState();
+        App.renderDsTable(); // update per-kind Select All state
     },
     toggleAllDs: (): void => {
         const allSel = State.ds.selected.size === State.ds.filtered.length && State.ds.filtered.length > 0;
-        if(allSel) State.ds.selected.clear(); else State.ds.filtered.forEach(r => State.ds.selected.add(r.keyStr));
+        if (allSel) State.ds.selected.clear(); else State.ds.filtered.forEach(r => State.ds.selected.add(r.keyStr));
         App.renderDsTable();
         (Utils.$('btn-ds-copy') as HTMLButtonElement).disabled = State.ds.selected.size === 0;
     },
@@ -2055,7 +2265,10 @@ export const App = {
                 const item = document.createElement('div');
                 item.className = 'flex items-center justify-between text-xs py-1.5 px-2.5 rounded bg-zinc-900/70 border border-zinc-800/80';
                 item.innerHTML = `
-                    <span class="mono text-zinc-300 font-medium">${Utils.escapeHtml(keyStr)}</span>
+                    <div class="flex items-center gap-2">
+                        ${res?.kind ? `<span class="badge" style="background:var(--accent-dim);color:var(--accent);border:1px solid rgba(0,212,255,0.3);font-size:10px">${Utils.escapeHtml(res.kind)}</span>` : ''}
+                        <span class="mono text-zinc-300 font-medium">${Utils.escapeHtml(keyStr)}</span>
+                    </div>
                     ${dispInfo ? `
                         <span class="badge px-2 py-0.5 rounded text-[11px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/80 flex items-center gap-1">
                             <span class="text-zinc-400 font-mono text-[10px]">${Utils.escapeHtml(dispInfo.fieldName)}:</span>
@@ -2206,11 +2419,25 @@ export const App = {
                 });
 
                 const entityDisplayNames: Record<string, { fieldName: string; value: string }> = {};
+                const batchKindsSet = new Set<string>();
                 (srcRes.found || []).forEach((entry: any) => {
                     const k = App.formatKey(entry.entity?.key);
                     const disp = extractEntityDisplayName(entry.entity);
                     if (disp && k) entityDisplayNames[k] = disp;
+                    const entityKind = entry.entity?.key?.path?.[entry.entity.key.path.length - 1]?.kind;
+                    if (entityKind) batchKindsSet.add(entityKind);
                 });
+
+                // Fallback to resultByKey kinds if not found in srcRes
+                if (batchKindsSet.size === 0) {
+                    chunkStrs.forEach(kStr => {
+                        const r = resultByKey.get(kStr);
+                        if (r?.kind) batchKindsSet.add(r.kind);
+                    });
+                }
+
+                const batchKinds = [...batchKindsSet];
+                const batchKindLabel = batchKinds.length > 0 ? batchKinds.join(', ') : (State.ds.kind || 'Unknown');
 
                 const refNamesList = Object.values(entityDisplayNames).slice(0, 3).map(d => `${d.fieldName}: "${d.value}"`);
                 const refSummary = refNamesList.length > 0
@@ -2219,7 +2446,8 @@ export const App = {
 
                 let backupState: any = {
                     type: "DATASTORE_COPY",
-                    kind: State.ds.kind,
+                    kind: batchKindLabel,
+                    kinds: batchKinds,
                     srcDb: State.ds.srcDb,
                     tgtDb: State.ds.tgtDb,
                     batch: `${batchNum}/${totalBatches}`,
@@ -2234,7 +2462,8 @@ export const App = {
                         type: "DATASTORE_COPY",
                         compressed: true,
                         data: compressedB64,
-                        kind: State.ds.kind,
+                        kind: batchKindLabel,
+                        kinds: batchKinds,
                         srcDb: State.ds.srcDb,
                         tgtDb: State.ds.tgtDb,
                         batch: `${batchNum}/${totalBatches}`,
@@ -2267,7 +2496,7 @@ export const App = {
                     'DATASTORE_COPY',
                     State.ds.src,
                     State.ds.tgt,
-                    `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities of kind ${State.ds.kind})${refSummary}.`,
+                    `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities of kind ${batchKindLabel})${refSummary}.`,
                     'IN_PROGRESS',
                     backupState,
                     true
@@ -2318,7 +2547,7 @@ export const App = {
                 }
 
                 if (batchAuditLogId) {
-                    let batchDetails = `Copied batch ${batchNum}/${totalBatches} (${mutations.length} entities of kind ${State.ds.kind})${refSummary}.`;
+                    let batchDetails = `Copied batch ${batchNum}/${totalBatches} (${mutations.length} entities of kind ${batchKindLabel})${refSummary}.`;
                     if (applyMod) {
                         if (activeRules.length > 0) {
                             const rulesSummary = activeRules.map((r, i) => `Rule ${i + 1} [field '${r.field || '*'}': "${r.target}" -> "${r.replacement}"]`).join(', ');
@@ -2353,6 +2582,14 @@ export const App = {
         });
 
         const cancelled = State.cancelDs || controller.signal.aborted;
+
+        if (!cancelled && ok > 0) {
+            Utils.$('load-title')!.textContent = "🚀 Copy Complete!";
+            Utils.$('load-msg')!.textContent = `Successfully copied ${ok} entities! Finalizing and refreshing...`;
+            // Ensure minimum visual feedback so user sees the successful rocket launch completion
+            await new Promise(r => setTimeout(r, 1400));
+        }
+
         Utils.hide('sec-loading');
         Utils.hide('btn-cancel-ds');
         Utils.toast(
@@ -2362,7 +2599,139 @@ export const App = {
 
         if (dsAbortController === controller) dsAbortController = null;
         await AuditLog.renderLogs();
-        await App.runDsAnalyze();
+
+        // If operation was cancelled or had 0 successful entities copied, navigate back without modal
+        if (cancelled || ok === 0) {
+            Utils.hide('sec-results');
+            Utils.show('sec-forms');
+            return;
+        }
+
+        // Show comprehensive Copy Completion Popup
+        const uniqueKinds = [...new Set(keysToCopy.map(k => resultByKey.get(k)?.kind).filter(Boolean))];
+        const kindsHtml = uniqueKinds.length > 0
+            ? uniqueKinds.map(k => `<span class="badge" style="background:var(--accent-dim); color:var(--accent); font-size:11px; padding:2px 8px; border:1px solid var(--accent); margin-right:4px;"><i class="fa-solid fa-folder-tree mr-1"></i>${Utils.escapeHtml(k!)}</span>`).join('')
+            : `<span class="badge" style="background:var(--brd2); color:var(--fg); font-size:11px;">${Utils.escapeHtml(State.ds.kind || 'Datastore')}</span>`;
+
+        let replacedRulesHtml = '';
+        if (applyMod) {
+            if (activeRules.length > 0) {
+                const rulesItems = activeRules.map((r, idx) => `
+                    <div style="background:var(--bg); border:1px solid var(--brd); border-radius:6px; padding:8px 12px; margin-bottom:6px; font-size:12px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                            <span style="font-weight:600; color:var(--muted); font-size:10px; text-transform:uppercase;">Rule #${idx + 1} (Field: <code class="mono text-cyan-400">${Utils.escapeHtml(r.field || '* (all fields)')}</code>)</span>
+                        </div>
+                        <div style="font-family:var(--font-mono); font-size:11px; display:flex; align-items:center; gap:8px;">
+                            <span style="color:var(--danger); text-decoration:line-through;">"${Utils.escapeHtml(r.target)}"</span>
+                            <i class="fa-solid fa-arrow-right text-xs" style="color:var(--muted)"></i>
+                            <span style="color:var(--ok); font-weight:600;">"${Utils.escapeHtml(r.replacement)}"</span>
+                        </div>
+                    </div>
+                `).join('');
+                replacedRulesHtml = `
+                    <div style="margin-top:14px;">
+                        <div style="font-weight:700; font-size:11px; color:var(--muted); text-transform:uppercase; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                            <span>Find &amp; Replace Modifications</span>
+                            <span class="badge" style="background:rgba(0,212,255,0.15); color:var(--accent2); font-size:10px;">${replacementCount} field substitutions</span>
+                        </div>
+                        <div>${rulesItems}</div>
+                    </div>
+                `;
+            } else if (modTarget) {
+                const fieldLabel = (modField && modField.trim() !== "") ? `field '${modField}'` : "all fields (*)";
+                replacedRulesHtml = `
+                    <div style="margin-top:14px;">
+                        <div style="font-weight:700; font-size:11px; color:var(--muted); text-transform:uppercase; margin-bottom:6px;">Find &amp; Replace Modifications</div>
+                        <div style="background:var(--bg); border:1px solid var(--brd); border-radius:6px; padding:8px 12px; font-size:12px;">
+                            <div style="color:var(--muted); font-size:10px; margin-bottom:4px; text-transform:uppercase;">Scope: <code class="mono text-cyan-400">${Utils.escapeHtml(fieldLabel)}</code></div>
+                            <div style="font-family:var(--font-mono); font-size:11px; display:flex; align-items:center; gap:8px;">
+                                <span style="color:var(--danger); text-decoration:line-through;">"${Utils.escapeHtml(modTarget)}"</span>
+                                <i class="fa-solid fa-arrow-right text-xs" style="color:var(--muted)"></i>
+                                <span style="color:var(--ok); font-weight:600;">"${Utils.escapeHtml(modReplace)}"</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            replacedRulesHtml = `
+                <div style="margin-top:14px; background:var(--bg); border:1px dashed var(--brd); border-radius:6px; padding:8px 12px; font-size:11px; color:var(--muted);">
+                    <i class="fa-solid fa-circle-check mr-1.5" style="color:var(--ok)"></i>No Find &amp; Replace rules applied — entities copied exactly as-is.
+                </div>
+            `;
+        }
+
+        const modalHtml = `
+            <div class="p-6 text-left" style="max-width:540px; margin:0 auto; background:#0c101d; border-radius:16px;">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:var(--ok); font-size:18px;">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-fg leading-tight">Copying Completed Successfully!</h3>
+                        <p class="text-xs text-muted">All selected Datastore mutations were committed to the destination project.</p>
+                    </div>
+                </div>
+
+                <div class="p-3.5 rounded-lg mb-3" style="background:var(--bg2); border:1px solid var(--brd2);">
+                    <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-muted block mb-1">Source Project</span>
+                            <code class="mono text-cyan-400 text-xs">${Utils.escapeHtml(State.ds.src)}</code>
+                            <div class="text-[10px] text-muted mt-0.5">DB: ${Utils.escapeHtml(State.ds.srcDb || '(default)')}</div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-muted block mb-1">Target Project</span>
+                            <code class="mono text-emerald-400 text-xs">${Utils.escapeHtml(State.ds.tgt)}</code>
+                            <div class="text-[10px] text-muted mt-0.5">DB: ${Utils.escapeHtml(State.ds.tgtDb || '(default)')}</div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-white/5 pt-2.5 flex items-center justify-between text-xs">
+                        <span class="text-muted">Total Entities Copied:</span>
+                        <span class="font-bold mono text-emerald-400 text-sm">${ok} / ${keysToCopy.length}${fail > 0 ? ` <span class="text-rose-400 text-xs font-normal">(${fail} failed)</span>` : ''}</span>
+                    </div>
+
+                    <div class="border-t border-white/5 pt-2.5 mt-2">
+                        <span class="text-[10px] uppercase font-bold text-muted block mb-1.5">Kinds Copied</span>
+                        <div class="flex flex-wrap gap-1">${kindsHtml}</div>
+                    </div>
+                </div>
+
+                ${replacedRulesHtml}
+
+                <div class="mt-6 flex items-center justify-end gap-2.5">
+                    <button class="btn btn-s text-xs" id="btn-copy-done-reanalyze">
+                        <i class="fa-solid fa-magnifying-glass-chart mr-1"></i> Re-Analyze Now
+                    </button>
+                    <button class="btn btn-p text-xs" id="btn-copy-done-main-menu">
+                        <i class="fa-solid fa-house mr-1"></i> Return to Datastore Main Menu
+                    </button>
+                </div>
+            </div>
+        `;
+
+        UI.openModal(modalHtml);
+
+        const returnBtn = Utils.$('btn-copy-done-main-menu');
+        if (returnBtn) {
+            returnBtn.onclick = () => {
+                UI.closeModal();
+                Utils.hide('sec-loading');
+                Utils.hide('sec-results');
+                Utils.show('sec-forms');
+                // Scroll smoothly to Datastore form
+                Utils.$('form-ds')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            };
+        }
+
+        const reanalyzeBtn = Utils.$('btn-copy-done-reanalyze');
+        if (reanalyzeBtn) {
+            reanalyzeBtn.onclick = async () => {
+                UI.closeModal();
+                await App.runDsAnalyze();
+            };
+        }
     },
 
     openJsonEditorModal: (

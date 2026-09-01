@@ -320,8 +320,16 @@ FROM `source-project-prod.analytics.orders`</code></pre>
                     <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET DATABASE</label><input id="ds-tgt-db" class="inp" placeholder="Select project first..."><div id="dd-ds-tgt-db" class="dropdown-menu"></div></div>
                 </div>
                 <div class="mb-4 dropdown-wrapper">
-                    <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">ENTITY KIND</label>
-                    <input id="ds-kind" class="inp" placeholder="Select source database first..."><div id="dd-ds-kind" class="dropdown-menu"></div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold" style="color:var(--muted)">ENTITY KINDS (MULTI-SELECT)</label>
+                        <div class="flex gap-2">
+                            <button id="btn-ds-select-all-kinds" type="button" class="text-xs text-emerald-400 hover:underline" style="font-size:11px">Select All</button>
+                            <span style="color:var(--muted)">|</span>
+                            <button id="btn-ds-clear-kinds" type="button" class="text-xs text-rose-400 hover:underline" style="font-size:11px">Clear</button>
+                        </div>
+                    </div>
+                    <div id="ds-kind-chips" class="flex flex-wrap gap-1.5 mb-2" style="min-height:24px"></div>
+                    <input id="ds-kind" class="inp" placeholder="Search and select kinds..."><div id="dd-ds-kind" class="dropdown-menu"></div>
                 </div>
                 <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
                     <div class="flex items-center justify-between mb-2">
@@ -627,31 +635,29 @@ FROM `source-project-prod.analytics.orders`</code></pre>
             <div id="res-ds" style="display:none">
                 <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Review changes carefully.</strong> Modifying Datastore entities is immediate. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank" rel="noopener noreferrer">Create Backup</a>.</div></div>
                 <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button class="btn btn-s" data-filter="all">All <span id="ds-cnt-all" class="mono" style="font-size:10px">0</span></button>
                         <button class="btn btn-s" data-filter="different">Diff <span id="ds-cnt-diff" class="mono" style="font-size:10px;color:var(--warn)">0</span></button>
                         <button class="btn btn-s" data-filter="mapped">Mapped <span id="ds-cnt-mapped" class="mono" style="font-size:10px;color:#10b981">0</span></button>
                         <button class="btn btn-s" data-filter="missing">Missing <span id="ds-cnt-miss" class="mono" style="font-size:10px;color:var(--danger)">0</span></button>
                         <button class="btn btn-s" data-filter="identical">Identical <span id="ds-cnt-eq" class="mono" style="font-size:10px;color:var(--ok)">0</span></button>
+                        <div class="flex items-center gap-1.5 ml-2">
+                            <span class="text-xs font-semibold" style="color:var(--muted)">KIND:</span>
+                            <select id="ds-kind-filter" class="inp" style="width:160px;padding:6px 10px;font-size:12px">
+                                <option value="all">All Kinds</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="flex gap-2">
+                        <button id="btn-ds-expand-all" class="btn btn-s text-xs" style="padding:6px 10px"><i class="fa-solid fa-angles-down"></i> Expand All</button>
+                        <button id="btn-ds-collapse-all" class="btn btn-s text-xs" style="padding:6px 10px"><i class="fa-solid fa-angles-up"></i> Collapse All</button>
                         <input id="ds-diff-search" class="inp" style="width:180px;font-size:12px;padding:6px 10px" placeholder="Search diffs...">
                         <button id="btn-ds-export-md" class="btn btn-s" style="font-size:12px" title="Export Markdown Report"><i class="fa-solid fa-file-lines"></i> MD</button>
                         <button id="btn-ds-csv" class="btn btn-s" style="font-size:12px"><i class="fa-solid fa-file-csv"></i> CSV</button>
                         <button id="btn-ds-copy" class="btn btn-p" style="font-size:12px" disabled><i class="fa-solid fa-copy"></i> Copy Selected</button>
                     </div>
                 </div>
-                <div class="card" style="padding:0;overflow:hidden">
-                    <table class="w-full text-xs mono" style="border-collapse:collapse">
-                        <thead><tr style="background:var(--bg2)">
-                            <th class="text-left px-4 py-3 w-10"><div class="chk" id="chk-all-ds"></div></th>
-                            <th class="text-left px-4 py-3" style="color:var(--muted)">Key</th>
-                            <th class="text-left px-4 py-3 w-32" style="color:var(--muted)">Status</th>
-                            <th class="text-left px-4 py-3 w-64" style="color:var(--muted)">Diff Summary</th>
-                        </tr></thead>
-                        <tbody id="ds-table-body"></tbody>
-                    </table>
-                </div>
+                <div id="ds-accordions-container" class="space-y-4"></div>
                 <div id="ds-pagination" class="flex justify-center gap-2 mt-6"></div>
             </div>
         </section>
@@ -874,6 +880,9 @@ FROM `source-project-prod.analytics.orders`</code></pre>
 
     <template id="template-ds-filter-row">
         <div class="filter-row flex gap-1.5 items-center mb-2.5 anim-up">
+            <select class="inp filter-kind font-semibold text-xs filter-kind-width" title="Kind Scope" style="width:130px">
+                <option value="all">All Kinds</option>
+            </select>
             <select class="inp filter-prop font-semibold text-xs filter-prop-width" title="Property"></select>
             <select class="inp filter-op font-semibold text-xs filter-op-width" title="Operator">
                 <option value="EQUAL">=</option>

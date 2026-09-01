@@ -14,6 +14,7 @@ const {
     normalizeVerifiedIdentity,
     parseReadLimit
 } = require('./lib/audit-core');
+const { sendMutationAlertEmail } = require('./lib/email-notifier');
 
 initializeApp();
 
@@ -99,11 +100,19 @@ const createAuditLog = async (identity, payload, req) => {
     if (payload.prevState !== null) record.prevState = payload.prevState;
 
     const document = await db.collection('audit_logs').add(record);
+
+    if (payload.status !== 'IN_PROGRESS') {
+        sendMutationAlertEmail({ id: document.id, ...record }).catch(err => {
+            logger.warn('Failed to send mutation alert email on log create:', err?.message || err);
+        });
+    }
+
     return document.id;
 };
 
 const updateOwnAuditLog = async (identity, payload) => {
     const ref = db.collection('audit_logs').doc(payload.id);
+    let emailLogPayload = null;
     await db.runTransaction(async transaction => {
         const snapshot = await transaction.get(ref);
         if (!snapshot.exists) {
@@ -112,6 +121,7 @@ const updateOwnAuditLog = async (identity, payload) => {
         if (snapshot.data()?.user !== identity.email) {
             throw new AuditRequestError(403, 'LOG_FORBIDDEN', 'Users can update only their own audit records.');
         }
+        const existing = snapshot.data();
         const updates = {
             status: payload.status,
             details: payload.details,
@@ -125,7 +135,24 @@ const updateOwnAuditLog = async (identity, payload) => {
             }
         }
         transaction.update(ref, updates);
+
+        emailLogPayload = {
+            id: payload.id,
+            user: identity.email,
+            operation: existing?.operation || 'DATASTORE_COPY',
+            srcProject: existing?.srcProject || '—',
+            tgtProject: existing?.tgtProject || '—',
+            status: payload.status,
+            details: payload.details,
+            timestamp: existing?.timestamp || new Date().toISOString()
+        };
     });
+
+    if (emailLogPayload && emailLogPayload.status !== 'IN_PROGRESS') {
+        sendMutationAlertEmail(emailLogPayload).catch(err => {
+            logger.warn('Failed to send mutation alert email on log update:', err?.message || err);
+        });
+    }
 };
 
 exports.auditApi = onRequest({
@@ -135,7 +162,8 @@ exports.auditApi = onRequest({
     maxInstances: 10,
     concurrency: 40,
     invoker: 'public',
-    serviceAccount: 'audit-logger@gcp-tools-portal.iam.gserviceaccount.com'
+    serviceAccount: 'audit-logger@gcp-tools-portal.iam.gserviceaccount.com',
+    secrets: ['ALERT_GMAIL_APP_PASSWORD']
 }, async (req, res) => {
     let origin = '';
     try {
