@@ -9,6 +9,7 @@ import { AssistManager } from './assist';
 import { SoundFX } from './sound';
 import { D0198EasterEgg } from './easter-egg';
 import {
+    buildDatastoreFilterObject,
     cloneDatastoreValue,
     compressJsonToBase64,
     datastoreValueToEditorText,
@@ -1160,38 +1161,20 @@ export const App = {
         };
 
         const filterElements = Utils.$('ds-filters-container')?.querySelectorAll('.filter-row');
-        const parsedFilters: { kindScope: string; filterObj: any }[] = [];
+        const rawFilters: Array<{ kindScope: string; prop: string; op: string; type: string; val: string }> = [];
         if (filterElements && filterElements.length > 0) {
-            try {
-                filterElements.forEach((r: any) => {
-                    const kindScope = (r.querySelector('.filter-kind') as HTMLSelectElement)?.value || 'all';
-                    const prop = (r.querySelector('.filter-prop') as HTMLSelectElement)?.value;
-                    const op = (r.querySelector('.filter-op') as HTMLSelectElement)?.value;
-                    const type = (r.querySelector('.filter-type') as HTMLSelectElement)?.value || 'auto';
-                    const valInput = r.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | null;
-                    const val = valInput ? valInput.value : '';
+            filterElements.forEach((r: any) => {
+                const kindScope = (r.querySelector('.filter-kind') as HTMLSelectElement)?.value || 'all';
+                const prop = (r.querySelector('.filter-prop') as HTMLSelectElement)?.value;
+                const op = (r.querySelector('.filter-op') as HTMLSelectElement)?.value || 'EQUAL';
+                const type = (r.querySelector('.filter-type') as HTMLSelectElement)?.value || 'auto';
+                const valInput = r.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | null;
+                const val = valInput ? valInput.value : '';
 
-                    if (prop && (val || type === 'null')) {
-                        let filterObj: any;
-                        if (op === 'HAS_ANCESTOR') {
-                            const keyValue = parseAncestorKey(val);
-                            filterObj = { propertyFilter: { property: { name: '__key__' }, op: 'HAS_ANCESTOR', value: keyValue } };
-                        } else if (op === 'IN' || op === 'NOT_IN') {
-                            const vals = val.split(',').map(x => x.trim()).filter(x => x !== '');
-                            const arrayVal = { arrayValue: { values: vals.map(v => parseTypedVal(v, type)) } };
-                            filterObj = { propertyFilter: { property: { name: prop }, op: op, value: arrayVal } };
-                        } else {
-                            filterObj = { propertyFilter: { property: { name: prop }, op: op, value: parseTypedVal(val, type) } };
-                        }
-                        parsedFilters.push({ kindScope, filterObj });
-                    }
-                });
-            } catch (err: any) {
-                Utils.toast(err.message, 'err');
-                Utils.hide('sec-loading');
-                Utils.show('sec-forms');
-                return;
-            }
+                if (prop && (val || type === 'null')) {
+                    rawFilters.push({ kindScope, prop, op, type, val });
+                }
+            });
         }
 
         const controller = beginDsOperation();
@@ -1211,9 +1194,9 @@ export const App = {
                 const kindPrefix = `[${kIdx + 1}/${kindsToProcess.length}] Kind "${currentKind}"`;
 
                 // Filter props that are either for 'all' kinds or specifically for this kind
-                const applicableFilters = parsedFilters
+                const applicableFilters = rawFilters
                     .filter(f => f.kindScope === 'all' || f.kindScope === currentKind)
-                    .map(f => f.filterObj);
+                    .map(f => buildDatastoreFilterObject(f.prop, f.op, f.val, f.type, currentKind, State.ds.src, State.ds.srcDb));
 
                 const srcPartitionId: any = { projectId: State.ds.src };
                 const dbClean = (State.ds.srcDb === '(default)' || !State.ds.srcDb) ? '' : State.ds.srcDb;
@@ -1355,6 +1338,13 @@ export const App = {
                     'CANCELLED'
                 );
             } else {
+                void AuditLog.addLog(
+                    'DATASTORE_ANALYZE',
+                    State.ds.src || '—',
+                    State.ds.tgt || '—',
+                    `Datastore analysis failed: ${e.message || String(e)}`,
+                    'FAILED'
+                );
                 const { ErrorBoundary } = await import('./utils');
                 await ErrorBoundary.handle(e, 'App.runDsAnalyze');
             }

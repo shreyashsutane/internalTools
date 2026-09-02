@@ -419,6 +419,19 @@ export const UI = {
     addDsFilter: (presetProp?: string, presetOp?: string, presetType?: string, presetVal?: string, presetKind?: string) => {
         const c = Utils.$('ds-filters-container');
         if (!c) return;
+
+        const selectedKinds = [...State.ds.selectedKinds];
+        if (selectedKinds.length === 0 && !presetKind) {
+            Utils.toast('Please select at least one Entity Kind first before adding filters.', 'warn');
+            const kindInp = Utils.$('ds-kind');
+            if (kindInp) {
+                kindInp.focus();
+                kindInp.classList.add('border-cyan-400');
+                setTimeout(() => kindInp.classList.remove('border-cyan-400'), 1500);
+            }
+            return;
+        }
+
         const tmpl = Utils.$('template-ds-filter-row') as HTMLTemplateElement;
         if (!tmpl) return;
         const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
@@ -429,31 +442,50 @@ export const UI = {
         const typeSelect = fragment.querySelector('.filter-type') as HTMLSelectElement;
         const valContainer = fragment.querySelector('.filter-val-container') as HTMLElement;
 
-        const selectedKinds = [...State.ds.selectedKinds];
         if (kindSelect) {
             kindSelect.replaceChildren();
-            const allOpt = document.createElement('option');
-            allOpt.value = 'all';
-            allOpt.textContent = 'All Kinds';
-            kindSelect.appendChild(allOpt);
+            if (selectedKinds.length > 1) {
+                const allOpt = document.createElement('option');
+                allOpt.value = 'all';
+                allOpt.textContent = 'All Selected Kinds';
+                kindSelect.appendChild(allOpt);
+            }
 
-            selectedKinds.forEach(k => {
+            selectedKinds.forEach((k, idx) => {
                 const opt = document.createElement('option');
                 opt.value = k;
                 opt.textContent = k;
                 if (presetKind && presetKind === k) opt.selected = true;
+                else if (!presetKind && selectedKinds.length === 1 && idx === 0) opt.selected = true;
                 kindSelect.appendChild(opt);
             });
 
-            kindSelect.onchange = () => {
+            kindSelect.onchange = async () => {
+                const chosen = kindSelect.value;
+                if (chosen !== 'all' && State.ds.src && (!State.ds.kindProperties || !State.ds.kindProperties[chosen])) {
+                    if (propSelect) {
+                        propSelect.disabled = true;
+                        propSelect.innerHTML = '<option value="__key__">Loading fields...</option>';
+                    }
+                    try {
+                        const props = await Api.getProperties(State.ds.src, chosen, State.ds.srcDb);
+                        if (!State.ds.kindProperties) State.ds.kindProperties = {};
+                        State.ds.kindProperties[chosen] = props;
+                    } catch (err) {
+                        console.warn('Failed to load properties for kind:', chosen, err);
+                    } finally {
+                        if (propSelect) propSelect.disabled = false;
+                    }
+                }
                 populateProps();
+                updateValInput();
                 UI.updateGqlPreview();
             };
         }
 
         const populateProps = () => {
             if (!propSelect) return;
-            const chosenKind = kindSelect?.value || 'all';
+            const chosenKind = kindSelect?.value || (selectedKinds.length === 1 ? selectedKinds[0] : 'all');
             const properties = chosenKind !== 'all' && State.ds.kindProperties?.[chosenKind]
                 ? State.ds.kindProperties[chosenKind]
                 : (State.ds.properties || []);
@@ -472,17 +504,25 @@ export const UI = {
             });
             if (currentProp && props.includes(currentProp)) {
                 propSelect.value = currentProp;
+            } else if (presetProp && props.includes(presetProp)) {
+                propSelect.value = presetProp;
             }
         };
 
         if (propSelect) {
             populateProps();
-            propSelect.onchange = () => UI.updateGqlPreview();
+            propSelect.onchange = () => {
+                updateValInput();
+                UI.updateGqlPreview();
+            };
         }
 
         if (opSelect) {
             if (presetOp) opSelect.value = presetOp;
-            opSelect.onchange = () => UI.updateGqlPreview();
+            opSelect.onchange = () => {
+                updateValInput();
+                UI.updateGqlPreview();
+            };
         }
 
         if (typeSelect && presetType) {
@@ -492,6 +532,20 @@ export const UI = {
         const updateValInput = () => {
             if (!valContainer || !typeSelect) return;
             const selectedType = typeSelect.value;
+            const currentProp = propSelect?.value || '__key__';
+            const currentOp = opSelect?.value || 'EQUAL';
+
+            let placeholder = "Value";
+            if (currentProp === '__key__') {
+                if (currentOp === 'IN' || currentOp === 'NOT_IN') {
+                    placeholder = "Comma-separated IDs (e.g. 1001, 1002)";
+                } else if (currentOp === 'HAS_ANCESTOR') {
+                    placeholder = "Ancestor Path (e.g. UserMaster:1001)";
+                } else {
+                    placeholder = "Entity ID or Name (e.g. 1001 or user_001)";
+                }
+            }
+
             if (selectedType === 'boolean') {
                 valContainer.innerHTML = `
                     <select class="inp filter-val text-xs filter-val-width">
@@ -509,15 +563,15 @@ export const UI = {
                 `;
             } else if (selectedType === 'integer') {
                 valContainer.innerHTML = `
-                    <input class="inp filter-val text-xs filter-val-width" type="number" step="1" placeholder="e.g. 100">
+                    <input class="inp filter-val text-xs filter-val-width" type="number" step="1" placeholder="${placeholder}">
                 `;
             } else if (selectedType === 'double') {
                 valContainer.innerHTML = `
-                    <input class="inp filter-val text-xs filter-val-width" type="number" step="any" placeholder="e.g. 99.95">
+                    <input class="inp filter-val text-xs filter-val-width" type="number" step="any" placeholder="${placeholder}">
                 `;
             } else {
                 valContainer.innerHTML = `
-                    <input class="inp filter-val text-xs filter-val-width" placeholder="Value">
+                    <input class="inp filter-val text-xs filter-val-width" placeholder="${placeholder}">
                 `;
             }
             const valInput = valContainer.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | null;

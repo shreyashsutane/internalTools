@@ -755,3 +755,135 @@ export const extractEntityDisplayName = (entity: any): EntityDisplayNameInfo | n
 
     return null;
 };
+
+export interface DatastoreKeyFilterResult {
+    keyValue: {
+        partitionId: {
+            projectId: string;
+            databaseId?: string;
+        };
+        path: Array<{ kind: string; id?: string; name?: string }>;
+    };
+}
+
+export const parseTypedFilterVal = (v: string, type: string): any => {
+    const trimmed = (v || '').trim();
+    switch (type) {
+        case 'string':
+            return { stringValue: v };
+        case 'integer':
+            if (trimmed === '' || isNaN(Number(trimmed))) {
+                throw new Error(`Invalid Integer value: "${v}"`);
+            }
+            return { integerValue: String(BigInt(parseInt(trimmed, 10))) };
+        case 'double':
+            if (trimmed === '' || isNaN(Number(trimmed))) {
+                throw new Error(`Invalid Double value: "${v}"`);
+            }
+            return { doubleValue: parseFloat(trimmed) };
+        case 'boolean':
+            return { booleanValue: trimmed.toLowerCase() === 'true' };
+        case 'timestamp': {
+            if (!trimmed) throw new Error("Timestamp value cannot be empty");
+            const date = new Date(trimmed);
+            if (isNaN(date.getTime())) throw new Error(`Invalid ISO timestamp: "${v}"`);
+            return { timestampValue: date.toISOString() };
+        }
+        case 'null':
+            return { nullValue: null };
+        case 'auto':
+        default:
+            if (trimmed === 'true') return { booleanValue: true };
+            if (trimmed === 'false') return { booleanValue: false };
+            if (!isNaN(Number(trimmed)) && trimmed !== '') {
+                if (trimmed.includes('.')) return { doubleValue: parseFloat(trimmed) };
+                return { integerValue: String(BigInt(parseInt(trimmed, 10))) };
+            }
+            return { stringValue: v };
+    }
+};
+
+export const parseDatastoreKeyFilter = (
+    valStr: string,
+    defaultKind?: string,
+    projectId: string = '',
+    databaseId?: string
+): DatastoreKeyFilterResult => {
+    const trimmed = (valStr || '').trim();
+    if (!trimmed) throw new Error("Key value cannot be empty.");
+
+    // Support path separators: ' | ' or '/'
+    let elements: string[] = [];
+    if (trimmed.includes(' | ')) {
+        elements = trimmed.split(' | ').map(x => x.trim()).filter(x => x !== '');
+    } else if (trimmed.includes('/')) {
+        elements = trimmed.split('/').map(x => x.trim()).filter(x => x !== '');
+    } else {
+        elements = [trimmed];
+    }
+
+    const path = elements.map(part => {
+        let kind = defaultKind || '';
+        let val = part;
+
+        let sepIndex = part.indexOf(':');
+        if (sepIndex === -1 && part.includes('/')) sepIndex = part.indexOf('/');
+
+        if (sepIndex !== -1) {
+            kind = part.substring(0, sepIndex).trim();
+            val = part.substring(sepIndex + 1).trim();
+        }
+
+        if (!kind) {
+            throw new Error(`Key filter "${part}" requires a Kind (e.g. "Kind:ID" or select a Kind in the filter dropdown).`);
+        }
+
+        // Check if val is wrapped in quotes: e.g. "user_008" -> strip quotes and treat as name
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            return { kind, name: val.slice(1, -1) };
+        }
+
+        // If string contains only digits and is non-empty -> numeric ID
+        const isNum = /^\d+$/.test(val);
+        return isNum ? { kind, id: val } : { kind, name: val };
+    });
+
+    const partitionId: any = { projectId };
+    const dbClean = (databaseId === '(default)' || !databaseId) ? '' : databaseId;
+    if (dbClean) partitionId.databaseId = dbClean;
+
+    return { keyValue: { path, partitionId } };
+};
+
+export const buildDatastoreFilterObject = (
+    prop: string,
+    op: string,
+    val: string,
+    type: string,
+    currentKind: string,
+    projectId: string,
+    databaseId?: string
+): any => {
+    if (prop === '__key__') {
+        if (op === 'HAS_ANCESTOR') {
+            const keyVal = parseDatastoreKeyFilter(val, currentKind, projectId, databaseId);
+            return { propertyFilter: { property: { name: '__key__' }, op: 'HAS_ANCESTOR', value: keyVal } };
+        } else if (op === 'IN' || op === 'NOT_IN') {
+            const vals = val.split(',').map(x => x.trim()).filter(x => x !== '');
+            const keyVals = vals.map(v => parseDatastoreKeyFilter(v, currentKind, projectId, databaseId));
+            return { propertyFilter: { property: { name: '__key__' }, op, value: { arrayValue: { values: keyVals } } } };
+        } else {
+            const keyVal = parseDatastoreKeyFilter(val, currentKind, projectId, databaseId);
+            return { propertyFilter: { property: { name: '__key__' }, op, value: keyVal } };
+        }
+    }
+
+    if (op === 'IN' || op === 'NOT_IN') {
+        const vals = val.split(',').map(x => x.trim()).filter(x => x !== '');
+        const arrayVal = { arrayValue: { values: vals.map(v => parseTypedFilterVal(v, type)) } };
+        return { propertyFilter: { property: { name: prop }, op, value: arrayVal } };
+    }
+
+    return { propertyFilter: { property: { name: prop }, op, value: parseTypedFilterVal(val, type) } };
+};
+

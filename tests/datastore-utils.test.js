@@ -28,7 +28,10 @@ const {
     mapConcurrent,
     minifyJsonProperties,
     replaceDatastoreField,
-    replaceDatastoreRules
+    replaceDatastoreRules,
+    parseDatastoreKeyFilter,
+    parseTypedFilterVal,
+    buildDatastoreFilterObject
 } = compiled.exports;
 
 test('comparison ignores object property order but preserves array order', () => {
@@ -322,5 +325,92 @@ test('replaceDatastoreRules applies multiple sequential find & replace rules inc
     assert.equal(entity.properties.nested.mapValue.properties.subUrl.stringValue, 'https://sub.target-cloud.org');
     assert.equal(entity.properties.nested.mapValue.properties.subCount.integerValue, '1122334455667');
 });
+
+test('parseDatastoreKeyFilter resolves numeric IDs, string names, and explicit paths into valid keyValue objects', () => {
+    // 1. Numeric ID with default kind
+    const key1 = parseDatastoreKeyFilter('4623657972269056', 'UserMaster', 'my-proj', '(default)');
+    assert.deepEqual(key1, {
+        keyValue: {
+            partitionId: { projectId: 'my-proj' },
+            path: [{ kind: 'UserMaster', id: '4623657972269056' }]
+        }
+    });
+
+    // 2. String Name with default kind
+    const key2 = parseDatastoreKeyFilter('user_008', 'Users', 'my-proj', 'custom-db');
+    assert.deepEqual(key2, {
+        keyValue: {
+            partitionId: { projectId: 'my-proj', databaseId: 'custom-db' },
+            path: [{ kind: 'Users', name: 'user_008' }]
+        }
+    });
+
+    // 3. Explicit Kind:ID
+    const key3 = parseDatastoreKeyFilter('Orders:9981', 'IgnoredKind', 'my-proj');
+    assert.deepEqual(key3, {
+        keyValue: {
+            partitionId: { projectId: 'my-proj' },
+            path: [{ kind: 'Orders', id: '9981' }]
+        }
+    });
+
+    // 4. Ancestor Key Path (Parent:1 | Child:user_001)
+    const key4 = parseDatastoreKeyFilter('Company:101 | Employee:emp_99', undefined, 'my-proj');
+    assert.deepEqual(key4, {
+        keyValue: {
+            partitionId: { projectId: 'my-proj' },
+            path: [
+                { kind: 'Company', id: '101' },
+                { kind: 'Employee', name: 'emp_99' }
+            ]
+        }
+    });
+});
+
+test('buildDatastoreFilterObject constructs valid Datastore keyValue filters without HTTP 400 errors', () => {
+    // 1. __key__ EQUAL filter
+    const filter1 = buildDatastoreFilterObject('__key__', 'EQUAL', '4623657972269056', 'auto', 'UserMaster', 'my-proj');
+    assert.deepEqual(filter1, {
+        propertyFilter: {
+            property: { name: '__key__' },
+            op: 'EQUAL',
+            value: {
+                keyValue: {
+                    partitionId: { projectId: 'my-proj' },
+                    path: [{ kind: 'UserMaster', id: '4623657972269056' }]
+                }
+            }
+        }
+    });
+
+    // 2. __key__ IN filter with multiple IDs
+    const filter2 = buildDatastoreFilterObject('__key__', 'IN', '1001, 1002, user_abc', 'auto', 'UserProfile', 'my-proj');
+    assert.deepEqual(filter2, {
+        propertyFilter: {
+            property: { name: '__key__' },
+            op: 'IN',
+            value: {
+                arrayValue: {
+                    values: [
+                        { keyValue: { partitionId: { projectId: 'my-proj' }, path: [{ kind: 'UserProfile', id: '1001' }] } },
+                        { keyValue: { partitionId: { projectId: 'my-proj' }, path: [{ kind: 'UserProfile', id: '1002' }] } },
+                        { keyValue: { partitionId: { projectId: 'my-proj' }, path: [{ kind: 'UserProfile', name: 'user_abc' }] } }
+                    ]
+                }
+            }
+        }
+    });
+
+    // 3. Regular property filter
+    const filter3 = buildDatastoreFilterObject('status', 'EQUAL', 'ACTIVE', 'string', 'UserMaster', 'my-proj');
+    assert.deepEqual(filter3, {
+        propertyFilter: {
+            property: { name: 'status' },
+            op: 'EQUAL',
+            value: { stringValue: 'ACTIVE' }
+        }
+    });
+});
+
 
 
