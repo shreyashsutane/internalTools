@@ -5,12 +5,104 @@
 
 export class SoundFX {
     private static ctx: AudioContext | null = null;
-    private static enabled: boolean = true;
+    private static initialized: boolean = false;
+
+    public static isMuted(): boolean {
+        try {
+            return typeof localStorage !== 'undefined' && localStorage.getItem('audio_muted') === 'true';
+        } catch {
+            return false;
+        }
+    }
+
+    public static isEnabled(): boolean {
+        return !SoundFX.isMuted();
+    }
+
+    public static setEnabled(val: boolean): void {
+        SoundFX.setMuted(!val);
+    }
+
+    public static setMuted(muted: boolean): void {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('audio_muted', muted ? 'true' : 'false');
+            }
+        } catch {}
+        SoundFX.updateUI();
+    }
+
+    public static toggleMute(): boolean {
+        const nextMuted = !SoundFX.isMuted();
+        SoundFX.setMuted(nextMuted);
+        return nextMuted;
+    }
+
+    public static init(): void {
+        if (SoundFX.initialized) return;
+        SoundFX.initialized = true;
+
+        SoundFX.updateUI();
+
+        if (typeof document !== 'undefined') {
+            document.addEventListener('click', (e) => {
+                const target = (e.target as HTMLElement)?.closest('#btn-mute-toggle, #muteToggle');
+                if (target) {
+                    e.preventDefault();
+                    SoundFX.toggleMute();
+                }
+            });
+
+            window.addEventListener('storage', (e: StorageEvent) => {
+                if (e.key === 'audio_muted') {
+                    SoundFX.updateUI();
+                }
+            });
+
+            window.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'm' || e.key === 'M') {
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+                    const active = document.activeElement as HTMLElement | null;
+                    if (active) {
+                        const tag = active.tagName.toLowerCase();
+                        if (tag === 'input' || tag === 'textarea' || tag === 'select' || active.isContentEditable) {
+                            return;
+                        }
+                    }
+                    e.preventDefault();
+                    SoundFX.toggleMute();
+                }
+            });
+        }
+    }
+
+    public static updateUI(): void {
+        if (typeof document === 'undefined') return;
+        const isMuted = SoundFX.isMuted();
+        const buttons = document.querySelectorAll<HTMLElement>('#btn-mute-toggle, #muteToggle');
+        buttons.forEach(btn => {
+            btn.title = isMuted ? 'Unmute Audio (Shortcut: M)' : 'Mute Audio (Shortcut: M)';
+            btn.setAttribute('aria-label', btn.title);
+
+            const icon = btn.querySelector('i');
+            if (icon) {
+                if (isMuted) {
+                    icon.className = 'fa-solid fa-volume-xmark';
+                    icon.style.color = 'var(--danger, #ff4d4f)';
+                } else {
+                    icon.className = 'fa-solid fa-volume-high';
+                    icon.style.color = '';
+                }
+            } else {
+                btn.textContent = isMuted ? '🔇' : '🔊';
+            }
+        });
+    }
 
     private static getContext(): AudioContext | null {
-        if (!SoundFX.enabled) return null;
+        if (SoundFX.isMuted()) return null;
         if (!SoundFX.ctx) {
-            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioCtx = typeof window !== 'undefined' ? (window.AudioContext || (window as any).webkitAudioContext) : null;
             if (AudioCtx) {
                 SoundFX.ctx = new AudioCtx();
             }
@@ -19,14 +111,6 @@ export class SoundFX {
             SoundFX.ctx.resume();
         }
         return SoundFX.ctx;
-    }
-
-    public static isEnabled(): boolean {
-        return SoundFX.enabled;
-    }
-
-    public static setEnabled(val: boolean): void {
-        SoundFX.enabled = val;
     }
 
     /**

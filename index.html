@@ -1402,7 +1402,8 @@
                 const btn = document.getElementById('muteToggle');
                 if (btn) {
                     btn.innerHTML = this.muted ? '🔇' : '🔊';
-                    btn.title = this.muted ? 'Unmute UI Sounds' : 'Mute UI Sounds';
+                    btn.title = this.muted ? 'Unmute UI Sounds (Shortcut: M)' : 'Mute UI Sounds (Shortcut: M)';
+                    btn.setAttribute('aria-label', btn.title);
                 }
             },
             playTick() {
@@ -3393,8 +3394,32 @@
             
             // Set up mute toggle UI
             AudioHaptic.updateUI();
-            document.getElementById('muteToggle').addEventListener('click', () => {
+            document.getElementById('muteToggle')?.addEventListener('click', () => {
                 AudioHaptic.toggleMute();
+            });
+
+            // Cross-tab synchronization
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'audio_muted') {
+                    AudioHaptic.muted = e.newValue === 'true';
+                    AudioHaptic.updateUI();
+                }
+            });
+
+            // Global keyboard shortcut 'M'
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'm' || e.key === 'M') {
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+                    const active = document.activeElement;
+                    if (active) {
+                        const tag = active.tagName.toLowerCase();
+                        if (tag === 'input' || tag === 'textarea' || tag === 'select' || active.isContentEditable) {
+                            return;
+                        }
+                    }
+                    e.preventDefault();
+                    AudioHaptic.toggleMute();
+                }
             });
 
             await showWelcomeAnimation();

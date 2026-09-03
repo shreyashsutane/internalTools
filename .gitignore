@@ -10,3 +10,4 @@ graphify-out/
 *service-account*.json
 .DS_Store
 
+.gstack/

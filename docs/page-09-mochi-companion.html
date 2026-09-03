@@ -113,6 +113,9 @@
                 <a href="v2.html" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition font-medium">
                     <i class="fa-solid fa-seedling"></i> Beginner View
                 </a>
+                <button id="btn-mute-toggle" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition font-medium flex items-center gap-1.5" title="Mute Audio (Shortcut: M)">
+                    <i class="fa-solid fa-volume-high" id="mute-icon"></i>
+                </button>
                 <a href="../datastore-copier/index.html" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 transition font-medium flex items-center gap-1.5">
                     <i class="fa-solid fa-arrow-left"></i> Open App
                 </a>
@@ -325,9 +328,51 @@
             toggleBtn.addEventListener('click', () => sidebar.classList.toggle('hidden'));
         }
 
-        // Web Audio Context (Procedural Sound)
+        // Web Audio Context (Procedural Sound) & Mute Controls
         let audioCtx = null;
+        function isAudioMuted() {
+            try { return localStorage.getItem('audio_muted') === 'true'; } catch(e) { return false; }
+        }
+
+        function updateMuteUI() {
+            const btn = document.getElementById('btn-mute-toggle');
+            if (!btn) return;
+            const muted = isAudioMuted();
+            btn.title = muted ? 'Unmute Audio (Shortcut: M)' : 'Mute Audio (Shortcut: M)';
+            const icon = document.getElementById('mute-icon');
+            if (icon) {
+                if (muted) {
+                    icon.className = 'fa-solid fa-volume-xmark text-red-400';
+                } else {
+                    icon.className = 'fa-solid fa-volume-high text-slate-300';
+                }
+            }
+        }
+
+        function toggleMute() {
+            const next = !isAudioMuted();
+            try { localStorage.setItem('audio_muted', next ? 'true' : 'false'); } catch(e) {}
+            updateMuteUI();
+        }
+
+        document.getElementById('btn-mute-toggle')?.addEventListener('click', toggleMute);
+        window.addEventListener('storage', (e) => { if (e.key === 'audio_muted') updateMuteUI(); });
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'm' || e.key === 'M') {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                const active = document.activeElement;
+                if (active) {
+                    const tag = active.tagName.toLowerCase();
+                    if (tag === 'input' || tag === 'textarea' || tag === 'select' || active.isContentEditable) return;
+                }
+                e.preventDefault();
+                toggleMute();
+            }
+        });
+        updateMuteUI();
+
         function playTone(freq, duration = 0.15, type = 'sine') {
+            if (isAudioMuted()) return;
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = audioCtx.createOscillator();

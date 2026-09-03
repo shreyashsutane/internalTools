@@ -58,6 +58,7 @@ export const App = {
         return 'User';
     },
     init: (): void => {
+        SoundFX.init();
         const toggleBtn = Utils.$('btn-toggle-token');
         const tokenInp = Utils.$('inp-token') as HTMLInputElement | null;
         if (toggleBtn && tokenInp) {
@@ -308,6 +309,7 @@ export const App = {
     },
     playNetflixTudum: (): void => {
         try {
+            if (!SoundFX.isEnabled()) return;
             const isSubfolder = window.location.pathname.includes('/datastore-copier');
             const audioPath = isSubfolder ? '../sounds/netflix-tudum.mp3' : 'sounds/netflix-tudum.mp3';
             const audio = new Audio(audioPath);

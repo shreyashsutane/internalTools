@@ -95,6 +95,66 @@ export const App = {
             localStorage.setItem('theme', next);
             App.updateThemeIcon(next);
         });
+
+        // Mute toggle
+        App.updateMuteIcon();
+        Utils.$('btn-mute-toggle')?.addEventListener('click', () => {
+            App.toggleMute();
+        });
+
+        window.addEventListener('storage', (e: StorageEvent) => {
+            if (e.key === 'audio_muted') {
+                App.updateMuteIcon();
+            }
+        });
+
+        window.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'm' || e.key === 'M') {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                const active = document.activeElement as HTMLElement | null;
+                if (active) {
+                    const tag = active.tagName.toLowerCase();
+                    if (tag === 'input' || tag === 'textarea' || tag === 'select' || active.isContentEditable) {
+                        return;
+                    }
+                }
+                e.preventDefault();
+                App.toggleMute();
+            }
+        });
+    },
+
+    isAudioMuted: (): boolean => {
+        try {
+            return localStorage.getItem('audio_muted') === 'true';
+        } catch {
+            return false;
+        }
+    },
+
+    toggleMute: () => {
+        const next = !App.isAudioMuted();
+        try {
+            localStorage.setItem('audio_muted', next ? 'true' : 'false');
+        } catch {}
+        App.updateMuteIcon();
+        Utils.toast(next ? 'Audio muted' : 'Audio unmuted', 'info');
+    },
+
+    updateMuteIcon: () => {
+        const btn = Utils.$('btn-mute-toggle');
+        if (!btn) return;
+        const muted = App.isAudioMuted();
+        btn.title = muted ? 'Unmute Audio (Shortcut: M)' : 'Mute Audio (Shortcut: M)';
+        btn.setAttribute('aria-label', btn.title);
+        const icon = btn.querySelector('i');
+        if (icon) {
+            if (muted) {
+                icon.className = 'fa-solid fa-volume-xmark text-red-400';
+            } else {
+                icon.className = 'fa-solid fa-volume-high text-slate-300';
+            }
+        }
     },
 
     updateThemeIcon: (theme: string) => {
