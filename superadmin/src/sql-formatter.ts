@@ -29,6 +29,73 @@ export const formatEmailToDisplayName = (email: string): string => {
         .join(' ');
 };
 
+export interface BigQuerySqlSafety {
+    requiresDestructiveConfirmation: boolean;
+    keyword: string | null;
+}
+
+const MUTATING_BIGQUERY_KEYWORDS = new Set([
+    'ALTER', 'CALL', 'CREATE', 'DELETE', 'DROP', 'EXECUTE', 'EXPORT',
+    'GRANT', 'INSERT', 'LOAD', 'MERGE', 'RENAME', 'REVOKE', 'TRUNCATE', 'UPDATE'
+]);
+
+const sqlCodeOnly = (sql: string): string => {
+    let output = '';
+    let index = 0;
+    let mode: 'code' | 'line-comment' | 'block-comment' | 'single' | 'double' | 'backtick' = 'code';
+
+    while (index < sql.length) {
+        const char = sql[index];
+        const next = sql[index + 1];
+        if (mode === 'code') {
+            if (char === '-' && next === '-') {
+                mode = 'line-comment'; output += '  '; index += 2; continue;
+            }
+            if (char === '/' && next === '*') {
+                mode = 'block-comment'; output += '  '; index += 2; continue;
+            }
+            if (char === "'") mode = 'single';
+            else if (char === '"') mode = 'double';
+            else if (char === '`') mode = 'backtick';
+            output += mode === 'code' ? char : ' ';
+            index++;
+            continue;
+        }
+        if (mode === 'line-comment') {
+            if (char === '\n') { mode = 'code'; output += '\n'; } else output += ' ';
+            index++;
+            continue;
+        }
+        if (mode === 'block-comment') {
+            if (char === '*' && next === '/') {
+                mode = 'code'; output += '  '; index += 2;
+            } else {
+                output += char === '\n' ? '\n' : ' '; index++;
+            }
+            continue;
+        }
+        const quote = mode === 'single' ? "'" : (mode === 'double' ? '"' : '`');
+        if (char === quote) {
+            if (next === quote) {
+                output += '  '; index += 2; continue;
+            }
+            mode = 'code';
+        }
+        output += char === '\n' ? '\n' : ' ';
+        index++;
+    }
+    return output;
+};
+
+export const classifyBigQuerySql = (sql: string): BigQuerySqlSafety => {
+    const tokens = sqlCodeOnly(sql).toUpperCase().match(/[A-Z_]+/g) || [];
+    const keyword = tokens.find(token => MUTATING_BIGQUERY_KEYWORDS.has(token)) || null;
+    return {
+        requiresDestructiveConfirmation: keyword !== null,
+        keyword
+    };
+};
+
 const SQL_KEYWORDS = new Set([
     'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'ON', 'AS',
     'JOIN', 'INNER', 'LEFT', 'RIGHT', 'FULL', 'OUTER', 'CROSS',

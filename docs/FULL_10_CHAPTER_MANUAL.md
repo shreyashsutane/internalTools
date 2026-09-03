@@ -198,7 +198,7 @@ Entities are labeled using a prioritized property cascade:
 | :--- | :--- | :--- |
 | `401 INVALID_TOKEN` | Token expired (1-hr limit). | Run `gcloud auth print-access-token` in Cloud Shell and paste. |
 | `403 FORBIDDEN` | Missing IAM role. | Request project admin to bind `roles/datastore.user`. |
-| `413 PAYLOAD_TOO_LARGE` | Snapshot > 700 KB. | Apply property filters or reduce batch size. |
+| `413 PAYLOAD_TOO_LARGE` | An individual audit request or backup chunk exceeded its bounded transport size. | Retry; if it persists, reduce the batch size. Oversized snapshots are normally split into lossless chunks automatically. |
 | `429 RATE_LIMITED` | Exceeded 120 req/min. | Wait 60s for sliding window reset. |
 
 ### 2. Disaster Recovery Runbook
@@ -236,5 +236,4 @@ The email notification engine generates a high-contrast, dark-theme HTML email w
 * **Tamper-Proof Identity**: The operator email in the alert is extracted directly from Google's OpenID `tokeninfo` endpoint and cannot be forged by client JSON.
 * **Non-Blocking Fault Isolation**: Email delivery executes asynchronously with complete try/catch error boundaries. Any SMTP network timeout or quota limit is caught gracefully, guaranteeing that Datastore mutations and audit log persistence never fail.
 * **Automated Unit Testing**: Backed by 15 unit tests in `functions/test/email-notifier.test.js` covering HTML entity sanitization, mock SMTP transport delivery, entity parsing, and failure isolation.
-
 

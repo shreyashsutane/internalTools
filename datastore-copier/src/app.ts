@@ -1000,20 +1000,33 @@ export const App = {
                 newQuery
             };
             let removedPreviousTarget = false;
+            let persistedBackupIndex = -1;
             try {
-                if (!AuditLog.canPersistPrevState({
-                    type: 'QUERY_SYNC',
-                    backupData: [...backupData, backupCandidate]
-                })) {
-                    throw new Error('Scheduled-query backup is too large for a safe audit entry.');
-                }
                 if (cmpObj.tgtQuery) {
+                    backupData.push(backupCandidate);
+                    persistedBackupIndex = backupData.length - 1;
+                    const preDeleteBackupPersisted = await AuditLog.updateLog(
+                        queryAuditLogId,
+                        'IN_PROGRESS',
+                        `Backed up ${backupData.length} of ${selected.length} scheduled query configurations before mutation.`,
+                        { type: 'QUERY_SYNC', backupData }
+                    );
+                    if (!preDeleteBackupPersisted) {
+                        backupData.pop();
+                        persistedBackupIndex = -1;
+                        throw new Error('Scheduled-query backup could not be persisted; the existing configuration was not deleted.');
+                    }
                     await Api.deleteQuery(cmpObj.tgtQuery.name);
                     removedPreviousTarget = true;
                 }
                 const created = await Api.createQuery(State.query.tgt, State.query.tgtLoc, q);
                 if (!created?.name) throw new Error('Scheduled-query create response did not include a resource name.');
-                backupData.push({ ...backupCandidate, name: created.name });
+                if (persistedBackupIndex >= 0) {
+                    backupData[persistedBackupIndex] = { ...backupCandidate, name: created.name };
+                } else {
+                    backupData.push({ ...backupCandidate, name: created.name });
+                    persistedBackupIndex = backupData.length - 1;
+                }
                 const backupPersisted = await AuditLog.updateLog(
                     queryAuditLogId,
                     'IN_PROGRESS',
@@ -1021,12 +1034,16 @@ export const App = {
                     { type: 'QUERY_SYNC', backupData }
                 );
                 if (!backupPersisted) {
-                    backupData.pop();
                     try {
                         await Api.deleteQuery(created.name);
                         if (prevQuery) {
-                            await Api.createQuery(State.query.tgt, State.query.tgtLoc, prevQuery);
+                            const restored = await Api.createQuery(State.query.tgt, State.query.tgtLoc, prevQuery);
+                            if (restored?.name && persistedBackupIndex >= 0) {
+                                backupData[persistedBackupIndex] = { ...backupCandidate, name: restored.name };
+                            }
                             removedPreviousTarget = false;
+                        } else if (persistedBackupIndex >= 0) {
+                            backupData.splice(persistedBackupIndex, 1);
                         }
                     } catch (rollbackError: any) {
                         throw new Error(
@@ -1040,7 +1057,16 @@ export const App = {
                 let failure = e;
                 if (removedPreviousTarget && prevQuery) {
                     try {
-                        await Api.createQuery(State.query.tgt, State.query.tgtLoc, prevQuery);
+                        const restored = await Api.createQuery(State.query.tgt, State.query.tgtLoc, prevQuery);
+                        if (restored?.name && persistedBackupIndex >= 0) {
+                            backupData[persistedBackupIndex] = { ...backupCandidate, name: restored.name };
+                            await AuditLog.updateLog(
+                                queryAuditLogId,
+                                'IN_PROGRESS',
+                                `Restored ${q.displayName} after a failed copy; its revert backup remains durable.`,
+                                { type: 'QUERY_SYNC', backupData }
+                            );
+                        }
                     } catch (rollbackError: any) {
                         failure = new Error(
                             `${e.message}; restoring the previous target query also failed: ${rollbackError.message}`
@@ -2165,10 +2191,6 @@ export const App = {
                         referenceName: dispInfo ? dispInfo.value : undefined,
                         referenceField: dispInfo ? dispInfo.fieldName : undefined
                     };
-                    if (!AuditLog.canPersistPrevState(prevState)) {
-                        throw new Error('The entity backup is too large for a safe audit entry. Reduce the entity size before saving.');
-                    }
-                    
                     const refSuffix = dispInfo ? ` [${dispInfo.fieldName}: "${dispInfo.value}"]` : '';
                     editAuditLogId = await AuditLog.addLog(
                         'DATASTORE_EDIT',
@@ -2505,21 +2527,6 @@ export const App = {
                     }
                 } catch (compErr) {
                     console.warn('Gzip compression fallback:', compErr);
-                }
-
-                // Resilient fallback for ultra-large entities (>700KB)
-                if (!AuditLog.canPersistPrevState(backupState)) {
-                    const lightweightBackup = chunkBackupData.map(item => ({
-                        keyStr: item.keyStr,
-                        action: item.action,
-                        prevEntity: { key: item.prevEntity.key }
-                    }));
-                    backupState = {
-                        ...backupState,
-                        backupData: lightweightBackup,
-                        entityDisplayNames,
-                        warning: "Snapshot exceeded 700KB limit; preserved key targets."
-                    };
                 }
 
                 batchAuditLogId = await AuditLog.addLog(

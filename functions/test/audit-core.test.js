@@ -4,9 +4,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
     AuditRequestError,
+    assertAuditStatusTransition,
     assertTrustedOrigin,
     extractBearerToken,
     hashIdentity,
+    normalizeAuditChunkPayload,
     normalizeAuditPayload,
     normalizeAuditUpdatePayload,
     normalizeVerifiedIdentity,
@@ -132,10 +134,61 @@ test('audit updates require a bounded Firestore ID and validated status', () => 
     );
 });
 
+test('only in-progress audit records may transition or change backup state', () => {
+    assert.doesNotThrow(() => assertAuditStatusTransition('IN_PROGRESS', 'SUCCESS'));
+    assert.doesNotThrow(() => assertAuditStatusTransition('IN_PROGRESS', 'IN_PROGRESS'));
+    assert.throws(
+        () => assertAuditStatusTransition('SUCCESS', 'FAILED'),
+        error => error instanceof AuditRequestError && error.code === 'LOG_IMMUTABLE'
+    );
+});
+
 test('read limits are bounded and rate-limit keys do not expose email addresses', () => {
     assert.equal(parseReadLimit({ limit: 0 }), 1);
     assert.equal(parseReadLimit({ limit: 9999 }), 500);
     assert.equal(parseReadLimit({}), 200);
     assert.match(hashIdentity('employee@example.com'), /^[a-f0-9]{64}$/);
     assert.doesNotMatch(hashIdentity('employee@example.com'), /employee/);
+});
+
+test('audit backup chunks are bounded, indexed, and restricted to base64 data', () => {
+    assert.deepEqual(
+        normalizeAuditChunkPayload({
+            action: 'write',
+            id: 'AbCdEfGhIjKlMnOpQrSt',
+            revision: 'revision123',
+            index: 1,
+            count: 3,
+            data: 'YWJjZA=='
+        }),
+        {
+            action: 'write',
+            id: 'AbCdEfGhIjKlMnOpQrSt',
+            revision: 'revision123',
+            index: 1,
+            count: 3,
+            data: 'YWJjZA=='
+        }
+    );
+    assert.throws(
+        () => normalizeAuditChunkPayload({
+            action: 'write',
+            id: 'AbCdEfGhIjKlMnOpQrSt',
+            revision: 'revision123',
+            index: 0,
+            count: 1,
+            data: '<script>'
+        }),
+        error => error instanceof AuditRequestError && error.code === 'INVALID_CHUNK_DATA'
+    );
+    assert.throws(
+        () => normalizeAuditChunkPayload({
+            action: 'read',
+            id: 'AbCdEfGhIjKlMnOpQrSt',
+            revision: 'revision123',
+            index: 110,
+            count: 111
+        }),
+        error => error instanceof AuditRequestError && error.code === 'INVALID_CHUNK_INDEX'
+    );
 });

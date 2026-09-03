@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 8080;
+const mockAuditChunks = new Map();
 
 const MIME_TYPES = {
     '.html': 'text/html',
@@ -27,7 +28,8 @@ const server = http.createServer((req, res) => {
         const allowedPaths = new Set([
             '/api/audit_logs',
             '/api/audit_logs/runQuery',
-            '/api/audit_logs/update'
+            '/api/audit_logs/update',
+            '/api/audit_logs/chunks'
         ]);
         const origin = req.headers.origin || '';
         const isLocalOrigin = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin);
@@ -41,19 +43,6 @@ const server = http.createServer((req, res) => {
         }
 
         const authHeader = req.headers['authorization'] || '';
-        if (authHeader === 'Bearer test-token') {
-            res.writeHead(200, {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-store'
-            });
-            if (reqUrl === '/api/audit_logs/runQuery') {
-                res.end(JSON.stringify({ ok: true, logs: [] }));
-            } else {
-                res.end(JSON.stringify({ ok: true, id: 'mock-log-' + Date.now() }));
-            }
-            return;
-        }
-        
         let bodyData = '';
         let bodyTooLarge = false;
         req.on('data', chunk => {
@@ -69,6 +58,27 @@ const server = http.createServer((req, res) => {
                     'Cache-Control': 'no-store'
                 });
                 res.end(JSON.stringify({ ok: false, error: { message: 'Audit request is too large.' } }));
+                return;
+            }
+            if (authHeader === 'Bearer test-token') {
+                const body = JSON.parse(bodyData || '{}');
+                res.writeHead(200, {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store'
+                });
+                if (reqUrl === '/api/audit_logs/runQuery') {
+                    res.end(JSON.stringify({ ok: true, logs: [] }));
+                } else if (reqUrl === '/api/audit_logs/chunks') {
+                    const key = `${body.id}:${body.revision}:${body.index}`;
+                    if (body.action === 'write') {
+                        mockAuditChunks.set(key, body.data);
+                        res.end(JSON.stringify({ ok: true, index: body.index }));
+                    } else {
+                        res.end(JSON.stringify({ ok: true, index: body.index, data: mockAuditChunks.get(key) }));
+                    }
+                } else {
+                    res.end(JSON.stringify({ ok: true, id: 'mock-log-' + Date.now() }));
+                }
                 return;
             }
             const proxyReq = https.request({

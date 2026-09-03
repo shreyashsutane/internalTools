@@ -19,7 +19,7 @@ A browser-based utility for read-only BigQuery schema comparison plus separately
    - **`PROJECT MAPPED` Status**: Queries that match after target project substitution are classified with an emerald-green `PROJECT MAPPED` status and indexed in a dedicated `Mapped` filter tab.
    - **Context-Aware Modal & Formatter**: Dynamic diff modal supporting SQL, JSON, and Text modes with instant Format/Minify actions and debounced live-diff for 5,000+ line queries.
    - **Enterprise High-Throughput Batching**: Migrations of 1,000s of entities execute in progressive 50-entity batches with parallelized HTTP/2 lookups (`Promise.all`) and self-chunking commits (max 250 mutations / 4 MB per RPC) to strictly observe GCP Datastore quotas.
-   - **Resilient 1-Click Revert**: Pre-mutation target snapshots are minified and stored in per-batch audit records for atomic 1-click revert, with graceful fallback for oversized (>700 KB) entities.
+   - **Resilient 1-Click Revert**: Pre-mutation target snapshots are minified and stored in per-batch audit records for atomic 1-click revert. Snapshots above 700 KB are compressed and split across immutable audit-backup chunks, preserving every entity property.
    - **Lossless Value Fidelity**: Preserves all Datastore REST value types (`integerValue`, `timestampValue`, `geoPointValue`, `blobValue`, `keyValue`, `mapValue`, `arrayValue`, `entityValue`) and minifies embedded JSON strings.
    - **Find & Replace**: Dynamic regex/literal substitution targeting all fields or specific properties.
 
@@ -64,7 +64,7 @@ The GCP Infrastructure Manager consists of **15,094 total lines** (**14,270 line
 | [`src/assist.ts`](src/assist.ts) | **727** | TypeScript | Assist context evaluation engine, multi-screen state analysis, smart suggestion heuristics, and guidance alerts. |
 | [`src/assist-ui.ts`](src/assist-ui.ts) | **563** | TypeScript | Mochi interactive AI mascot DOM rendering, reactive state animations, cursor evasion physics, and card overlays. |
 | [`src/api.ts`](src/api.ts) | **505** | TypeScript | Google Cloud REST API client, Datastore entity lookups/commits, system kind exclusions (`__*__`), and BigQuery metadata fetcher. |
-| [`src/audit.ts`](src/audit.ts) | **473** | TypeScript | Centralized audit log client, revert snapshot compression, multi-kind audit history rendering, and CSV compliance exports. |
+| [`src/audit.ts`](src/audit.ts) | **575** | TypeScript | Centralized audit log client, lossless chunked revert snapshots, multi-kind audit history rendering, and CSV compliance exports. |
 | [`src/diff.ts`](src/diff.ts) | **402** | TypeScript | Property-level semantic diff visualizer, line-by-line syntax highlighters, and format switcher. |
 | [`src/easter-egg.ts`](src/easter-egg.ts) | **275** | TypeScript | Interactive developer features, canvas particles, and keyboard combos. |
 | [`src/revert.ts`](src/revert.ts) | **216** | TypeScript | 1-Click rollback engine, pre-mutation state decompression, chunked entity restoration, and delete-permission fallback. |
@@ -80,4 +80,3 @@ The GCP Infrastructure Manager consists of **15,094 total lines** (**14,270 line
 | [`README.md`](README.md) | **54** | Markdown | Tool documentation and architecture guide. |
 | [`js/app.js`](js/app.js) | **824** | Bundle | Bundled and minified production distribution (generated via esbuild). |
 | **Total** | **15,094** | | **14,270 authored source lines / 7,769 TypeScript core lines** |
-

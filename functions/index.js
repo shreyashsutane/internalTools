@@ -6,9 +6,11 @@ const { initializeApp } = require('firebase-admin/app');
 const { FieldValue, getFirestore } = require('firebase-admin/firestore');
 const {
     AuditRequestError,
+    assertAuditStatusTransition,
     assertTrustedOrigin,
     extractBearerToken,
     hashIdentity,
+    normalizeAuditChunkPayload,
     normalizeAuditPayload,
     normalizeAuditUpdatePayload,
     normalizeVerifiedIdentity,
@@ -112,6 +114,40 @@ const createAuditLog = async (identity, payload, req) => {
 
 const updateOwnAuditLog = async (identity, payload) => {
     const ref = db.collection('audit_logs').doc(payload.id);
+    if (payload.hasPrevState && payload.prevState) {
+        let manifest = payload.prevState;
+        try { manifest = JSON.parse(manifest); } catch { manifest = null; }
+        if (manifest?.chunked && manifest.backupComplete === true) {
+            const validatedManifest = normalizeAuditChunkPayload({
+                action: 'read',
+                id: payload.id,
+                revision: manifest.chunkRevision,
+                index: 0,
+                count: manifest.chunkCount
+            });
+            const count = validatedManifest.count;
+            const revision = validatedManifest.revision;
+            const chunkSnapshots = await Promise.all(
+                Array.from({ length: count }, (_, index) => backupChunkRef({
+                    id: payload.id,
+                    revision,
+                    index
+                }).get())
+            );
+            const complete = chunkSnapshots.every((snapshot, index) => {
+                const chunk = snapshot.data();
+                return snapshot.exists
+                    && chunk?.user === identity.email
+                    && chunk?.revision === revision
+                    && chunk?.index === index
+                    && chunk?.count === count
+                    && typeof chunk?.data === 'string';
+            });
+            if (!complete) {
+                throw new AuditRequestError(409, 'BACKUP_INCOMPLETE', 'Every audit backup chunk must be durable before the manifest is completed.');
+            }
+        }
+    }
     let emailLogPayload = null;
     await db.runTransaction(async transaction => {
         const snapshot = await transaction.get(ref);
@@ -122,6 +158,7 @@ const updateOwnAuditLog = async (identity, payload) => {
             throw new AuditRequestError(403, 'LOG_FORBIDDEN', 'Users can update only their own audit records.');
         }
         const existing = snapshot.data();
+        assertAuditStatusTransition(existing?.status, payload.status);
         const updates = {
             status: payload.status,
             details: payload.details,
@@ -156,6 +193,80 @@ const updateOwnAuditLog = async (identity, payload) => {
     }
 };
 
+const backupChunkRef = payload => db.collection('audit_logs')
+    .doc(payload.id)
+    .collection('backup_chunks')
+    .doc(`${payload.revision}_${String(payload.index).padStart(3, '0')}`);
+
+const assertOwnAuditLog = async (identity, id) => {
+    const snapshot = await db.collection('audit_logs').doc(id).get();
+    if (!snapshot.exists) {
+        throw new AuditRequestError(404, 'LOG_NOT_FOUND', 'Audit log entry was not found.');
+    }
+    if (snapshot.data()?.user !== identity.email) {
+        throw new AuditRequestError(403, 'LOG_FORBIDDEN', 'Users can access only their own audit backups.');
+    }
+    return snapshot;
+};
+
+const writeBackupChunk = async (identity, payload) => {
+    const parentRef = db.collection('audit_logs').doc(payload.id);
+    const ref = backupChunkRef(payload);
+    await db.runTransaction(async transaction => {
+        const parent = await transaction.get(parentRef);
+        if (!parent.exists) {
+            throw new AuditRequestError(404, 'LOG_NOT_FOUND', 'Audit log entry was not found.');
+        }
+        if (parent.data()?.user !== identity.email) {
+            throw new AuditRequestError(403, 'LOG_FORBIDDEN', 'Users can access only their own audit backups.');
+        }
+        if (parent.data()?.status !== 'IN_PROGRESS') {
+            throw new AuditRequestError(409, 'LOG_IMMUTABLE', 'Backup chunks cannot be added to a finalized audit log.');
+        }
+        const existing = await transaction.get(ref);
+        if (existing.exists) {
+            const data = existing.data();
+            if (data?.user === identity.email
+                && data?.data === payload.data
+                && data?.count === payload.count) return;
+            throw new AuditRequestError(409, 'CHUNK_CONFLICT', 'Audit backup chunk already exists with different data.');
+        }
+        transaction.create(ref, {
+            user: identity.email,
+            revision: payload.revision,
+            index: payload.index,
+            count: payload.count,
+            data: payload.data,
+            createdAt: FieldValue.serverTimestamp()
+        });
+    });
+};
+
+const readBackupChunk = async (identity, payload) => {
+    const parent = await assertOwnAuditLog(identity, payload.id);
+    let manifest = parent.data()?.prevState;
+    if (typeof manifest === 'string') {
+        try { manifest = JSON.parse(manifest); } catch { manifest = null; }
+    }
+    if (!manifest?.chunked
+        || manifest.backupComplete !== true
+        || manifest.chunkRevision !== payload.revision
+        || manifest.chunkCount !== payload.count) {
+        throw new AuditRequestError(409, 'BACKUP_INCOMPLETE', 'Audit backup manifest is incomplete or has changed.');
+    }
+    const snapshot = await backupChunkRef(payload).get();
+    const data = snapshot.data();
+    if (!snapshot.exists
+        || data?.user !== identity.email
+        || data?.revision !== payload.revision
+        || data?.index !== payload.index
+        || data?.count !== payload.count
+        || typeof data?.data !== 'string') {
+        throw new AuditRequestError(409, 'BACKUP_INCOMPLETE', 'Audit backup chunk is missing or invalid.');
+    }
+    return data.data;
+};
+
 exports.auditApi = onRequest({
     region: 'us-central1',
     timeoutSeconds: 60,
@@ -188,6 +299,17 @@ exports.auditApi = onRequest({
         if (req.path.endsWith('/runQuery')) {
             const logs = await readOwnLogs(identity.email, parseReadLimit(req.body));
             sendJson(res, 200, { ok: true, logs }, origin);
+            return;
+        }
+        if (req.path.endsWith('/chunks')) {
+            const payload = normalizeAuditChunkPayload(req.body);
+            if (payload.action === 'write') {
+                await writeBackupChunk(identity, payload);
+                sendJson(res, 201, { ok: true, index: payload.index }, origin);
+            } else {
+                const data = await readBackupChunk(identity, payload);
+                sendJson(res, 200, { ok: true, index: payload.index, data }, origin);
+            }
             return;
         }
         if (req.path.endsWith('/update')) {

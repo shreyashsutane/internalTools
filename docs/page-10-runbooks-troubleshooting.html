@@ -285,10 +285,10 @@
                                 <td class="p-3.5 text-slate-400">Ensure request originates from <code>https://gcp-tools-portal.web.app</code>.</td>
                             </tr>
                             <tr>
-                                <td class="p-3.5 font-mono text-purple-400 font-bold">413 PREV_STATE_TOO_LARGE</td>
+                                <td class="p-3.5 font-mono text-purple-400 font-bold">413 PAYLOAD_TOO_LARGE</td>
                                 <td class="p-3.5 font-mono text-[11px]">Audit Engine</td>
-                                <td class="p-3.5">Pre-mutation snapshot exceeds 700 KB.</td>
-                                <td class="p-3.5 text-slate-400">Reduce batch filter size or copy fewer entities per run.</td>
+                                <td class="p-3.5">An individual audit request or chunk exceeded its bounded transport size.</td>
+                                <td class="p-3.5 text-slate-400">Retry the operation. Large snapshots are normally compressed and split automatically; reduce the batch only if the bounded chunk limit is still exceeded.</td>
                             </tr>
                             <tr>
                                 <td class="p-3.5 font-mono text-red-400 font-bold">429 RATE_LIMITED</td>
@@ -376,12 +376,12 @@
                 action: "Request your GCP Organization Admin to bind the missing IAM role to your account."
             },
             413: {
-                title: "HTTP 413 PREV_STATE_TOO_LARGE",
+                title: "HTTP 413 PAYLOAD_TOO_LARGE",
                 severity: "HIGH SEVERITY",
                 severityClass: "bg-purple-500/20 text-purple-300",
-                cause: "The pre-mutation entity snapshot exceeded 700 KB, which would violate Firestore's 1 MB document ceiling.",
-                fix: "Narrow your property filters or copy in batches under 250 entities.",
-                action: "Apply property filters to exclude large blob payloads or split the Kind into smaller subsets."
+                cause: "An individual audit request or backup chunk exceeded its bounded transport size.",
+                fix: "Retry once; oversized snapshots are normally compressed and split into 650 KB chunks automatically.",
+                action: "If the retry still fails, split the selected entities into a smaller copy batch."
             },
             429: {
                 title: "HTTP 429 RATE_LIMITED",

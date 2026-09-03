@@ -3,9 +3,68 @@ import { Utils } from './utils';
 import { Api } from './api';
 import { CONFIG } from './config';
 import { executeDatastoreRevert, executeScheduledQueryRevert } from './revert';
-import { decompressJsonFromBase64 } from './datastore-utils';
+import { compressJsonToBase64, decompressJsonFromBase64, mapConcurrent } from './datastore-utils';
 
 const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
+const MAX_AUDIT_CHUNK_DATA_BYTES = 650_000;
+
+export interface PreparedPrevState {
+    inline: any;
+    chunks?: string[];
+}
+
+const createChunkRevision = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID().replace(/-/g, '');
+    }
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+};
+
+const copyManifestMetadata = (prevState: any): Record<string, any> => {
+    const metadata: Record<string, any> = {};
+    for (const key of ['type', 'kind', 'kinds', 'srcDb', 'tgtDb', 'dbId', 'batch', 'count']) {
+        if (prevState?.[key] !== undefined) metadata[key] = prevState[key];
+    }
+    if (metadata.count === undefined && Array.isArray(prevState?.backupData)) {
+        metadata.count = prevState.backupData.length;
+    }
+    return metadata;
+};
+
+export const preparePrevState = async (prevState: any): Promise<PreparedPrevState> => {
+    const size = AuditLog.getPrevStateSize(prevState);
+    if (size <= MAX_AUDIT_PREV_STATE_BYTES) return { inline: prevState };
+
+    const compressed = await compressJsonToBase64(prevState);
+    const compressedState = {
+        ...copyManifestMetadata(prevState),
+        compressed: true,
+        data: compressed
+    };
+    if (AuditLog.canPersistPrevState(compressedState)) return { inline: compressedState };
+
+    const chunks: string[] = [];
+    for (let offset = 0; offset < compressed.length; offset += MAX_AUDIT_CHUNK_DATA_BYTES) {
+        chunks.push(compressed.slice(offset, offset + MAX_AUDIT_CHUNK_DATA_BYTES));
+    }
+    if (chunks.length > 110) {
+        throw new Error('Audit backup requires more than 110 chunks; reduce the copy batch size.');
+    }
+    const revision = createChunkRevision();
+    return {
+        inline: {
+            ...copyManifestMetadata(prevState),
+            chunked: true,
+            backupComplete: false,
+            encoding: 'gzip-base64',
+            chunkRevision: revision,
+            chunkCount: chunks.length,
+            originalBytes: size,
+            compressedBytes: compressed.length
+        },
+        chunks
+    };
+};
 
 export const AuditLog = {
     request: async (path: string, body: Record<string, any>): Promise<any> => {
@@ -59,20 +118,71 @@ export const AuditLog = {
     canPersistPrevState: (prevState: any): boolean => {
         return AuditLog.getPrevStateSize(prevState) <= MAX_AUDIT_PREV_STATE_BYTES;
     },
+    persistChunks: async (id: string, prepared: PreparedPrevState): Promise<any> => {
+        const chunks = prepared.chunks;
+        if (!chunks) return prepared.inline;
+        const manifest = prepared.inline;
+        await mapConcurrent(chunks, 4, async (chunk, index) => {
+            await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/chunks`, {
+                action: 'write',
+                id,
+                revision: manifest.chunkRevision,
+                index,
+                count: chunks.length,
+                data: chunk
+            });
+        });
+        return { ...manifest, backupComplete: true };
+    },
+    resolvePrevState: async (id: string, prevState: any): Promise<any> => {
+        let state = prevState;
+        if (typeof state === 'string') state = JSON.parse(state);
+        if (state?.chunked) {
+            if (state.backupComplete !== true) {
+                throw new Error('The audit backup is incomplete and cannot be used for revert.');
+            }
+            const indexes = Array.from({ length: state.chunkCount }, (_, index) => index);
+            const chunks = await mapConcurrent(indexes, 4, async index => {
+                const result = await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/chunks`, {
+                    action: 'read',
+                    id,
+                    revision: state.chunkRevision,
+                    index,
+                    count: state.chunkCount
+                });
+                if (typeof result.data !== 'string') {
+                    throw new Error(`Audit backup chunk ${index + 1} is missing.`);
+                }
+                return result.data;
+            });
+            state = await decompressJsonFromBase64(chunks.join(''));
+        } else if (state?.compressed && state?.data) {
+            state = await decompressJsonFromBase64(state.data);
+        }
+        return state;
+    },
     addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null, skipRender = false): Promise<string | null> => {
         try {
             if (!State.token) return null;
-            if (prevState && !AuditLog.canPersistPrevState(prevState)) {
-                throw new Error(`Audit backup exceeds the safe ${Math.floor(MAX_AUDIT_PREV_STATE_BYTES / 1000)} KB limit.`);
-            }
+            const prepared = prevState ? await preparePrevState(prevState) : { inline: null };
             const result = await AuditLog.request(CONFIG.FIRESTORE_AUDIT_LOG_URL, {
                 operation,
                 srcProject: srcProject || '—',
                 tgtProject: tgtProject || '—',
-                status: status || 'SUCCESS',
+                status: prepared.chunks ? 'IN_PROGRESS' : (status || 'SUCCESS'),
                 details: details || '',
-                prevState
+                prevState: prepared.inline
             });
+            if (typeof result.id !== 'string') return null;
+            if (prepared.chunks) {
+                const completeManifest = await AuditLog.persistChunks(result.id, prepared);
+                await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, {
+                    id: result.id,
+                    status: status || 'SUCCESS',
+                    details: details || '',
+                    prevState: completeManifest
+                });
+            }
             if (!skipRender) {
                 await AuditLog.renderLogs();
             }
@@ -86,10 +196,8 @@ export const AuditLog = {
         try {
             const body: Record<string, any> = { id, status, details };
             if (prevState !== undefined) {
-                if (prevState && !AuditLog.canPersistPrevState(prevState)) {
-                    throw new Error(`Audit backup exceeds the safe ${Math.floor(MAX_AUDIT_PREV_STATE_BYTES / 1000)} KB limit.`);
-                }
-                body.prevState = prevState;
+                const prepared = prevState ? await preparePrevState(prevState) : { inline: null };
+                body.prevState = await AuditLog.persistChunks(id, prepared);
             }
             await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, body);
             if (!skipRender) {
@@ -138,12 +246,13 @@ export const AuditLog = {
             Utils.toast("No backup state available to revert this action.", "warn");
             return;
         }
-        let requestedState = log.prevState;
-        if (typeof requestedState === 'string') {
-            try { requestedState = JSON.parse(requestedState); } catch {
-                Utils.toast("Backup state is invalid and cannot be reverted.", "err");
-                return;
-            }
+        let requestedState: any;
+        try {
+            requestedState = await AuditLog.resolvePrevState(log.id, log.prevState);
+        } catch (error) {
+            console.error('Failed to load audit backup:', error);
+            Utils.toast("Backup state is invalid or incomplete and cannot be reverted.", "err");
+            return;
         }
         if (requestedState?.type === 'BQ_SCHEMA_SYNC') {
             Utils.toast("BigQuery Schema Comparator is read-only. Historical schema changes cannot be applied or reverted here.", "warn");
@@ -333,16 +442,10 @@ export const AuditLog = {
         let stateDetailsHtml = '';
         if (log.prevState) {
             let state = log.prevState;
-            if (typeof state === 'string') {
-                try { state = JSON.parse(state); } catch(e) {}
-            }
-
-            if (state && state.compressed && state.data) {
-                try {
-                    state = await decompressJsonFromBase64(state.data);
-                } catch (e) {
-                    console.error("Failed to decompress backup data", e);
-                }
+            try {
+                state = await AuditLog.resolvePrevState(log.id, state);
+            } catch (e) {
+                console.error("Failed to load backup data", e);
             }
 
             if (state && typeof state === 'object') {

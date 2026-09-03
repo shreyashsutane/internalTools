@@ -19,11 +19,29 @@ compiled.paths = module.paths;
 compiled._compile(build.outputFiles[0].text, entry);
 
 const {
+    classifyBigQuerySql,
     extractVariables,
     resolveSqlVariables,
     formatEmailToDisplayName,
     formatBigQuerySql
 } = compiled.exports;
+
+const compileTs = relativePath => {
+    const moduleEntry = path.join(__dirname, '..', relativePath);
+    const moduleBuild = buildSync({
+        entryPoints: [moduleEntry],
+        bundle: true,
+        platform: 'node',
+        format: 'cjs',
+        tsconfig: path.join(__dirname, '..', 'tsconfig.json'),
+        write: false
+    });
+    const loaded = new Module(moduleEntry, module);
+    loaded.filename = moduleEntry;
+    loaded.paths = module.paths;
+    loaded._compile(moduleBuild.outputFiles[0].text, moduleEntry);
+    return loaded.exports;
+};
 
 test('extractVariables parses single and multiple variables without duplicates', () => {
     const query = `
@@ -77,4 +95,84 @@ order by id desc
     assert.match(formatted, /WHERE status = 'active' AND created_at >= '{{start_date}}'/);
     assert.match(formatted, /ORDER BY id DESC/);
     assert.ok(formatted.includes('{{start_date}}'), 'Variables must be preserved verbatim');
+});
+
+test('BigQuery SQL safety requires explicit confirmation for mutations but ignores literals and comments', () => {
+    assert.deepEqual(classifyBigQuerySql('SELECT 1'), {
+        requiresDestructiveConfirmation: false,
+        keyword: null
+    });
+    assert.equal(
+        classifyBigQuerySql("SELECT 'DELETE FROM table' AS example -- UPDATE ignored\n").requiresDestructiveConfirmation,
+        false
+    );
+    assert.deepEqual(classifyBigQuerySql('WITH ids AS (SELECT 1) DELETE FROM `p.d.t` WHERE id IN (SELECT * FROM ids)'), {
+        requiresDestructiveConfirmation: true,
+        keyword: 'DELETE'
+    });
+    assert.equal(classifyBigQuerySql('CREATE OR REPLACE TABLE `p.d.t` AS SELECT 1').keyword, 'CREATE');
+});
+
+test('CSV export cells neutralize spreadsheet formulas while preserving ordinary values', () => {
+    const { escapeCsvCell } = compileTs('superadmin/src/utils.ts');
+    assert.equal(escapeCsvCell('=IMPORTXML("https://example.test")'), '"\'=IMPORTXML(""https://example.test"")"');
+    assert.equal(escapeCsvCell('  +1+1'), '"\'  +1+1"');
+    assert.equal(escapeCsvCell('@SUM(A1:A2)'), '"\'@SUM(A1:A2)"');
+    assert.equal(escapeCsvCell('ordinary'), '"ordinary"');
+});
+
+test('BigQuery page failures reject the full query instead of returning truncated success', async () => {
+    const { Api } = compileTs('superadmin/src/api.ts');
+    const previousFetch = global.fetch;
+    let calls = 0;
+    global.fetch = async () => {
+        calls++;
+        if (calls === 1) {
+            return new Response(JSON.stringify({
+                jobReference: { jobId: 'job-1', location: 'US' },
+                jobComplete: true,
+                totalRows: '2',
+                rows: [{ f: [{ v: 'first' }] }],
+                schema: { fields: [{ name: 'value', type: 'STRING' }] }
+            }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ error: { message: 'page unavailable' } }), { status: 503 });
+    };
+    try {
+        await assert.rejects(Api.executeBigQuery('project', 'SELECT 1'), /page unavailable/);
+    } finally {
+        global.fetch = previousFetch;
+    }
+});
+
+test('SuperAdmin audit creation rejects non-success responses', async () => {
+    const { Api } = compileTs('superadmin/src/api.ts');
+    const previousFetch = global.fetch;
+    global.fetch = async () => new Response(
+        JSON.stringify({ error: { message: 'audit unavailable' } }),
+        { status: 503 }
+    );
+    try {
+        await assert.rejects(Api.recordAudit('UPDATE_QUESTION', 'change'), /audit unavailable/);
+    } finally {
+        global.fetch = previousFetch;
+    }
+});
+
+test('SuperAdmin mutation creates its audit record before saving Datastore', () => {
+    const fs = require('node:fs');
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'superadmin', 'src', 'app.ts'), 'utf8');
+    const handlerStart = appSource.indexOf('handleSaveToDatastore: async');
+    const auditCreate = appSource.indexOf('auditId = await Api.recordAudit', handlerStart);
+    const save = appSource.indexOf('await Api.saveQuestionEntity', handlerStart);
+    assert.ok(handlerStart >= 0 && auditCreate > handlerStart && auditCreate < save);
+});
+
+test('destructive BigQuery creates an audit record before executing', () => {
+    const fs = require('node:fs');
+    const appSource = fs.readFileSync(path.join(__dirname, '..', 'superadmin', 'src', 'app.ts'), 'utf8');
+    const handlerStart = appSource.indexOf('executeLiveQuery: async');
+    const auditCreate = appSource.indexOf("queryAuditId = await Api.recordAudit", handlerStart);
+    const execute = appSource.indexOf('const results = await Api.executeBigQuery', handlerStart);
+    assert.ok(handlerStart >= 0 && auditCreate > handlerStart && auditCreate < execute);
 });

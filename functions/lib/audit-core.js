@@ -5,6 +5,8 @@ const { createHash } = require('node:crypto');
 const MAX_DETAILS_LENGTH = 10_000;
 const MAX_PREV_STATE_BYTES = 700_000;
 const MAX_BODY_BYTES = 800_000;
+const MAX_BACKUP_CHUNK_BYTES = 650_000;
+const MAX_BACKUP_CHUNKS = 110;
 const MAX_TREE_DEPTH = 40;
 const ALLOWED_STATUSES = new Set([
     'IN_PROGRESS',
@@ -105,6 +107,56 @@ const unwrapLegacyBody = body => {
 const cleanText = (value, fallback = '') =>
     typeof value === 'string' ? value.trim() : fallback;
 
+const normalizeLogId = value => {
+    const id = cleanText(value);
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(id)) {
+        throw new AuditRequestError(400, 'INVALID_LOG_ID', 'Audit log ID is invalid.');
+    }
+    return id;
+};
+
+const normalizeChunkRevision = value => {
+    const revision = cleanText(value);
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(revision)) {
+        throw new AuditRequestError(400, 'INVALID_CHUNK_REVISION', 'Audit backup revision is invalid.');
+    }
+    return revision;
+};
+
+const normalizeAuditChunkPayload = rawBody => {
+    const serializedBody = JSON.stringify(rawBody ?? {});
+    if (Buffer.byteLength(serializedBody, 'utf8') > MAX_BODY_BYTES) {
+        throw new AuditRequestError(413, 'PAYLOAD_TOO_LARGE', 'Audit chunk request is too large.');
+    }
+    const body = rawBody || {};
+    const action = cleanText(body.action).toLowerCase();
+    if (action !== 'write' && action !== 'read') {
+        throw new AuditRequestError(400, 'INVALID_CHUNK_ACTION', 'Audit backup chunk action is invalid.');
+    }
+
+    const id = normalizeLogId(body.id);
+    const revision = normalizeChunkRevision(body.revision);
+    const index = Number(body.index);
+    const count = Number(body.count);
+    if (!Number.isInteger(index) || index < 0 || index >= MAX_BACKUP_CHUNKS) {
+        throw new AuditRequestError(400, 'INVALID_CHUNK_INDEX', 'Audit backup chunk index is invalid.');
+    }
+    if (!Number.isInteger(count) || count < 1 || count > MAX_BACKUP_CHUNKS || index >= count) {
+        throw new AuditRequestError(400, 'INVALID_CHUNK_COUNT', 'Audit backup chunk count is invalid.');
+    }
+
+    if (action === 'read') return { action, id, revision, index, count };
+
+    const data = typeof body.data === 'string' ? body.data : '';
+    if (!data || !/^[A-Za-z0-9+/=]+$/.test(data)) {
+        throw new AuditRequestError(400, 'INVALID_CHUNK_DATA', 'Audit backup chunk is not valid base64 data.');
+    }
+    if (Buffer.byteLength(data, 'utf8') > MAX_BACKUP_CHUNK_BYTES) {
+        throw new AuditRequestError(413, 'CHUNK_TOO_LARGE', 'Audit backup chunk exceeds the safe size limit.');
+    }
+    return { action, id, revision, index, count, data };
+};
+
 const normalizeAuditPayload = rawBody => {
     const serializedBody = JSON.stringify(rawBody ?? {});
     if (Buffer.byteLength(serializedBody, 'utf8') > MAX_BODY_BYTES) {
@@ -156,10 +208,7 @@ const normalizeAuditPayload = rawBody => {
 };
 
 const normalizeAuditUpdatePayload = rawBody => {
-    const id = cleanText(rawBody?.id);
-    if (!/^[A-Za-z0-9_-]{16,128}$/.test(id)) {
-        throw new AuditRequestError(400, 'INVALID_LOG_ID', 'Audit log ID is invalid.');
-    }
+    const id = normalizeLogId(rawBody?.id);
     const normalized = normalizeAuditPayload({
         operation: 'AUDIT_UPDATE',
         status: rawBody?.status,
@@ -184,6 +233,15 @@ const normalizeVerifiedIdentity = identity => {
     return { email, subject };
 };
 
+const assertAuditStatusTransition = (existingStatus, nextStatus) => {
+    if (cleanText(existingStatus).toUpperCase() !== 'IN_PROGRESS') {
+        throw new AuditRequestError(409, 'LOG_IMMUTABLE', 'Finalized audit log entries are immutable.');
+    }
+    if (!ALLOWED_STATUSES.has(cleanText(nextStatus).toUpperCase())) {
+        throw new AuditRequestError(400, 'INVALID_STATUS', 'Audit status is invalid.');
+    }
+};
+
 const parseReadLimit = rawBody => {
     const requested = Number(rawBody?.limit);
     if (!Number.isInteger(requested)) return 200;
@@ -196,10 +254,14 @@ const hashIdentity = email =>
 module.exports = {
     ALLOWED_STATUSES,
     AuditRequestError,
+    MAX_BACKUP_CHUNK_BYTES,
+    MAX_BACKUP_CHUNKS,
+    assertAuditStatusTransition,
     assertSafeTree,
     assertTrustedOrigin,
     extractBearerToken,
     hashIdentity,
+    normalizeAuditChunkPayload,
     normalizeAuditPayload,
     normalizeAuditUpdatePayload,
     normalizeVerifiedIdentity,
