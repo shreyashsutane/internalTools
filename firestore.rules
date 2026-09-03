@@ -27,7 +27,11 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /audit_logs/{document} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /audit_logs/{document}/{nestedDocument=**} {
+      allow read, write: if false;
     }
     match /feedback/{document} {
       allow create: if validFeedback();

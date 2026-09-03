@@ -626,9 +626,9 @@
                                 <td class="p-3.5">Optimizes latency and renders real-time progressive UI updates in table views.</td>
                             </tr>
                             <tr>
-                                <td class="p-3.5 font-mono text-cyan-400">Audit Snapshot Body Limit</td>
-                                <td class="p-3.5 font-mono font-bold text-white">700 KB</td>
-                                <td class="p-3.5">Ensures pre-mutation state fits comfortably inside Firestore's 1 MB document limit.</td>
+                                <td class="p-3.5 font-mono text-cyan-400">Audit Snapshot Chunk Size</td>
+                                <td class="p-3.5 font-mono font-bold text-white">650 KB</td>
+                                <td class="p-3.5">Snapshots above the inline limit are compressed and split into immutable chunks so every Firestore document stays below 1 MB without losing revert data.</td>
                             </tr>
                             <tr>
                                 <td class="p-3.5 font-mono text-cyan-400">Serverless Memory &amp; Timeout</td>

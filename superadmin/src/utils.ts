@@ -1,3 +1,10 @@
+export const escapeCsvCell = (cell: any): string => {
+    if (cell === null || cell === undefined) return '""';
+    const raw = typeof cell === 'object' ? JSON.stringify(cell) : String(cell);
+    const sanitized = /^[\t\r\n ]*[=+\-@]/.test(raw) ? `'${raw}` : raw;
+    return `"${sanitized.replace(/"/g, '""')}"`;
+};
+
 export const Utils = {
     $: (id: string): HTMLElement | null => document.getElementById(id),
     show: (id: string) => {
@@ -45,7 +52,7 @@ export const Utils = {
     },
     exportCsv: (filename: string, headers: string[], rows: any[][]) => {
         const parts: string[] = [];
-        parts.push(headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\n');
+        parts.push(headers.map(escapeCsvCell).join(',') + '\n');
 
         const total = rows.length;
         const chunkSize = 10000;
@@ -53,11 +60,7 @@ export const Utils = {
         for (let i = 0; i < total; i += chunkSize) {
             const chunk = rows.slice(i, i + chunkSize);
             const chunkLines = chunk.map(row =>
-                row.map(cell => {
-                    if (cell === null || cell === undefined) return '""';
-                    if (typeof cell === 'object') return `"${JSON.stringify(cell).replace(/"/g, '""')}"`;
-                    return `"${String(cell).replace(/"/g, '""')}"`;
-                }).join(',')
+                row.map(escapeCsvCell).join(',')
             );
             parts.push(chunkLines.join('\n') + '\n');
         }

@@ -212,7 +212,7 @@ export const Api = {
         const allRows: any[][] = [];
         let totalBytesBilled = data.totalBytesBilled || data.totalBytesProcessed || '0';
         const cacheHit = Boolean(data.cacheHit);
-        const totalExpectedRows = Number(data.totalRows || 0);
+        let totalExpectedRows = Number(data.totalRows || 0);
 
         const parseRow = (rowObj: any): any[] => {
             if (!rowObj || !Array.isArray(rowObj.f)) return [];
@@ -254,7 +254,7 @@ export const Api = {
 
             const MAX_CONCURRENT = 4;
             const fetchChunk = async (startIndex: number) => {
-                if (signal?.aborted) return [];
+                if (signal?.aborted) throw new DOMException('Query Cancelled', 'AbortError');
                 const chunkUrl = location
                     ? `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?location=${location}&startIndex=${startIndex}&maxResults=${chunkSize}`
                     : `${BASE_BIGQUERY}/${projectId}/queries/${jobId}?startIndex=${startIndex}&maxResults=${chunkSize}`;
@@ -263,7 +263,10 @@ export const Api = {
                     headers: { Authorization: `Bearer ${State.token}` },
                     signal
                 });
-                if (!cRes.ok) return [];
+                if (!cRes.ok) {
+                    const errorData = await cRes.json().catch(() => ({}));
+                    throw new Error(errorData?.error?.message || `Failed to fetch BigQuery result page (HTTP ${cRes.status}).`);
+                }
                 const cData = await cRes.json();
                 if (!Array.isArray(cData.rows)) return [];
                 return cData.rows.map(parseRow);
@@ -294,7 +297,10 @@ export const Api = {
                     signal
                 });
 
-                if (!pageRes.ok) break;
+                if (!pageRes.ok) {
+                    const errorData = await pageRes.json().catch(() => ({}));
+                    throw new Error(errorData?.error?.message || `Failed to fetch BigQuery result page (HTTP ${pageRes.status}).`);
+                }
 
                 const pageData = await pageRes.json();
                 jobComplete = pageData.jobComplete;
@@ -302,6 +308,7 @@ export const Api = {
 
                 if (pageData.schema?.fields) schema = pageData.schema.fields;
                 if (pageData.totalBytesBilled) totalBytesBilled = pageData.totalBytesBilled;
+                if (pageData.totalRows !== undefined) totalExpectedRows = Number(pageData.totalRows || 0);
 
                 if (Array.isArray(pageData.rows)) {
                     const chunkRows = pageData.rows.map(parseRow);
@@ -309,6 +316,10 @@ export const Api = {
                     if (onChunk) onChunk(chunkRows, allRows.length, totalExpectedRows);
                 }
             }
+        }
+
+        if (totalExpectedRows > 0 && allRows.length !== totalExpectedRows) {
+            throw new Error(`BigQuery returned an incomplete result set: expected ${totalExpectedRows} rows but loaded ${allRows.length}.`);
         }
 
         const executionTimeMs = Math.round(performance.now() - startTime);
@@ -418,25 +429,49 @@ export const Api = {
         details: string,
         status: 'SUCCESS' | 'FAILED' | 'IN_PROGRESS' = 'SUCCESS',
         prevState?: any
+    ): Promise<string> => {
+        const res = await fetch('/api/audit_logs', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${State.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                operation,
+                srcProject: State.projectId,
+                tgtProject: State.projectId,
+                status,
+                details,
+                prevState: prevState || null
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data?.error?.message || `Audit creation failed (HTTP ${res.status}).`);
+        }
+        if (typeof data.id !== 'string') throw new Error('Audit creation did not return a log ID.');
+        return data.id;
+    },
+
+    updateAudit: async (
+        id: string,
+        status: 'SUCCESS' | 'FAILED' | 'IN_PROGRESS',
+        details: string,
+        prevState?: any
     ): Promise<void> => {
-        try {
-            await fetch('/api/audit_logs', {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${State.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    operation,
-                    srcProject: State.projectId,
-                    tgtProject: State.projectId,
-                    status,
-                    details,
-                    prevState: prevState || null
-                })
-            });
-        } catch (e) {
-            console.warn('Audit recording non-fatal error:', e);
+        const body: Record<string, any> = { id, status, details };
+        if (prevState !== undefined) body.prevState = prevState;
+        const res = await fetch('/api/audit_logs/update', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${State.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(data?.error?.message || `Audit update failed (HTTP ${res.status}).`);
         }
     }
 };

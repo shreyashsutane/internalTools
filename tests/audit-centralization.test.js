@@ -17,6 +17,7 @@ test('Firebase Hosting routes the audit API to the secured function', () => {
     );
     for (const route of [
         '/api/audit_logs',
+        '/api/audit_logs/chunks',
         '/api/audit_logs/runQuery',
         '/api/audit_logs/update'
     ]) {
@@ -56,10 +57,24 @@ test('server derives identity and scopes reads and updates to that identity', ()
     assert.match(core, /FORBIDDEN_OBJECT_KEYS/);
 });
 
+test('audit backup chunks check their parent record inside the write transaction', () => {
+    const source = read('functions/index.js');
+    const start = source.indexOf('const writeBackupChunk = async');
+    const end = source.indexOf('const readBackupChunk', start);
+    const implementation = source.slice(start, end);
+
+    assert.ok(start >= 0 && end > start);
+    assert.match(implementation, /const parentRef = db\.collection\('audit_logs'\)\.doc\(payload\.id\);/);
+    assert.match(implementation, /const parent = await transaction\.get\(parentRef\);/);
+    assert.match(implementation, /parent\.data\(\)\?\.status !== 'IN_PROGRESS'/);
+});
+
 test('admins retain global visibility while direct public audit access stays denied', () => {
     const rules = read('firestore.rules');
     assert.match(rules, /match \/audit_logs\/\{document\}/);
-    assert.match(rules, /allow read, write: if isAdmin\(\)/);
+    assert.match(rules, /match \/audit_logs\/\{document\}[\s\S]*allow read: if isAdmin\(\)/);
+    assert.match(rules, /match \/audit_logs\/\{document\}[\s\S]*allow write: if false/);
+    assert.match(rules, /nestedDocument=\*\*[\s\S]*allow read, write: if false/);
     assert.doesNotMatch(rules, /match \/audit_logs[\s\S]*allow create: if request\.auth != null/);
 });
 
@@ -102,4 +117,28 @@ test('mutating workflows persist revert state before Datastore changes', () => {
     assert.ok(editAudit >= 0 && editAudit < editCommit);
     assert.match(app, /centralized audit backup could not be persisted\. No entities were changed/);
     assert.match(app, /centralized audit backup could not be persisted\. The entity was not changed/);
+});
+
+test('oversized Datastore backups use lossless chunks and never downgrade to key-only snapshots', () => {
+    const app = read('datastore-copier/src/app.ts');
+    const audit = read('datastore-copier/src/audit.ts');
+    const fn = read('functions/index.js');
+
+    assert.doesNotMatch(app, /lightweightBackup|preserved key targets/);
+    assert.doesNotMatch(app, /entity backup is too large for a safe audit entry/);
+    assert.match(audit, /chunked: true/);
+    assert.match(audit, /backupComplete: false/);
+    assert.match(audit, /persistChunks/);
+    assert.match(fn, /Every audit backup chunk must be durable before the manifest is completed/);
+});
+
+test('scheduled-query backup is persisted before an existing config is deleted', () => {
+    const app = read('datastore-copier/src/app.ts');
+    const start = app.indexOf('if (cmpObj.tgtQuery)');
+    const end = app.indexOf('const created = await Api.createQuery', start);
+    const update = app.indexOf('const preDeleteBackupPersisted = await AuditLog.updateLog', start);
+    const deletion = app.indexOf('await Api.deleteQuery(cmpObj.tgtQuery.name)', start);
+
+    assert.ok(start >= 0 && end > start);
+    assert.ok(update > start && update < deletion && deletion < end);
 });

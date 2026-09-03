@@ -45,6 +45,13 @@
     ],
     "rewrites": [
       {
+        "source": "/api/audit_logs/chunks",
+        "function": {
+          "functionId": "auditApi",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "/api/audit_logs/update",
         "function": {
           "functionId": "auditApi",

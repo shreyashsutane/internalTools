@@ -1,7 +1,7 @@
 import { State, QuestionEntity } from './state';
 import { Api } from './api';
 import { Utils } from './utils';
-import { extractVariables, resolveSqlVariables, formatBigQuerySql, formatEmailToDisplayName } from './sql-formatter';
+import { classifyBigQuerySql, extractVariables, resolveSqlVariables, formatBigQuerySql, formatEmailToDisplayName } from './sql-formatter';
 
 let activeAbortController: AbortController | null = null;
 
@@ -259,7 +259,8 @@ export const App = {
 
             Utils.toast(`Fetched ${questions.length} Question entities successfully!`, 'ok');
             App.renderQuestionsList();
-            void Api.recordAudit('FETCH_QUESTIONS', `Fetched ${questions.length} questions from kind 'Questions' in project ${projectId}.`);
+            void Api.recordAudit('FETCH_QUESTIONS', `Fetched ${questions.length} questions from kind 'Questions' in project ${projectId}.`)
+                .catch(error => console.warn('Question-fetch audit logging failed:', error));
         } catch (e: any) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-bolt mr-2"></i> Load Questions';
@@ -458,12 +459,30 @@ export const App = {
             if (costEl) costEl.textContent = dryRun.estimatedCostUsd;
             if (projEl) projEl.textContent = State.projectId;
 
+            const safety = classifyBigQuerySql(resolvedSql);
+            const warningEl = Utils.$('confirm-destructive-warning');
+            const keywordEl = Utils.$('confirm-destructive-keyword');
+            const ack = Utils.$('confirm-destructive-ack') as HTMLInputElement;
+            if (keywordEl) keywordEl.textContent = safety.keyword || '';
+            if (warningEl) warningEl.style.display = safety.requiresDestructiveConfirmation ? 'block' : 'none';
+            if (ack) ack.checked = false;
+
             Utils.show('modal-confirm-query');
 
             // Wire confirm button once
             const proceedBtn = Utils.$('btn-proceed-run-query') as HTMLButtonElement;
             if (proceedBtn) {
+                proceedBtn.disabled = safety.requiresDestructiveConfirmation;
+                proceedBtn.innerHTML = safety.requiresDestructiveConfirmation
+                    ? '<i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Confirm Destructive Query'
+                    : '<i class="fa-solid fa-play mr-1.5"></i> Confirm &amp; Run Query';
+                if (ack) {
+                    ack.onchange = () => {
+                        proceedBtn.disabled = safety.requiresDestructiveConfirmation && !ack.checked;
+                    };
+                }
                 proceedBtn.onclick = () => {
+                    if (safety.requiresDestructiveConfirmation && !ack?.checked) return;
                     Utils.hide('modal-confirm-query');
                     void App.executeLiveQuery(resolvedSql);
                 };
@@ -485,8 +504,17 @@ export const App = {
         Utils.show('btn-cancel-query');
 
         activeAbortController = new AbortController();
+        const safety = classifyBigQuerySql(resolvedSql);
+        let queryAuditId: string | null = null;
 
         try {
+            if (safety.requiresDestructiveConfirmation) {
+                queryAuditId = await Api.recordAudit(
+                    'BIGQUERY_EXECUTE',
+                    `Started destructive BigQuery ${safety.keyword} statement on ${State.projectId}.`,
+                    'IN_PROGRESS'
+                );
+            }
             const results = await Api.executeBigQuery(
                 State.projectId,
                 resolvedSql,
@@ -530,9 +558,27 @@ export const App = {
             App.renderResultsHeader();
             App.renderResultsTable();
 
+            const auditDetails = `Executed query on ${State.projectId}: ${results.totalRows} rows returned in ${results.executionTimeMs}ms. Billed: ${results.totalBytesBilled}`;
+            if (queryAuditId) {
+                try {
+                    await Api.updateAudit(queryAuditId, 'SUCCESS', auditDetails);
+                } catch (auditError) {
+                    console.error('Destructive BigQuery audit finalization failed:', auditError);
+                    Utils.toast('Query completed, but its pre-execution audit status could not be finalized.', 'warn');
+                }
+            } else {
+                void Api.recordAudit('BIGQUERY_EXECUTE', auditDetails)
+                    .catch(error => console.warn('BigQuery audit logging failed:', error));
+            }
             Utils.toast(`BigQuery completed! (${results.totalRows.toLocaleString()} rows loaded in ${results.executionTimeMs}ms)`, 'ok');
-            void Api.recordAudit('BIGQUERY_EXECUTE', `Executed query on ${State.projectId}: ${results.totalRows} rows returned in ${results.executionTimeMs}ms. Billed: ${results.totalBytesBilled}`);
         } catch (e: any) {
+            if (queryAuditId) {
+                void Api.updateAudit(
+                    queryAuditId,
+                    'FAILED',
+                    `Destructive BigQuery ${safety.keyword} statement failed on ${State.projectId}: ${e.message}`
+                ).catch(error => console.error('Failed to finalize destructive-query audit:', error));
+            }
             btnRun.disabled = false;
             btnRun.innerHTML = '<i class="fa-solid fa-play mr-1.5"></i> Run Query on BigQuery';
             Utils.hide('btn-cancel-query');
@@ -728,7 +774,28 @@ export const App = {
         const prevProperties = JSON.parse(JSON.stringify(State.selectedQuestion.properties || {}));
         const prevSql = State.selectedQuestion.queryString || State.rawSql;
 
+        const prevState = {
+            type: 'UPDATE_QUESTION',
+            keyStr: State.selectedQuestion.keyStr,
+            referenceName: State.selectedQuestion.referenceName,
+            prevSql,
+            newSql,
+            prevProperties,
+            modifiedProperties: State.modifiedProperties,
+            changedBy: State.userName,
+            userEmail: State.userEmail,
+            timestamp: new Date().toISOString()
+        };
+        const auditDetails = `Updated question '${State.selectedQuestion.referenceName}' (${State.selectedQuestion.keyStr}) in ${State.projectId} by ${State.userName} (${State.userEmail}).`;
+        let auditId: string | null = null;
+
         try {
+            auditId = await Api.recordAudit(
+                'UPDATE_QUESTION',
+                `Started: ${auditDetails}`,
+                'IN_PROGRESS',
+                prevState
+            );
             await Api.saveQuestionEntity(
                 State.projectId,
                 State.selectedQuestion,
@@ -742,26 +809,17 @@ export const App = {
 
             Utils.toast(`Saved question '${State.selectedQuestion.referenceName}'! updatedByName set to '${State.userName}'.`, 'ok');
 
-            const prevState = {
-                type: 'UPDATE_QUESTION',
-                keyStr: State.selectedQuestion.keyStr,
-                referenceName: State.selectedQuestion.referenceName,
-                prevSql,
-                newSql,
-                prevProperties,
-                modifiedProperties: State.modifiedProperties,
-                changedBy: State.userName,
-                userEmail: State.userEmail,
-                timestamp: new Date().toISOString()
-            };
-
-            void Api.recordAudit(
-                'UPDATE_QUESTION',
-                `Updated question '${State.selectedQuestion.referenceName}' (${State.selectedQuestion.keyStr}) in ${State.projectId} by ${State.userName} (${State.userEmail}).`,
-                'SUCCESS',
-                prevState
-            );
+            try {
+                await Api.updateAudit(auditId, 'SUCCESS', auditDetails, prevState);
+            } catch (auditError) {
+                console.error('Question saved but audit finalization failed:', auditError);
+                Utils.toast('Question saved, but the audit status could not be finalized. The pre-mutation backup remains available.', 'warn');
+            }
         } catch (e: any) {
+            if (auditId) {
+                void Api.updateAudit(auditId, 'FAILED', `Failed: ${auditDetails} ${e.message}`, prevState)
+                    .catch(error => console.error('Failed to mark mutation audit as failed:', error));
+            }
             btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i> Save to Datastore';
             Utils.toast(`Failed to save to Datastore: ${e.message}`, 'err');
@@ -964,9 +1022,9 @@ export const App = {
                                         </button>
                                     ` : ''}
                                 </div>
-                                <input type="text" class="inp w-full text-xs font-mono prop-input-field" 
-                                    data-prop="${Utils.escapeHtml(propKey)}" 
-                                    value="${Utils.escapeHtml(valStr)}" 
+                                <input type="text" class="inp w-full text-xs font-mono prop-input-field"
+                                    data-prop="${Utils.escapeHtml(propKey)}"
+                                    value="${Utils.escapeHtml(valStr)}"
                                     ${propKey === 'updatedByName' || propKey === 'updatedAt' ? 'placeholder="Auto-updated on save"' : ''}
                                 />
                             </div>
