@@ -448,9 +448,9 @@ h1, h2, h3 {
 .diff-mapped { background: rgba(16, 185, 129, 0.10); border-left: 4px solid var(--ok); }
 
 
-.filter-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
-.filter-row .inp { flex: 1; }
-.filter-row select.inp { width: 140px; flex: none; cursor: pointer; }
+.filter-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
+.filter-row .inp { flex: 1 1 auto; }
+.filter-row select.inp { flex: 0 1 auto; cursor: pointer; }
 
 #modal-root { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999999; pointer-events: none; }
 #modal-root > * { pointer-events: auto; }
@@ -579,25 +579,83 @@ h1, h2, h3 {
     line-height: 1.5;
     white-space: pre-wrap;
 }
+.filter-kind-width {
+    min-width: 120px;
+    width: auto;
+    max-width: 200px;
+    flex: 0 1 auto;
+    field-sizing: content;
+    padding: 4px 8px;
+}
 .filter-prop-width {
-    width: 28%;
+    min-width: 210px;
+    width: auto;
+    max-width: 340px;
+    flex: 1 1 auto;
+    field-sizing: content;
     padding: 4px 8px;
 }
 .filter-op-width {
-    width: 20%;
+    min-width: 58px;
+    width: auto;
+    max-width: 130px;
+    flex: 0 0 auto;
+    field-sizing: content;
     padding: 4px 8px;
 }
 .filter-type-width {
-    width: 18%;
+    min-width: 78px;
+    width: auto;
+    max-width: 120px;
+    flex: 0 0 auto;
+    field-sizing: content;
     padding: 4px 8px;
 }
 .filter-val-container {
-    flex: 1;
-    min-width: 0;
+    flex: 2 1 200px;
+    min-width: 180px;
+    display: flex;
 }
 .filter-val-width {
     width: 100%;
+    min-width: 160px;
+    field-sizing: content;
     padding: 4px 8px;
+}
+/* Find & Replace Adaptive Rules Layout */
+.ds-rule-card {
+    background: var(--bg2);
+    border: 1px solid var(--brd);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.2s;
+}
+.ds-rule-card:hover {
+    border-color: rgba(0, 212, 255, 0.35);
+}
+.ds-rule-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-start;
+}
+.ds-rule-col {
+    flex: 1 1 240px;
+    min-width: 200px;
+    display: flex;
+    flex-direction: column;
+}
+.inp-rule-field {
+    field-sizing: content;
+    min-width: 160px;
+}
+.inp-rule-target, .inp-rule-replace {
+    field-sizing: content;
+    min-height: 32px;
+    transition: width 0.15s ease, height 0.15s ease;
 }
 .btn-trash-padding {
     padding: 4px 8px;

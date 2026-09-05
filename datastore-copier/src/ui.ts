@@ -374,6 +374,15 @@ export const UI = {
             } else {
                 propSelect.value = '__key__';
             }
+
+            if (propSelect.selectedIndex >= 0) {
+                const txt = propSelect.options[propSelect.selectedIndex]?.text || '';
+                propSelect.style.minWidth = Math.min(Math.max(txt.length + 3, 20), 45) + 'ch';
+            }
+            if (kindSelect && kindSelect.selectedIndex >= 0) {
+                const txt = kindSelect.options[kindSelect.selectedIndex]?.text || '';
+                kindSelect.style.minWidth = Math.min(Math.max(txt.length + 3, 12), 30) + 'ch';
+            }
         });
     },
     updateGqlPreview: () => {
@@ -507,11 +516,20 @@ export const UI = {
             } else if (presetProp && props.includes(presetProp)) {
                 propSelect.value = presetProp;
             }
+
+            if (propSelect.selectedIndex >= 0) {
+                const txt = propSelect.options[propSelect.selectedIndex]?.text || '';
+                propSelect.style.minWidth = Math.min(Math.max(txt.length + 3, 20), 45) + 'ch';
+            }
         };
 
         if (propSelect) {
             populateProps();
             propSelect.onchange = () => {
+                if (propSelect.selectedIndex >= 0) {
+                    const txt = propSelect.options[propSelect.selectedIndex]?.text || '';
+                    propSelect.style.minWidth = Math.min(Math.max(txt.length + 3, 20), 45) + 'ch';
+                }
                 updateValInput();
                 UI.updateGqlPreview();
             };
@@ -575,10 +593,24 @@ export const UI = {
                 `;
             }
             const valInput = valContainer.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | null;
+            const adjustValWidth = () => {
+                if (valInput instanceof HTMLInputElement) {
+                    const textLen = valInput.value ? valInput.value.length : (valInput.placeholder ? valInput.placeholder.length : 15);
+                    const ch = Math.min(Math.max(textLen + 3, 22), 65);
+                    valInput.style.minWidth = ch + 'ch';
+                }
+            };
             if (valInput) {
                 if (presetVal) valInput.value = presetVal;
-                valInput.oninput = () => UI.updateGqlPreview();
-                valInput.onchange = () => UI.updateGqlPreview();
+                adjustValWidth();
+                valInput.oninput = () => {
+                    adjustValWidth();
+                    UI.updateGqlPreview();
+                };
+                valInput.onchange = () => {
+                    adjustValWidth();
+                    UI.updateGqlPreview();
+                };
             }
             UI.updateGqlPreview();
         };
@@ -836,10 +868,11 @@ export const UI = {
 
             // Find (Target) & Replace Inputs (Textareas for long strings / multiline)
             const grid = document.createElement('div');
-            grid.className = 'grid grid-cols-2 gap-2';
+            grid.className = 'ds-rule-grid flex flex-wrap gap-2 items-start';
 
             // Target (Find)
             const colFind = document.createElement('div');
+            colFind.className = 'ds-rule-col flex-1 min-w-[220px] flex flex-col transition-all';
             const lblFind = document.createElement('label');
             lblFind.className = 'block text-[10px] uppercase tracking-wider text-zinc-400 mb-0.5';
             lblFind.textContent = 'Find Value';
@@ -851,18 +884,10 @@ export const UI = {
             txtFind.style.minHeight = '32px';
             txtFind.placeholder = 'String, long value, or integer...';
             txtFind.value = rule.target;
-            txtFind.oninput = (e: any) => {
-                rule.target = e.target.value;
-                if (idx === 0) State.ds.modTarget = e.target.value;
-                if (txtFind.scrollHeight > txtFind.clientHeight) {
-                    txtFind.style.height = 'auto';
-                    txtFind.style.height = Math.min(txtFind.scrollHeight + 2, 140) + 'px';
-                }
-            };
-            colFind.append(lblFind, txtFind);
 
             // Replacement
             const colRep = document.createElement('div');
+            colRep.className = 'ds-rule-col flex-1 min-w-[220px] flex flex-col transition-all';
             const lblRep = document.createElement('label');
             lblRep.className = 'block text-[10px] uppercase tracking-wider text-zinc-400 mb-0.5';
             lblRep.textContent = 'Replace With';
@@ -874,18 +899,40 @@ export const UI = {
             txtRep.style.minHeight = '32px';
             txtRep.placeholder = 'Replacement string or value...';
             txtRep.value = rule.replacement;
+
+            const updateRuleSizing = () => {
+                const isLong = (txtFind.value && txtFind.value.length > 28) || (txtRep.value && txtRep.value.length > 28);
+                if (isLong) {
+                    colFind.style.flex = '1 1 100%';
+                    colRep.style.flex = '1 1 100%';
+                } else {
+                    colFind.style.flex = '1 1 220px';
+                    colRep.style.flex = '1 1 220px';
+                }
+                [txtFind, txtRep].forEach(ta => {
+                    ta.style.height = 'auto';
+                    ta.style.height = Math.max(32, Math.min(ta.scrollHeight + 2, 200)) + 'px';
+                });
+            };
+
+            txtFind.oninput = (e: any) => {
+                rule.target = e.target.value;
+                if (idx === 0) State.ds.modTarget = e.target.value;
+                updateRuleSizing();
+            };
+
             txtRep.oninput = (e: any) => {
                 rule.replacement = e.target.value;
                 if (idx === 0) State.ds.modReplace = e.target.value;
-                if (txtRep.scrollHeight > txtRep.clientHeight) {
-                    txtRep.style.height = 'auto';
-                    txtRep.style.height = Math.min(txtRep.scrollHeight + 2, 140) + 'px';
-                }
+                updateRuleSizing();
             };
-            colRep.append(lblRep, txtRep);
 
+            colFind.append(lblFind, txtFind);
+            colRep.append(lblRep, txtRep);
             grid.append(colFind, colRep);
             card.appendChild(grid);
+
+            updateRuleSizing();
 
             container.appendChild(card);
         });
