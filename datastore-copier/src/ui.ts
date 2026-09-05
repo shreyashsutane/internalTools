@@ -654,11 +654,17 @@ export const UI = {
         c.appendChild(fragment);
         updateValInput();
     },
-    openModal: (content: string | HTMLElement | DocumentFragment, isLarge = false) => {
+    openModal: (content: string | HTMLElement | DocumentFragment, modalSize: boolean | string = false) => {
         const root = Utils.$('modal-root');
         if (!root) return;
         root.style.display = '';
-        root.innerHTML = `<div class="modal-bg"><div class="modal ${isLarge ? 'modal-large' : ''}" style="padding:0; background:#0c101d; border:1px solid var(--brd2); box-shadow:0 25px 60px -12px rgba(0,0,0,0.95); border-radius:16px;"></div></div>`;
+        let sizeClass = '';
+        if (typeof modalSize === 'string') {
+            sizeClass = modalSize;
+        } else if (modalSize === true) {
+            sizeClass = 'modal-large';
+        }
+        root.innerHTML = `<div class="modal-bg"><div class="modal ${sizeClass}" style="padding:0; background:#0c101d; border:1px solid var(--brd2); box-shadow:0 25px 60px -12px rgba(0,0,0,0.95); border-radius:16px;"></div></div>`;
 
         const modalBg = root.querySelector('.modal-bg') as HTMLElement;
         modalBg.onclick = (e) => {

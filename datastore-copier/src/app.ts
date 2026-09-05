@@ -952,9 +952,11 @@ export const App = {
         fragment.querySelector('.to-pid-span')!.textContent = State.query.tgt;
         fragment.querySelector('.selected-cnt-span')!.textContent = String(selected.length);
 
-        UI.openModal(fragment);
+        UI.openModal(fragment, 'modal-wide');
 
-        (Utils.$('modal-root')!.querySelector('.btn-cancel') as HTMLButtonElement).onclick = () => UI.closeModal();
+        Utils.$('modal-root')!.querySelectorAll('.btn-cancel').forEach(btn => {
+            (btn as HTMLElement).onclick = () => UI.closeModal();
+        });
         (Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement).onclick = () => {
             UI.closeModal();
             App.executeQueryCopy();
@@ -2302,31 +2304,42 @@ export const App = {
                 const res = resultByKey.get(keyStr);
                 const entity = res?.srcEntity || res?.tgtEntity;
                 const dispInfo = extractEntityDisplayName(entity);
+                const displayName = res?.displayName || dispInfo?.value;
+                const displayField = res?.displayField || dispInfo?.fieldName;
+
+                const stCfg = res?.status === 'missing'
+                    ? { l: 'Missing in Target', b: 'rgba(239,68,68,0.15)', c: '#ef4444' }
+                    : res?.status === 'different'
+                    ? { l: 'Different', b: 'rgba(245,158,11,0.15)', c: '#f59e0b' }
+                    : res?.status === 'mapped'
+                    ? { l: 'Mapped', b: 'rgba(59,130,246,0.15)', c: '#3b82f6' }
+                    : { l: 'Identical', b: 'rgba(16,185,129,0.15)', c: '#10b981' };
 
                 const item = document.createElement('div');
-                item.className = 'flex items-center justify-between text-xs py-1.5 px-2.5 rounded bg-zinc-900/70 border border-zinc-800/80';
+                item.className = 'flex flex-col py-1.5 px-3 rounded bg-zinc-900/70 border border-zinc-800/80 text-xs';
                 item.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        ${res?.kind ? `<span class="badge" style="background:var(--accent-dim);color:var(--accent);border:1px solid rgba(0,212,255,0.3);font-size:10px">${Utils.escapeHtml(res.kind)}</span>` : ''}
-                        <span class="mono text-zinc-300 font-medium">${Utils.escapeHtml(keyStr)}</span>
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            ${res?.kind ? `<span class="badge shrink-0" style="background:var(--accent-dim);color:var(--accent);border:1px solid rgba(0,212,255,0.3);font-size:10px">${Utils.escapeHtml(res.kind)}</span>` : ''}
+                            <span class="mono text-zinc-200 font-medium text-xs truncate">${Utils.escapeHtml(keyStr)}</span>
+                        </div>
+                        ${res?.status ? `<span class="badge font-medium text-[10px] shrink-0" style="background:${stCfg.b};color:${stCfg.c}">${stCfg.l}</span>` : ''}
                     </div>
-                    ${dispInfo ? `
-                        <span class="badge px-2 py-0.5 rounded text-[11px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/80 flex items-center gap-1">
-                            <span class="text-zinc-400 font-mono text-[10px]">${Utils.escapeHtml(dispInfo.fieldName)}:</span>
-                            <span class="text-white font-medium">"${Utils.escapeHtml(dispInfo.value)}"</span>
-                        </span>
-                    ` : `
-                        <span class="text-[10px] text-zinc-500 font-mono italic">No reference name</span>
-                    `}
+                    ${displayName ? `
+                    <div class="text-xs font-semibold flex items-center gap-1.5 mt-1 pl-0.5" style="color:var(--accent2)" title="${Utils.escapeHtml(displayField || 'Name')}: ${Utils.escapeHtml(displayName)}">
+                        <i class="fa-solid fa-arrow-turn-up fa-rotate-90 text-[10px]" style="color:var(--muted)"></i>
+                        <span class="truncate">"${Utils.escapeHtml(displayName)}"</span>
+                    </div>` : ''}
                 `;
                 selectedEntitiesList.appendChild(item);
             });
         }
 
-        UI.openModal(fragment);
+        UI.openModal(fragment, 'modal-wide');
 
-        const chkReplace = Utils.$('modal-root')!.querySelector('.chk-apply-replace') as HTMLElement;
-        const replaceInputsWrap = Utils.$('modal-root')!.querySelector('.replace-inputs-wrap') as HTMLElement;
+        const chkReplace = Utils.$('modal-root')!.querySelector('.chk-apply-replace') as HTMLElement | null;
+        const chkTrigger = Utils.$('modal-root')!.querySelector('.chk-replace-trigger') as HTMLElement | null;
+        const replaceInputsWrap = Utils.$('modal-root')!.querySelector('.replace-inputs-wrap') as HTMLElement | null;
         const modalRulesList = Utils.$('modal-root')!.querySelector('.modal-ds-rules-list') as HTMLElement | null;
 
         if (modalRulesList) {
@@ -2349,7 +2362,7 @@ export const App = {
         }
 
         const updateVisibility = () => {
-            const on = chkReplace.classList.contains('on');
+            const on = chkReplace?.classList.contains('on');
             if (replaceInputsWrap) {
                 replaceInputsWrap.style.display = on ? 'flex' : 'none';
             }
@@ -2357,15 +2370,27 @@ export const App = {
 
         updateVisibility();
 
-        chkReplace.onclick = () => {
-            chkReplace.classList.toggle('on');
-            updateVisibility();
-        };
+        if (chkTrigger && chkReplace) {
+            chkTrigger.onclick = () => {
+                chkReplace.classList.toggle('on');
+                updateVisibility();
+            };
+        } else if (chkReplace) {
+            chkReplace.onclick = () => {
+                chkReplace.classList.toggle('on');
+                updateVisibility();
+            };
+        }
 
-        (Utils.$('modal-root')!.querySelector('.btn-cancel') as HTMLButtonElement).onclick = () => UI.closeModal();
-        (Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement).onclick = () => {
-            App.executeDsCopy();
-        };
+        Utils.$('modal-root')!.querySelectorAll('.btn-cancel').forEach(btn => {
+            (btn as HTMLElement).onclick = () => UI.closeModal();
+        });
+        const confirmBtn = Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement | null;
+        if (confirmBtn) {
+            confirmBtn.onclick = () => {
+                App.executeDsCopy();
+            };
+        }
     },
     executeDsCopy: async (): Promise<void> => {
         const modalRoot = Utils.$('modal-root');

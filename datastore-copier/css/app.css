@@ -454,8 +454,8 @@ h1, h2, h3 {
 
 #modal-root { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999999; pointer-events: none; }
 #modal-root > * { pointer-events: auto; }
-.modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); display: flex; align-items: center; justify-content: center; z-index: 100000; animation: fadeIn 0.25s ease-out; }
-.modal, .card.modal { width: 95%; max-width: 540px; background: #0c101d !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: 1px solid var(--brd2); border-radius: 16px; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.95); animation: fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
+.modal-bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); display: flex; align-items: center; justify-content: center; z-index: 100000; animation: fadeIn 0.25s ease-out; overflow-y: auto; overflow-x: hidden; padding: 24px 16px; box-sizing: border-box; }
+.modal, .card.modal { width: 95%; max-width: 540px; margin: auto; max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: #0c101d !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border: 1px solid var(--brd2); border-radius: 16px; box-shadow: 0 25px 60px -12px rgba(0,0,0,0.95); animation: fadeUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); overflow: hidden; }
 
 /* Custom Premium Tooltips */
 .has-tooltip { position: relative; }
@@ -518,6 +518,17 @@ h1, h2, h3 {
     padding: 0 !important;
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* Widescreen Copy & Confirmation Modals */
+.modal.modal-wide, .modal.modal-copy {
+    width: min(840px, 95vw) !important;
+    max-width: 840px !important;
+}
+.modal-copy-container {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 48px);
+    overflow: hidden;
 }
 .btn-json-edit-trigger {
     transition: transform 0.15s ease, background-color 0.15s ease;

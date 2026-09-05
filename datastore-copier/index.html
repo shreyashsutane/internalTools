@@ -826,57 +826,109 @@ FROM `source-project-prod.analytics.orders`</code></pre>
     </template>
 
     <template id="template-ds-copy-modal">
-        <div class="p-5 text-left">
-            <h3 class="font-semibold mb-4 text-base">Copy Datastore Entities</h3>
-            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Backup!</strong> This will upsert entities. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank" rel="noopener noreferrer">Create Backup</a></div></div>
-            <div class="warning-box layout-warning-audit flex-col">
-                <div class="flex items-start gap-2.5 w-full">
-                    <i class="fa-solid fa-shield-halved text-[var(--warn)] mt-0.5"></i>
-                    <div><strong>2. Operations that need to be enabled (Data Access Logs)</strong></div>
-                </div>
-                <div class="text-xs mt-2 pl-7 leading-relaxed">
-                    <p class="mb-2">Writing or overwriting entities in Datastore uses the Commit API (under <code>google.datastore.v1.Datastore.Commit</code>). To log these actions:</p>
-                    <ol class="list-decimal list-inside space-y-1">
-                        <li>Go to the <strong>GCP Console</strong>.</li>
-                        <li>Navigate to <strong>IAM &amp; Admin &gt; Audit Logs</strong>.</li>
-                        <li>Select the <strong>Cloud Datastore API</strong> from the list of services.</li>
-                        <li>Check the <strong>Data Write</strong> (for creations, updates, overwrites, and deletes) and/or <strong>Data Read</strong> (for lookups and queries) audit log types and save.</li>
-                    </ol>
-                </div>
-            </div>
-            <p class="text-xs mb-2 mt-4 text-zinc-400">From <strong class="src-pid-strong"></strong> to <strong class="tgt-pid-strong"></strong></p>
-            <div class="flex items-center justify-between mb-2">
-                <p class="text-sm font-semibold"><span class="selected-cnt-span"></span> entities selected to copy / overwrite:</p>
-            </div>
-            <div class="modal-ds-selected-entities mb-4 max-h-36 overflow-y-auto rounded-lg p-2.5 space-y-1.5" style="background:rgba(0,0,0,0.3); border:1px solid var(--brd2)"></div>
-            <div class="mb-3 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <div id="chk-ds-replace" class="chk on chk-apply-replace"></div>
-                    <span class="text-xs font-semibold">Apply Find &amp; Replace modifications</span>
-                </div>
-                <button type="button" class="btn btn-xs py-1 px-2 text-[11px] font-semibold flex items-center gap-1 btn-modal-add-rule" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981">
-                    <i class="fa-solid fa-plus text-[10px]"></i> Add Rule
+        <div class="modal-copy-container text-left flex flex-col max-h-[calc(100vh-48px)] h-full overflow-hidden">
+            <!-- Header (Pinned) -->
+            <div class="flex items-center justify-between p-5 pb-3 border-b border-[var(--brd2)] flex-none bg-[#0c101d]">
+                <h3 class="font-semibold text-base text-fg flex items-center gap-2">
+                    <i class="fa-solid fa-clone text-indigo-400"></i>
+                    <span>Copy Datastore Entities</span>
+                </h3>
+                <button type="button" class="btn-cancel text-zinc-400 hover:text-white p-1 rounded hover:bg-zinc-800 transition-colors" title="Close">
+                    <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            <div class="replace-inputs-wrap mb-4 flex flex-col gap-2" style="display: flex;">
-                <div class="modal-ds-rules-list space-y-2.5 max-h-60 overflow-y-auto pr-1"></div>
+
+            <!-- Scrollable Body -->
+            <div class="modal-copy-body p-5 pt-4 space-y-3.5 overflow-y-auto flex-1 custom-scrollbar">
+                <!-- Backup Warning -->
+                <div class="warning-box m-0">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div><strong>Backup!</strong> This will upsert entities into the target database. <a href="https://cloud.google.com/firestore/docs/backups" target="_blank" rel="noopener noreferrer" class="underline hover:text-yellow-200 ml-1">Create Backup</a></div>
+                </div>
+
+                <!-- GCP Audit Warning (Cleaned, no "2.") -->
+                <div class="warning-box layout-warning-audit flex-col m-0">
+                    <div class="flex items-start gap-2.5 w-full">
+                        <i class="fa-solid fa-shield-halved text-[var(--warn)] mt-0.5"></i>
+                        <div class="flex-1">
+                            <strong>Operations that need to be enabled (Data Access Logs)</strong>
+                            <p class="text-xs text-zinc-300 mt-0.5 leading-relaxed">
+                                Writing or overwriting entities in Datastore uses the Commit API (under <code>google.datastore.v1.Datastore.Commit</code>).
+                            </p>
+                        </div>
+                    </div>
+                    <details class="text-xs mt-2 pl-7 leading-relaxed text-zinc-400 group w-full">
+                        <summary class="text-yellow-400/90 hover:text-yellow-300 font-medium cursor-pointer select-none flex items-center gap-1.5 py-0.5">
+                            <span>How to enable Audit Logs in GCP Console</span>
+                            <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 group-open:rotate-180"></i>
+                        </summary>
+                        <ol class="list-decimal list-inside space-y-1 mt-1.5 text-zinc-300 pl-1">
+                            <li>Go to the <strong>GCP Console</strong>.</li>
+                            <li>Navigate to <strong>IAM &amp; Admin &gt; Audit Logs</strong>.</li>
+                            <li>Select the <strong>Cloud Datastore API</strong> from the list of services.</li>
+                            <li>Check the <strong>Data Write</strong> (for creations, updates, overwrites, and deletes) and/or <strong>Data Read</strong> (for lookups and queries) audit log types and save.</li>
+                        </ol>
+                    </details>
+                </div>
+
+                <!-- Source & Target Summary -->
+                <div class="text-xs py-2 px-3 rounded bg-zinc-900/60 border border-zinc-800 text-zinc-400 flex items-center justify-between flex-wrap gap-2">
+                    <div>From <strong class="src-pid-strong text-zinc-200 font-mono"></strong> &rarr; <strong class="tgt-pid-strong text-zinc-200 font-mono"></strong></div>
+                    <div class="font-semibold text-zinc-300"><span class="selected-cnt-span text-white font-bold"></span> entities selected to copy / overwrite</div>
+                </div>
+
+                <!-- Selected Entities List -->
+                <div class="modal-ds-selected-entities max-h-52 overflow-y-auto rounded-lg p-2 space-y-1.5" style="background:rgba(0,0,0,0.3); border:1px solid var(--brd2)"></div>
+
+                <!-- Find & Replace Section -->
+                <div class="pt-1">
+                    <div class="mb-2.5 flex items-center justify-between">
+                        <div class="flex items-center gap-2 cursor-pointer select-none chk-replace-trigger">
+                            <div id="chk-ds-replace" class="chk on chk-apply-replace"></div>
+                            <span class="text-xs font-semibold">Apply Find &amp; Replace modifications</span>
+                        </div>
+                        <button type="button" class="btn btn-xs py-1 px-2.5 text-[11px] font-semibold flex items-center gap-1 btn-modal-add-rule" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Add Rule
+                        </button>
+                    </div>
+                    <div class="replace-inputs-wrap flex flex-col gap-2" style="display: flex;">
+                        <div class="modal-ds-rules-list space-y-2.5 max-h-60 overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
             </div>
-            <div class="flex justify-end gap-2"><button class="btn btn-s btn-cancel">Cancel</button><button class="btn btn-p btn-confirm">Confirm Copy</button></div>
+
+            <!-- Sticky Footer -->
+            <div class="modal-copy-footer p-3.5 px-5 border-t border-[var(--brd2)] bg-[#0c101d] flex items-center justify-end gap-2.5 flex-none sticky bottom-0 z-10 shadow-lg">
+                <button type="button" class="btn btn-s btn-cancel px-4 py-2">Cancel</button>
+                <button type="button" class="btn btn-p btn-confirm px-5 py-2 font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-clone"></i> Confirm Copy
+                </button>
+            </div>
         </div>
     </template>
 
     <template id="template-query-copy-modal">
-        <div class="p-5 text-left">
-            <h3 class="font-semibold mb-4 text-base">Copy Scheduled Queries</h3>
-            <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Verify SQL project references!</strong> Ensure that query parameters and SQL project IDs inside the query body are updated for the destination project.</div></div>
-            <div class="text-xs mb-3 text-zinc-400">
-                <p class="mb-1"><strong>Source (From):</strong> <span class="from-pid-span"></span></p>
-                <p class="mb-1"><strong>Destination (To):</strong> <span class="to-pid-span"></span></p>
+        <div class="modal-copy-container text-left flex flex-col max-h-[calc(100vh-48px)] h-full overflow-hidden">
+            <div class="flex items-center justify-between p-5 pb-3 border-b border-[var(--brd2)] flex-none bg-[#0c101d]">
+                <h3 class="font-semibold text-base text-fg flex items-center gap-2">
+                    <i class="fa-solid fa-copy text-indigo-400"></i>
+                    <span>Copy Scheduled Queries</span>
+                </h3>
+                <button type="button" class="btn-cancel text-zinc-400 hover:text-white p-1 rounded hover:bg-zinc-800 transition-colors" title="Close">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
-            <p class="text-sm mb-4 font-semibold"><span class="selected-cnt-span"></span> scheduled queries selected.</p>
-            <div class="flex justify-end gap-2">
-                <button class="btn btn-s btn-cancel">Cancel</button>
-                <button class="btn btn-p btn-confirm">Confirm Copy</button>
+            <div class="p-5 pt-4 space-y-3.5 overflow-y-auto flex-1 custom-scrollbar">
+                <div class="warning-box m-0"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Verify SQL project references!</strong> Ensure that query parameters and SQL project IDs inside the query body are updated for the destination project.</div></div>
+                <div class="text-xs p-3 rounded bg-zinc-900/60 border border-zinc-800 text-zinc-400 space-y-1">
+                    <p class="mb-1"><strong>Source (From):</strong> <span class="from-pid-span text-zinc-200 font-mono"></span></p>
+                    <p class="mb-0"><strong>Destination (To):</strong> <span class="to-pid-span text-zinc-200 font-mono"></span></p>
+                </div>
+                <p class="text-sm font-semibold text-zinc-200"><span class="selected-cnt-span font-bold text-white"></span> scheduled queries selected.</p>
+            </div>
+            <div class="p-3.5 px-5 border-t border-[var(--brd2)] bg-[#0c101d] flex items-center justify-end gap-2.5 flex-none sticky bottom-0 z-10 shadow-lg">
+                <button type="button" class="btn btn-s btn-cancel px-4 py-2">Cancel</button>
+                <button type="button" class="btn btn-p btn-confirm px-5 py-2 font-semibold flex items-center gap-2">Confirm Copy</button>
             </div>
         </div>
     </template>

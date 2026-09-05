@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation Studio Preview • GCP Tools Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-deep: #030712;
+            --card-bg: rgba(15, 23, 42, 0.75);
+            --border: rgba(56, 189, 248, 0.25);
+            --accent-cyan: #38bdf8;
+            --accent-glow: #00d4ff;
+            --accent-orange: #f97316;
+            --accent-green: #10b981;
+            --accent-purple: #a855f7;
+            --text-fg: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+            color: var(--text-fg);
+            font-family: 'Outfit', -apple-system, sans-serif;
+            min-height: 100vh;
+            padding: 36px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header-section {
+            text-align: center;
+            max-width: 800px;
+            margin-bottom: 36px;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 14px;
+        }
+
+        h1 {
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 0%, #38bdf8 60%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        /* STUDIO DUAL COLUMN GRID */
+        .studio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+            gap: 28px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .studio-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .studio-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            opacity: 0.6;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stage-box {
+            min-height: 320px;
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            border: none;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.5);
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+        }
+
+        /* =======================================================
+           1. MODERNIZED ROCKET ANIMATION (MULTI-LAYER PLASMA)
+           ======================================================= */
+        .rocket-flight-stage {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 50% 60%, #0b1329 0%, #020617 100%);
+            overflow: hidden;
+        }
+
+        /* Moving Stars / Warp Streaks */
+        .warp-stars {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(1.5px 1.5px at 20px 30px, #ffffff, transparent),
+                radial-gradient(1px 1px at 60px 120px, #38bdf8, transparent),
+                radial-gradient(2px 2px at 150px 80px, #ffffff, transparent),
+                radial-gradient(1.5px 1.5px at 250px 190px, #a855f7, transparent),
+                radial-gradient(2px 2px at 320px 40px, #ffffff, transparent),
+                radial-gradient(1px 1px at 400px 150px, #38bdf8, transparent);
+            background-size: 300px 300px;
+            animation: warpStarsMove 1.4s linear infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes warpStarsMove {
+            from { transform: translateY(0); }
+            to { transform: translateY(300px); }
+        }
+
+        /* Rocket Vessel */
+        .rocket-assembly {
+            position: relative;
+            width: 120px;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: rocketHover 2.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes rocketHover {
+            0% { transform: translateY(8px) rotate(-1deg); }
+            100% { transform: translateY(-8px) rotate(1deg); }
+        }
+
+        /* Multi-Layer Thruster Plasma */
+        .plasma-flame-wrap {
+            position: absolute;
+            bottom: -32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .plasma-core-white {
+            width: 16px;
+            height: 48px;
+            background: #ffffff;
+            border-radius: 50% 50% 80% 80%;
+            filter: blur(1px);
+            box-shadow: 0 0 15px #ffffff, 0 0 25px #00d4ff;
+            animation: flameFlicker 0.12s infinite alternate;
+        }
+
+        .plasma-outer-blue {
+            position: absolute;
+            top: 2px;
+            width: 32px;
+            height: 72px;
+            background: linear-gradient(180deg, rgba(0, 212, 255, 0.95) 0%, rgba(56, 189, 248, 0.8) 40%, rgba(249, 115, 22, 0.7) 75%, transparent 100%);
+            border-radius: 50% 50% 80% 80%;
+            filter: blur(4px);
+            animation: flameFlicker 0.18s infinite alternate;
+        }
+
+        @keyframes flameFlicker {
+            0% { transform: scaleX(0.9) scaleY(0.95); opacity: 0.9; }
+            100% { transform: scaleX(1.12) scaleY(1.08); opacity: 1; }
+        }
+
+        /* Particle Sparks Emitter */
+        .ember-spark {
+            position: absolute;
+            width: 3px;
+            height: 8px;
+            background: #f97316;
+            border-radius: 999px;
+            opacity: 0.8;
+            animation: sparkFall 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+        }
+
+        @keyframes sparkFall {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(80px) scale(0.2); opacity: 0; }
+        }
+
+        /* Telemetry HUD ribbon */
+        .telemetry-hud {
+            position: absolute;
+            bottom: 12px;
+            left: 16px;
+            right: 16px;
+            background: rgba(3, 7, 18, 0.75);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 10px;
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            backdrop-filter: blur(8px);
+        }
+
+        .telemetry-progress-track {
+            width: 120px;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .telemetry-progress-fill {
+            width: 68%;
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, #10b981);
+            transition: width 0.3s ease;
+        }
+
+        /* =======================================================
+           2. MODERNIZED WELCOME HUD SCREEN
+           ======================================================= */
+        .welcome-hud-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(3, 7, 18, 0.92);
+            backdrop-filter: blur(20px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .welcome-hud-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .welcome-card-modal {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.7) 100%);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            border-radius: 24px;
+            padding: 44px 40px;
+            max-width: 520px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 189, 248, 0.15);
+            position: relative;
+            transform: scale(0.92);
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .welcome-hud-overlay.active .welcome-card-modal {
+            transform: scale(1);
+        }
+
+        /* Avatar Orbit Ring */
+        .avatar-orbit-wrap {
+            position: relative;
+            width: 96px;
+            height: 96px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar-img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0284c7 0%, #a855f7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 800;
+            color: #ffffff;
+            box-shadow: 0 0 30px rgba(56, 189, 248, 0.35);
+        }
+
+        .orbit-spinner {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px dashed rgba(56, 189, 248, 0.6);
+            animation: spinOrbit 8s linear infinite;
+        }
+
+        @keyframes spinOrbit {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .welcome-greeting-sub {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--accent-cyan);
+            margin-bottom: 6px;
+        }
+
+        .welcome-name-heading {
+            font-size: 34px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+
+        .user-identity-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-bottom: 24px;
+        }
+
+        .laser-sweep-line {
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+            margin: 0 auto 16px;
+            animation: laserSweep 1.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes laserSweep {
+            0% { transform: scaleX(0.2); opacity: 0.4; }
+            100% { transform: scaleX(1); opacity: 1; }
+        }
+
+        .skip-hint-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .skip-hint-text:hover {
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-section">
+        <div class="badge-pill"><i class="fa-solid fa-wand-magic-sparkles"></i> Interactive Animation Sandbox</div>
+        <h1>Next-Gen Portal Animations Preview</h1>
+        <p class="subtitle">Interact with and preview the proposed high-fidelity <strong>Rocket Launch Loader</strong> and <strong>Personalized Welcome HUD</strong> before deployment.</p>
+    </div>
+
+    <div class="studio-grid">
+
+        <!-- ============================================ -->
+        <!-- CARD 1: ROCKET LAUNCH LOADER PREVIEW        -->
+        <!-- ============================================ -->
+        <div class="studio-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-rocket" style="color: var(--accent-cyan);"></i>
+                    <span>Rocket Launch Loader</span>
+                </div>
+                <span class="badge-pill" style="margin: 0; font-size: 10px; padding: 4px 10px;">v2.0 Plasma</span>
+            </div>
+
+            <div class="stage-box rocket-flight-stage" id="rocketStage">
+                <div class="warp-stars" id="warpStars"></div>
+
+                <!-- SVG ROCKET WITH DYNAMIC PLASMA CORE -->
+                <div class="rocket-assembly" id="rocketVessel">
+                    <svg width="100" height="130" viewBox="0 0 100 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Left Booster Fin -->
+                        <path d="M18 78 L6 112 C6 112 18 114 26 102 Z" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5" />
+                        <!-- Right Booster Fin -->
+                        <path d="M82 78 L94 112 C94 112 82 114 74 102 Z" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5" />
+                        <!-- Rocket Fuselage Body -->
+                        <path d="M50 8 C32 30 26 62 26 100 L74 100 C74 62 68 30 50 8 Z" fill="url(#fuselageGrad)" stroke="#38bdf8" stroke-width="2" />
+                        <!-- Nose Cone Accent -->
+                        <path d="M50 8 C40 22 36 38 34 50 L66 50 C64 38 60 22 50 8 Z" fill="#0284c7" />
+                        <!-- Porthole Window -->
+                        <circle cx="50" cy="62" r="14" fill="#082f49" stroke="#38bdf8" stroke-width="2.5" />
+                        <circle cx="50" cy="62" r="10" fill="#0284c7" opacity="0.6" />
+                        <circle cx="47" cy="59" r="3" fill="#ffffff" opacity="0.8" />
+                        <!-- Exhaust Nozzle -->
+                        <rect x="38" y="100" width="24" height="8" rx="2" fill="#334155" stroke="#64748b" stroke-width="1.5" />
+
+                        <defs>
+                            <linearGradient id="fuselageGrad" x1="26" y1="50" x2="74" y2="50" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#0f172a" />
+                                <stop offset="0.5" stop-color="#1e293b" />
+                                <stop offset="1" stop-color="#0f172a" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+
+                    <!-- Multi-Layer Plasma Thruster -->
+                    <div class="plasma-flame-wrap">
+                        <div class="plasma-outer-blue"></div>
+                        <div class="plasma-core-white"></div>
+                        <div class="ember-spark" style="left: -10px; animation-delay: 0.1s;"></div>
+                        <div class="ember-spark" style="right: -10px; animation-delay: 0.35s;"></div>
+                        <div class="ember-spark" style="left: 6px; animation-delay: 0.55s;"></div>
+                    </div>
+                </div>
+
+                <!-- Live Telemetry Ribbon HUD -->
+                <div class="telemetry-hud">
+                    <div>
+                        <span style="color:var(--text-muted)">STATUS:</span>
+                        <strong id="telemetryStatus" style="color:var(--accent-cyan)">SCANNING BATCH</strong>
+                    </div>
+                    <div>
+                        <span style="color:var(--text-muted)">SPEED:</span>
+                        <strong id="telemetrySpeed" style="color:#ffffff">350 ent/s</strong>
+                    </div>
+                    <div class="telemetry-progress-track">
+                        <div class="telemetry-progress-fill" id="telemetryProgress"></div>
+                    </div>
+                    <span id="telemetryPercent" style="color:var(--accent-green);font-weight:bold">68%</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls-row">
+                <button class="btn btn-primary" onclick="simulateFullFlightSequence()">
+                    <i class="fa-solid fa-play"></i> Simulate 0% ➔ 100% Launch
+                </button>
+                <button class="btn btn-secondary" onclick="toggleHyperdrive()">
+                    <i class="fa-solid fa-bolt"></i> Test Hyperdrive Burst
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- CARD 2: WELCOME HUD SCREEN PREVIEW           -->
+        <!-- ============================================ -->
+        <div class="studio-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-shield-halved" style="color: var(--accent-purple);"></i>
+                    <span>Personalized Welcome HUD</span>
+                </div>
+                <span class="badge-pill" style="margin: 0; font-size: 10px; padding: 4px 10px; color: var(--accent-purple); border-color: rgba(168, 85, 247, 0.4); background: rgba(168, 85, 247, 0.12);">Fast 1.8s</span>
+            </div>
+
+            <div class="stage-box" style="padding: 24px;">
+                <!-- Mini inline representation of the HUD -->
+                <div style="text-align: center;">
+                    <div class="avatar-orbit-wrap" style="width: 80px; height: 80px; margin-bottom: 16px;">
+                        <div class="orbit-spinner"></div>
+                        <div class="avatar-img" style="width: 68px; height: 68px; font-size: 26px;">S</div>
+                    </div>
+                    <div class="welcome-greeting-sub">Authenticated Operator</div>
+                    <div class="welcome-name-heading" style="font-size: 24px; margin-bottom: 8px;">Welcome back, Shreyash</div>
+                    <div class="user-identity-chip" style="margin-bottom: 14px; font-size: 11px;">
+                        <i class="fa-brands fa-google text-cyan-400"></i> shreyashs14102002@gmail.com
+                    </div>
+                    <div class="laser-sweep-line" style="max-width: 220px;"></div>
+                    <div style="font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">
+                        ⚡ Security Clearance: SuperAdmin Level 4
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls-row">
+                <button class="btn btn-primary" onclick="openWelcomeModal()">
+                    <i class="fa-solid fa-expand"></i> Launch Fullscreen Welcome HUD
+                </button>
+                <span style="font-size: 12px; color: var(--text-muted);">Auto-advances in 1.8s or click to skip</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FULLSCREEN WELCOME HUD MODAL -->
+    <div class="welcome-hud-overlay" id="welcomeOverlay" onclick="closeWelcomeModal()">
+        <div class="welcome-card-modal" onclick="event.stopPropagation()">
+            <div class="avatar-orbit-wrap">
+                <div class="orbit-spinner"></div>
+                <div class="avatar-img">S</div>
+            </div>
+            <div class="welcome-greeting-sub">Verified Google Cloud Operator</div>
+            <h2 class="welcome-name-heading">Welcome back, Shreyash</h2>
+            <div class="user-identity-chip">
+                <i class="fa-solid fa-circle-check" style="color: #10b981;"></i> shreyashs14102002@gmail.com
+            </div>
+            <div class="laser-sweep-line"></div>
+            <div class="skip-hint-text" onclick="closeWelcomeModal()">
+                [ Click anywhere or press ESC to skip ]
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ROCKET LAUNCH SIMULATOR
+        let flightInterval = null;
+
+        function simulateFullFlightSequence() {
+            clearInterval(flightInterval);
+            const rocket = document.getElementById('rocketVessel');
+            const progressFill = document.getElementById('telemetryProgress');
+            const percentText = document.getElementById('telemetryPercent');
+            const speedText = document.getElementById('telemetrySpeed');
+            const statusText = document.getElementById('telemetryStatus');
+            const stars = document.getElementById('warpStars');
+
+            let progress = 0;
+            statusText.textContent = 'IGNITION & LIFTOFF';
+            statusText.style.color = '#f97316';
+            speedText.textContent = '120 ent/s';
+
+            flightInterval = setInterval(() => {
+                progress += 2;
+                if (progress > 100) progress = 100;
+
+                progressFill.style.width = progress + '%';
+                percentText.textContent = progress + '%';
+
+                if (progress < 25) {
+                    rocket.style.transform = `translateY(${20 - progress * 1.5}px) scale(0.9)`;
+                } else if (progress < 70) {
+                    statusText.textContent = 'STRATOSPHERE ASCENT';
+                    statusText.style.color = '#38bdf8';
+                    speedText.textContent = '480 ent/s';
+                    stars.style.animationDuration = '0.8s';
+                    rocket.style.transform = `translateY(-15px) scale(1.05)`;
+                } else if (progress < 100) {
+                    statusText.textContent = 'ORBITAL INJECTION';
+                    statusText.style.color = '#10b981';
+                    speedText.textContent = '750 ent/s';
+                    stars.style.animationDuration = '0.35s';
+                    rocket.style.transform = `translateY(-30px) scale(1.1)`;
+                } else {
+                    clearInterval(flightInterval);
+                    statusText.textContent = 'WARP COMPLETED ✓';
+                    statusText.style.color = '#00d4ff';
+                    speedText.textContent = '100% DONE';
+
+                    // Hyperdrive Flash
+                    rocket.style.transform = 'translateY(-180px) scale(1.4)';
+                    rocket.style.opacity = '0';
+                    setTimeout(() => {
+                        rocket.style.transition = 'none';
+                        rocket.style.transform = 'translateY(40px) scale(0.8)';
+                        setTimeout(() => {
+                            rocket.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease';
+                            rocket.style.transform = 'translateY(0) scale(1)';
+                            rocket.style.opacity = '1';
+                            stars.style.animationDuration = '1.4s';
+                        }, 50);
+                    }, 400);
+                }
+            }, 50);
+        }
+
+        function toggleHyperdrive() {
+            const rocket = document.getElementById('rocketVessel');
+            rocket.style.transform = 'translateY(-200px) scale(1.6)';
+            rocket.style.opacity = '0';
+            setTimeout(() => {
+                rocket.style.transition = 'none';
+                rocket.style.transform = 'translateY(50px) scale(0.8)';
+                setTimeout(() => {
+                    rocket.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease';
+                    rocket.style.transform = 'translateY(0) scale(1)';
+                    rocket.style.opacity = '1';
+                }, 50);
+            }, 400);
+        }
+
+        // WELCOME HUD MODAL
+        let autoCloseTimer = null;
+
+        function openWelcomeModal() {
+            clearTimeout(autoCloseTimer);
+            const overlay = document.getElementById('welcomeOverlay');
+            overlay.classList.add('active');
+
+            // Auto-close after 2.2 seconds
+            autoCloseTimer = setTimeout(() => {
+                closeWelcomeModal();
+            }, 2200);
+        }
+
+        function closeWelcomeModal() {
+            clearTimeout(autoCloseTimer);
+            const overlay = document.getElementById('welcomeOverlay');
+            overlay.classList.remove('active');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeWelcomeModal();
+        });
+    </script>
+</body>
+</html>
