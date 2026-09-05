@@ -57,3 +57,26 @@ test('app.ts invokes openModal with modal-wide and renders Option 2 sub-line for
     assert.ok(code.includes('color:var(--accent2)'), 'Should use accent2 cyan color for display name');
     assert.ok(code.includes("querySelectorAll('.btn-cancel')"), 'Should bind all cancel button instances including header close button');
 });
+
+test('docs/page-12-datastore-api-curl.html exists and contains verified cURL commands and animated simulator', () => {
+    const page12Path = path.join(__dirname, '../docs/page-12-datastore-api-curl.html');
+    assert.ok(fs.existsSync(page12Path), 'page-12-datastore-api-curl.html must exist');
+
+    const content = fs.readFileSync(page12Path, 'utf8');
+
+    // Check title and simulator
+    assert.ok(content.includes('Datastore Commit API, Mutation cURLs &amp; Revert Engine'), 'Must have correct page title');
+    assert.ok(content.includes('INTERACTIVE ANIMATED SIMULATOR'), 'Must contain interactive animated simulator');
+    assert.ok(content.includes('setSimMode'), 'Must have mode switching logic');
+    assert.ok(content.includes('runAnimation'), 'Must have animation trigger');
+
+    // Check cURL commands
+    assert.ok(content.includes('curl -X POST'), 'Must contain cURL commands');
+    assert.ok(content.includes('projects/TARGET_PROJECT_ID:commit'), 'Must target Datastore commit endpoint');
+    assert.ok(content.includes('"upsert"'), 'Must document upsert mutation');
+    assert.ok(content.includes('"delete"'), 'Must document delete mutation');
+    assert.ok(content.includes('NON_TRANSACTIONAL'), 'Must document NON_TRANSACTIONAL mode');
+
+    // Check interactive generator
+    assert.ok(content.includes('updateCurlGenerator'), 'Must contain interactive cURL builder');
+});

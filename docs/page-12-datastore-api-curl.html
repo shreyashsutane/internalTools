@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Page 12: Datastore Commit API, Mutation cURLs & Revert Engine - Complete interactive reference guide with live animated mutation simulator, verified cURL commands for upsert and delete, and deep-dive technical mechanics.">
+    <title>Page 12: Datastore Commit API & cURL Engine | GCP Tools Portal Docs</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #060911;
+            --bg-sidebar: #0a0f1d;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent-cyan: #00d4ff;
+            --accent-emerald: #10b981;
+            --accent-purple: #c084fc;
+            --accent-amber: #fbbf24;
+            --accent-rose: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.65;
+        }
+
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .font-title { font-family: 'Space Grotesk', sans-serif; }
+
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        #reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981, #00d4ff, #c084fc, #f43f5e);
+            z-index: 9999;
+            transition: width 0.05s ease-out;
+        }
+
+        .sidebar-link.active {
+            background: rgba(0, 212, 255, 0.12);
+            color: #00d4ff;
+            border-left: 3px solid #00d4ff;
+            font-weight: 600;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        @keyframes packetFlow {
+            0% { transform: translateX(0); opacity: 0.2; }
+            50% { opacity: 1; transform: translateX(50%); }
+            100% { transform: translateX(100%); opacity: 0.2; }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
+            50% { box-shadow: 0 0 30px rgba(0, 212, 255, 0.7); }
+        }
+
+        @keyframes dissolveOut {
+            0% { opacity: 1; transform: scale(1); filter: blur(0px); }
+            50% { opacity: 0.5; transform: scale(0.95); filter: blur(2px); }
+            100% { opacity: 0; transform: scale(0.85); filter: blur(4px); }
+        }
+
+        .anim-dissolve {
+            animation: dissolveOut 1s forwards ease-in-out;
+        }
+
+        .code-box {
+            background: #080c18;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            overflow-x: auto;
+        }
+
+        .tab-btn.active {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+            border-color: rgba(0, 212, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div id="reading-progress"></div>
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-40 bg-[#080d1a]/95 backdrop-blur-md border-b border-white/10 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <button id="btn-toggle-sidebar" class="lg:hidden p-2 rounded-lg bg-white/5 text-slate-300 hover:text-white">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <a href="../datastore-copier/index.html" class="flex items-center gap-2 text-white font-bold tracking-tight text-sm sm:text-base">
+                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <span>GCP Tools Portal</span>
+                </a>
+                <span class="hidden sm:inline-flex badge-pill bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    Comprehensive Technical Manual • Page 12 of 12
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <a href="v2.html" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 transition font-medium">
+                    <i class="fa-solid fa-book-open"></i> Master Manual
+                </a>
+                <a href="../datastore-copier/index.html" class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 transition">
+                    <i class="fa-solid fa-rocket"></i> Launch Portal
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex-1 flex max-w-7xl mx-auto w-full">
+        
+        <!-- SIDEBAR -->
+        <aside id="doc-sidebar" class="fixed lg:sticky top-14 left-0 z-30 w-72 h-[calc(100vh-3.5rem)] bg-[#070b16] lg:bg-transparent border-r border-white/10 p-4 overflow-y-auto hidden lg:block transition-all duration-300">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-bold mb-3 px-2 flex justify-between items-center">
+                <span>Documentation Modules</span>
+                <span class="text-cyan-400 font-bold">12 Pages</span>
+            </div>
+            
+            <nav class="space-y-1 text-xs">
+                <a href="page-01-architecture.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">01</span>
+                    <span class="flex-1">Architecture &amp; System Overview</span>
+                </a>
+                <a href="page-02-auth-iam.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">02</span>
+                    <span class="flex-1">Authentication, Security &amp; IAM</span>
+                </a>
+                <a href="page-03-datastore-migration.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">03</span>
+                    <span class="flex-1">Datastore Migration &amp; Batching</span>
+                </a>
+                <a href="page-04-bq-comparator.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">04</span>
+                    <span class="flex-1">BigQuery Schema Comparator</span>
+                </a>
+                <a href="page-05-sql-diff-ast.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">05</span>
+                    <span class="flex-1">SQL Diffing &amp; AST Engine</span>
+                </a>
+                <a href="page-06-safety-audit-rollback.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">06</span>
+                    <span class="flex-1">Safety, Auditing &amp; 1-Click Rollback</span>
+                </a>
+                <a href="page-07-find-replace-names.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">07</span>
+                    <span class="flex-1">Find &amp; Replace &amp; Display Names</span>
+                </a>
+                <a href="page-08-superadmin-hub.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">08</span>
+                    <span class="flex-1">SuperAdmin Hub &amp; Telemetry</span>
+                </a>
+                <a href="page-09-mochi-companion.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">09</span>
+                    <span class="flex-1">Mochi Companion &amp; Audio FX</span>
+                </a>
+                <a href="page-10-runbooks-troubleshooting.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">10</span>
+                    <span class="flex-1">Runbooks &amp; Troubleshooting</span>
+                </a>
+                <a href="page-11-email-notifications.html" class="sidebar-link flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-slate-500">11</span>
+                    <span class="flex-1">Email Alerts &amp; Notifications</span>
+                </a>
+                <a href="page-12-datastore-api-curl.html" class="sidebar-link active flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:bg-white/5 transition">
+                    <span class="w-5 text-center font-mono text-[11px] text-cyan-400">12</span>
+                    <span class="flex-1 font-medium">Datastore API &amp; cURL Engine</span>
+                    <i class="fa-solid fa-chevron-right text-[9px] text-cyan-400"></i>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 min-w-0 p-4 sm:p-8 lg:p-10 max-w-4xl">
+            
+            <!-- Breadcrumbs -->
+            <div class="flex items-center gap-2 text-xs text-slate-400 mb-6 font-mono">
+                <a href="v2.html" class="hover:text-cyan-400 transition">Docs</a>
+                <span>/</span>
+                <span class="text-cyan-400">Page 12: Datastore API cURL &amp; Mutations Engine</span>
+            </div>
+
+            <!-- Page Title Header -->
+            <div class="mb-8 border-b border-white/10 pb-6">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold mb-3">
+                    <i class="fa-solid fa-terminal"></i> REST API &amp; Low-Level Protocol Manual
+                </div>
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-white font-title tracking-tight mb-3">
+                    Datastore Commit API, Mutation cURLs &amp; Revert Engine
+                </h1>
+                <p class="text-sm sm:text-base text-slate-400 leading-relaxed">
+                    An authoritative deep-dive into how GCP Infrastructure Manager writes, updates, and deletes entities in Google Cloud Datastore (Firestore in Datastore mode). Explore verified production <code>curl</code> commands for <strong>upsert</strong> (creating/updating) and <strong>delete</strong> (rolling back), backed by an interactive animated lifecycle simulator.
+                </p>
+            </div>
+
+            <!-- ANIMATED EXPLANATION & LIVE MUTATION SIMULATOR -->
+            <section class="mb-12">
+                <div class="glass-panel p-6 border-cyan-500/30 relative overflow-hidden">
+                    
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-white/10 pb-3">
+                        <div>
+                            <span class="badge-pill bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold">
+                                <i class="fa-solid fa-play mr-1"></i> INTERACTIVE ANIMATED SIMULATOR
+                            </span>
+                            <h3 class="text-lg font-bold text-white font-title mt-1">
+                                Datastore Commit API Lifecycle Visualizer
+                            </h3>
+                        </div>
+                        
+                        <!-- Mode Toggles -->
+                        <div class="flex items-center gap-2 bg-black/40 p-1 rounded-xl border border-white/10">
+                            <button id="tab-sim-upsert" onclick="setSimMode('upsert')" class="tab-btn active px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-cloud-arrow-up text-cyan-400"></i> Upsert (Create/Update)
+                            </button>
+                            <button id="tab-sim-delete" onclick="setSimMode('delete')" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+                                <i class="fa-solid fa-trash-can text-rose-400"></i> Delete (Revert)
+                            </button>
+                        </div>
+                    </div>
+
+                    <p id="sim-mode-desc" class="text-xs text-slate-300 mb-6">
+                        Click <strong>Run Mutation Simulation</strong> to watch the HTTP Commit RPC fire from the client to GCP Datastore, write the entity, and inspect the exact JSON payload on the wire:
+                    </p>
+
+                    <!-- Interactive Diagram Frame -->
+                    <div class="bg-black/60 border border-white/10 rounded-xl p-5 mb-4 font-mono text-xs relative overflow-hidden">
+                        
+                        <!-- Live Simulation Pipeline Flow -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6 relative">
+                            
+                            <!-- Node 1: Client / Web Portal -->
+                            <div id="sim-node-client" class="p-4 rounded-xl bg-slate-900/90 border border-white/10 text-center transition-all duration-300 relative z-10">
+                                <div class="text-[10px] text-cyan-400 font-bold mb-1 flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-laptop-code"></i> CLIENT / PORTAL
+                                </div>
+                                <div id="sim-client-state" class="text-xs font-bold text-white mb-1">Ready</div>
+                                <div class="text-[10px] text-slate-500">Constructs JSON RPC</div>
+                            </div>
+
+                            <!-- Node 2: Google Cloud Datastore Commit API -->
+                            <div id="sim-node-api" class="p-4 rounded-xl bg-slate-900/90 border border-white/10 text-center transition-all duration-300 relative z-10">
+                                <div class="text-[10px] text-yellow-400 font-bold mb-1 flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-cloud"></i> GOOGLE COMMIT API
+                                </div>
+                                <div id="sim-api-state" class="text-xs font-bold text-white mb-1">Listening</div>
+                                <div class="text-[10px] text-slate-500">projects/{pid}:commit</div>
+                            </div>
+
+                            <!-- Node 3: Target Database Storage -->
+                            <div id="sim-node-target" class="p-4 rounded-xl bg-slate-900/90 border border-white/10 text-center transition-all duration-300 relative z-10">
+                                <div class="text-[10px] text-emerald-400 font-bold mb-1 flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-database"></i> TARGET DATASTORE
+                                </div>
+                                <div id="sim-target-state" class="text-xs font-bold text-slate-400 mb-1">Awaiting Mutation</div>
+                                <div class="text-[10px] text-slate-500">Kind: assetmaster</div>
+                            </div>
+
+                        </div>
+
+                        <!-- Live Entity Preview Card in Storage -->
+                        <div class="p-4 rounded-xl bg-slate-950/80 border border-white/10 mb-4">
+                            <div class="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="badge-pill bg-cyan-950 text-cyan-300 border border-cyan-800 text-[10px]">assetmaster</span>
+                                    <span class="font-mono text-xs text-white font-semibold">assetmaster:4807328926793728</span>
+                                </div>
+                                <div id="sim-entity-badge" class="badge-pill bg-slate-800 text-slate-400 text-[10px]">NOT PRESENT</div>
+                            </div>
+                            
+                            <div id="sim-entity-props" class="text-xs text-slate-400 space-y-1 font-mono">
+                                <div>↳ "Dummy Asset 68" (assetName)</div>
+                                <div class="text-[11px] text-slate-500">environment: "prod" | status: "ACTIVE"</div>
+                            </div>
+                        </div>
+
+                        <!-- Action Controls & Status -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/10">
+                            <div class="flex items-center gap-2">
+                                <button id="btn-run-sim" onclick="runAnimation()" class="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-xs shadow-lg transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-play"></i> <span>Run Mutation Simulation</span>
+                                </button>
+                                <button id="btn-reset-sim" onclick="resetAnimation()" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold transition">
+                                    Reset
+                                </button>
+                            </div>
+                            <div id="sim-status-pill" class="text-[11px] text-slate-400 font-mono">
+                                Status: <span class="text-cyan-400 font-bold">Idle</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Live Payload Inspector Box -->
+                    <div class="mt-4">
+                        <div class="flex items-center justify-between mb-2 text-xs font-mono text-slate-400">
+                            <span><i class="fa-solid fa-code text-cyan-400 mr-1.5"></i> Live On-the-Wire JSON Payload:</span>
+                            <button onclick="copyLivePayload()" class="text-cyan-400 hover:text-cyan-300 text-[11px] flex items-center gap-1">
+                                <i class="fa-regular fa-copy"></i> Copy Payload
+                            </button>
+                        </div>
+                        <div class="code-box p-3 font-mono text-xs text-slate-300">
+                            <pre id="code-sim-payload" class="overflow-x-auto"></pre>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- SECTION 1: CORE ARCHITECTURE & COMMIT ENDPOINTS -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-sm font-mono">01</span>
+                    Datastore Commit API Architecture
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    In Google Cloud Datastore (and Cloud Firestore in Datastore mode), all creations, overwrites, updates, and deletions are executed via the atomic <strong>Commit API</strong> (method: <code>google.datastore.v1.Datastore.Commit</code>).
+                </p>
+
+                <div class="glass-panel p-5 border-cyan-500/30 mb-6 space-y-3 text-xs">
+                    <div class="flex items-start gap-3">
+                        <div class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold shrink-0">ENDPOINT</div>
+                        <div>
+                            <code class="text-white font-mono font-bold">POST https://datastore.googleapis.com/v1/projects/{projectId}:commit</code>
+                            <p class="text-slate-400 mt-1">Used for default database (<code>(default)</code>). To target a named database, append <code>?databaseId={databaseId}</code>.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 border-t border-white/5 pt-2">
+                        <div class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold shrink-0">MODE</div>
+                        <div>
+                            <code class="text-white font-mono font-bold">"mode": "NON_TRANSACTIONAL"</code>
+                            <p class="text-slate-400 mt-1">Executes mutations directly without requiring a preceding <code>beginTransaction</code> handshake, maximizing throughput for bulk operations.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 border-t border-white/5 pt-2">
+                        <div class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono font-bold shrink-0">BATCHING</div>
+                        <div>
+                            <code class="text-white font-mono font-bold">MAX 500 MUTATIONS / REQUEST</code>
+                            <p class="text-slate-400 mt-1">Google limits individual commit requests to 500 mutations or 10MB. Our portal automatically chunks large selections into safe 250-entity batches.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: THE CREATE & UPDATE CURL (UPSERT) -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm font-mono">02</span>
+                    The Create &amp; Update cURL: <code>upsert</code>
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    When copying entities between projects in Datastore Copier (or saving inline property modifications), we use the <strong><code>upsert</code></strong> mutation.
+                </p>
+
+                <div class="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 mb-4 text-xs text-emerald-200">
+                    <i class="fa-solid fa-circle-check text-emerald-400 mr-1.5"></i>
+                    <strong>Why <code>upsert</code> instead of <code>insert</code> or <code>update</code>?</strong><br>
+                    • If the entity does not exist in the target project, <code>upsert</code> creates it.<br>
+                    • If the entity already exists, <code>upsert</code> completely overwrites it.<br>
+                    • This guarantees atomic execution without failing on <code>ALREADY_EXISTS</code> (which <code>insert</code> produces) or <code>NOT_FOUND</code> (which <code>update</code> produces).
+                </div>
+
+                <!-- Verified cURL Block -->
+                <div class="code-box mb-6 relative group">
+                    <div class="flex items-center justify-between px-4 py-2.5 bg-white/5 border-b border-white/10 text-xs font-mono text-slate-400">
+                        <span class="flex items-center gap-2 text-emerald-400 font-semibold">
+                            <i class="fa-solid fa-terminal"></i> Verified Production cURL (Create / Update)
+                        </span>
+                        <button onclick="copyText('curl-upsert-code')" class="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1">
+                            <i class="fa-regular fa-copy"></i> <span>Copy cURL</span>
+                        </button>
+                    </div>
+                    <pre class="p-4 text-xs text-slate-200 overflow-x-auto"><code id="curl-upsert-code">curl -X POST "https://datastore.googleapis.com/v1/projects/TARGET_PROJECT_ID:commit"   -H "Authorization: Bearer $(gcloud auth print-access-token)"   -H "Content-Type: application/json"   -d '{
+    "mode": "NON_TRANSACTIONAL",
+    "mutations": [
+      {
+        "upsert": {
+          "key": {
+            "partitionId": {
+              "projectId": "TARGET_PROJECT_ID",
+              "namespaceId": ""
+            },
+            "path": [
+              {
+                "kind": "assetmaster",
+                "id": "4807328926793728"
+              }
+            ]
+          },
+          "properties": {
+            "assetName": {
+              "stringValue": "Dummy Asset 68"
+            },
+            "environment": {
+              "stringValue": "prod"
+            },
+            "status": {
+              "stringValue": "ACTIVE"
+            },
+            "replicas": {
+              "integerValue": "3"
+            },
+            "isActive": {
+              "booleanValue": true
+            },
+            "lastUpdated": {
+              "timestampValue": "2026-09-05T14:30:00Z"
+            }
+          }
+        }
+      }
+    ]
+  }'</code></pre>
+                </div>
+            </section>
+
+            <!-- SECTION 3: THE DELETION IN REVERT CURL (DELETE) -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center text-sm font-mono">03</span>
+                    The Revert Deletion cURL: <code>delete</code>
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    During a <strong>1-Click Rollback</strong>, our portal examines the pre-mutation audit record:
+                </p>
+
+                <div class="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 mb-4 text-xs text-rose-200 space-y-1.5">
+                    <div><i class="fa-solid fa-triangle-exclamation text-rose-400 mr-1.5"></i><strong>Reverting Newly Created Entities:</strong></div>
+                    <div>If an entity did NOT exist in the target before the copy operation, copying it introduced a brand-new record. Reverting requires issuing a <strong><code>delete</code></strong> mutation to remove it cleanly.</div>
+                    <div class="text-slate-300 font-mono text-[11px] pt-1">CRITICAL: For a <code>delete</code> mutation, Datastore requires ONLY the <code>key</code>. Do NOT send <code>properties</code>!</div>
+                </div>
+
+                <!-- Verified cURL Block -->
+                <div class="code-box mb-6 relative group">
+                    <div class="flex items-center justify-between px-4 py-2.5 bg-white/5 border-b border-white/10 text-xs font-mono text-slate-400">
+                        <span class="flex items-center gap-2 text-rose-400 font-semibold">
+                            <i class="fa-solid fa-trash-can"></i> Verified Production cURL (Revert Delete)
+                        </span>
+                        <button onclick="copyText('curl-delete-code')" class="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-white transition flex items-center gap-1">
+                            <i class="fa-regular fa-copy"></i> <span>Copy cURL</span>
+                        </button>
+                    </div>
+                    <pre class="p-4 text-xs text-slate-200 overflow-x-auto"><code id="curl-delete-code">curl -X POST "https://datastore.googleapis.com/v1/projects/TARGET_PROJECT_ID:commit"   -H "Authorization: Bearer $(gcloud auth print-access-token)"   -H "Content-Type: application/json"   -d '{
+    "mode": "NON_TRANSACTIONAL",
+    "mutations": [
+      {
+        "delete": {
+          "partitionId": {
+            "projectId": "TARGET_PROJECT_ID",
+            "namespaceId": ""
+          },
+          "path": [
+            {
+              "kind": "assetmaster",
+              "id": "4807328926793728"
+            }
+          ]
+        }
+      }
+    ]
+  }'</code></pre>
+                </div>
+            </section>
+
+            <!-- SECTION 4: RESTORING OVERWRITTEN ENTITIES -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm font-mono">04</span>
+                    Restoring Overwritten Entities in Revert
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4 leading-relaxed">
+                    What if the entity already existed in the target before the copy, and was overwritten?
+                </p>
+
+                <div class="glass-panel p-5 border-amber-500/30 mb-6 text-xs text-slate-300 space-y-2">
+                    <p>1. In our pre-flight backup, the portal captured the <strong>full prior snapshot</strong>: <code>{ action: 'upsert', prevEntity: { properties: {...} } }</code>.</p>
+                    <p>2. When you click <strong>Revert Operation</strong>, the engine extracts <code>item.prevEntity</code> and issues an <strong><code>upsert</code></strong> mutation restoring all original properties and values back to the pre-mutation state.</p>
+                    <p>3. <strong>Enterprise IAM Fallback:</strong> If an operator triggers a rollback without <code>datastore.entities.delete</code> permissions, the revert engine catches the <code>403 PERMISSION_DENIED</code> error, automatically falls back to restoring overwritten entities via upsert, marks the audit log as <strong>PARTIAL</strong>, and itemizes leftover newly-created keys for admin attention.</p>
+                </div>
+            </section>
+
+            <!-- SECTION 5: LIVE INTERACTIVE CURL GENERATOR PLAYGROUND -->
+            <section class="mb-12">
+                <div class="glass-panel p-6 border-purple-500/30">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="badge-pill bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-mono font-bold">
+                            <i class="fa-solid fa-sliders"></i> DYNAMIC GENERATOR
+                        </span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white font-title mb-2">
+                        Interactive cURL Command Builder
+                    </h3>
+                    <p class="text-xs text-slate-300 mb-4">
+                        Customize parameters below to instantly generate a tailored, syntax-valid cURL command ready to run in your terminal:
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-xs font-mono">
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-semibold uppercase text-[10px]">Target Project ID</label>
+                            <input id="gen-pid" type="text" value="second-project-16364" oninput="updateCurlGenerator()" class="w-full p-2 rounded bg-black/50 border border-white/10 text-white font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-semibold uppercase text-[10px]">Database ID (Leave blank for default)</label>
+                            <input id="gen-db" type="text" value="" placeholder="(default)" oninput="updateCurlGenerator()" class="w-full p-2 rounded bg-black/50 border border-white/10 text-white font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-semibold uppercase text-[10px]">Kind Name</label>
+                            <input id="gen-kind" type="text" value="assetmaster" oninput="updateCurlGenerator()" class="w-full p-2 rounded bg-black/50 border border-white/10 text-white font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-semibold uppercase text-[10px]">Entity Key ID or Name</label>
+                            <input id="gen-key" type="text" value="4807328926793728" oninput="updateCurlGenerator()" class="w-full p-2 rounded bg-black/50 border border-white/10 text-white font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-semibold uppercase text-[10px]">Mutation Action</label>
+                            <select id="gen-action" onchange="updateCurlGenerator()" class="w-full p-2 rounded bg-black/50 border border-white/10 text-white font-mono">
+                                <option value="upsert">upsert (Create or Overwrite)</option>
+                                <option value="delete">delete (Revert Deletion)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1 font-semibold uppercase text-[10px]">Entity Display Name (for upsert)</label>
+                            <input id="gen-name" type="text" value="Dummy Asset 68" oninput="updateCurlGenerator()" class="w-full p-2 rounded bg-black/50 border border-white/10 text-white font-mono">
+                        </div>
+                    </div>
+
+                    <!-- Generated Output -->
+                    <div class="code-box relative">
+                        <div class="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/10 text-xs font-mono">
+                            <span class="text-purple-300 font-bold"><i class="fa-solid fa-code mr-1"></i> Generated cURL Command</span>
+                            <button onclick="copyText('code-generated-curl')" class="px-2.5 py-1 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 transition flex items-center gap-1">
+                                <i class="fa-regular fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <pre class="p-4 text-xs text-slate-200 overflow-x-auto"><code id="code-generated-curl"></code></pre>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- SECTION 6: PROPERTY TYPE MATRIX -->
+            <section class="mb-12">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-4 flex items-center gap-2.5 font-title">
+                    <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm font-mono">05</span>
+                    Datastore Property Value Types Cheat Sheet
+                </h2>
+
+                <p class="text-sm text-slate-300 mb-4">
+                    When writing properties in Datastore Commit payloads, every value must use its exact typed object key:
+                </p>
+
+                <div class="code-box p-4 text-xs font-mono">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-white/10 text-slate-400 text-[11px]">
+                                <th class="pb-2 font-bold">Datastore Type</th>
+                                <th class="pb-2 font-bold">JSON Property Key</th>
+                                <th class="pb-2 font-bold">Payload Syntax Example</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5 text-slate-300">
+                            <tr>
+                                <td class="py-2.5 text-cyan-400 font-bold">String</td>
+                                <td class="py-2.5 font-mono">stringValue</td>
+                                <td class="py-2.5 text-slate-400"><code>{"stringValue": "My Value"}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 text-cyan-400 font-bold">Integer (64-bit)</td>
+                                <td class="py-2.5 font-mono">integerValue</td>
+                                <td class="py-2.5 text-slate-400"><code>{"integerValue": "12345"}</code> (must be string-quoted)</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 text-cyan-400 font-bold">Double / Float</td>
+                                <td class="py-2.5 font-mono">doubleValue</td>
+                                <td class="py-2.5 text-slate-400"><code>{"doubleValue": 99.95}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 text-cyan-400 font-bold">Boolean</td>
+                                <td class="py-2.5 font-mono">booleanValue</td>
+                                <td class="py-2.5 text-slate-400"><code>{"booleanValue": true}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 text-cyan-400 font-bold">Timestamp</td>
+                                <td class="py-2.5 font-mono">timestampValue</td>
+                                <td class="py-2.5 text-slate-400"><code>{"timestampValue": "2026-09-05T14:30:00Z"}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 text-cyan-400 font-bold">Null</td>
+                                <td class="py-2.5 font-mono">nullValue</td>
+                                <td class="py-2.5 text-slate-400"><code>{"nullValue": "NULL_VALUE"}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 text-cyan-400 font-bold">Array</td>
+                                <td class="py-2.5 font-mono">arrayValue</td>
+                                <td class="py-2.5 text-slate-400"><code>{"arrayValue": {"values": [{"stringValue": "v1"}]}}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 text-cyan-400 font-bold">Embedded Entity</td>
+                                <td class="py-2.5 font-mono">entityValue</td>
+                                <td class="py-2.5 text-slate-400"><code>{"entityValue": {"properties": {...}}}</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- FOOTER NAVIGATION -->
+            <div class="border-t border-white/10 pt-8 flex items-center justify-between text-xs font-mono">
+                <a href="page-11-email-notifications.html" class="flex items-center gap-2 text-slate-400 hover:text-cyan-400 transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Page 11: Email Alerts &amp; Notifications</span>
+                </a>
+                <a href="v2.html" class="flex items-center gap-2 text-slate-400 hover:text-cyan-400 transition">
+                    <span>Back to Master Index</span>
+                    <i class="fa-solid fa-book-open"></i>
+                </a>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT SIMULATION LOGIC -->
+    <script>
+        // Reading Progress Bar
+        window.addEventListener('scroll', () => {
+            const total = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (window.scrollY / total) * 100;
+            document.getElementById('reading-progress').style.width = progress + '%';
+        });
+
+        // Mobile Sidebar Toggle
+        const sidebar = document.getElementById('doc-sidebar');
+        const toggleBtn = document.getElementById('btn-toggle-sidebar');
+        if (toggleBtn && sidebar) {
+            toggleBtn.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+        }
+
+        // Copy Helper
+        function copyText(id) {
+            const text = document.getElementById(id).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied cURL command to clipboard!');
+            });
+        }
+
+        function copyLivePayload() {
+            const text = document.getElementById('code-sim-payload').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied live JSON payload to clipboard!');
+            });
+        }
+
+        // Simulation State
+        let currentMode = 'upsert';
+        let animStep = 0;
+        let isAnimating = false;
+
+        const payloads = {
+            upsert: JSON.stringify({
+                mode: "NON_TRANSACTIONAL",
+                mutations: [{
+                    upsert: {
+                        key: {
+                            partitionId: { projectId: "TARGET_PROJECT_ID" },
+                            path: [{ kind: "assetmaster", id: "4807328926793728" }]
+                        },
+                        properties: {
+                            assetName: { stringValue: "Dummy Asset 68" },
+                            environment: { stringValue: "prod" },
+                            status: { stringValue: "ACTIVE" },
+                            replicas: { integerValue: "3" }
+                        }
+                    }
+                }]
+            }, null, 2),
+            delete: JSON.stringify({
+                mode: "NON_TRANSACTIONAL",
+                mutations: [{
+                    delete: {
+                        partitionId: { projectId: "TARGET_PROJECT_ID" },
+                        path: [{ kind: "assetmaster", id: "4807328926793728" }]
+                    }
+                }]
+            }, null, 2)
+        };
+
+        function setSimMode(mode) {
+            if (isAnimating) return;
+            currentMode = mode;
+            document.getElementById('tab-sim-upsert').classList.toggle('active', mode === 'upsert');
+            document.getElementById('tab-sim-upsert').classList.toggle('text-slate-400', mode !== 'upsert');
+            document.getElementById('tab-sim-delete').classList.toggle('active', mode === 'delete');
+            document.getElementById('tab-sim-delete').classList.toggle('text-slate-400', mode !== 'delete');
+
+            const desc = document.getElementById('sim-mode-desc');
+            if (mode === 'upsert') {
+                desc.innerHTML = "<strong>Upsert Mode:</strong> Simulates copying an entity into Datastore. The payload contains both <code>key</code> and <code>properties</code>, atomically creating or updating the record.";
+            } else {
+                desc.innerHTML = "<strong>Revert Delete Mode:</strong> Simulates 1-click rollback. The payload contains <strong>ONLY the <code>key</code></strong>, purging the newly created record from the target database.";
+            }
+            resetAnimation();
+        }
+
+        function resetAnimation() {
+            isAnimating = false;
+            document.getElementById('code-sim-payload').textContent = payloads[currentMode];
+            const nodeClient = document.getElementById('sim-node-client');
+            const nodeApi = document.getElementById('sim-node-api');
+            const nodeTarget = document.getElementById('sim-node-target');
+            const badge = document.getElementById('sim-entity-badge');
+            const props = document.getElementById('sim-entity-props');
+
+            nodeClient.className = 'p-4 rounded-xl bg-slate-900/90 border border-white/10 text-center transition-all duration-300 relative z-10';
+            nodeApi.className = 'p-4 rounded-xl bg-slate-900/90 border border-white/10 text-center transition-all duration-300 relative z-10';
+            nodeTarget.className = 'p-4 rounded-xl bg-slate-900/90 border border-white/10 text-center transition-all duration-300 relative z-10';
+
+            document.getElementById('sim-client-state').textContent = 'Ready';
+            document.getElementById('sim-api-state').textContent = 'Listening';
+            document.getElementById('sim-target-state').textContent = currentMode === 'upsert' ? 'Awaiting Mutation' : 'Active Entity Present';
+            document.getElementById('sim-status-pill').innerHTML = 'Status: <span class="text-cyan-400 font-bold">Idle</span>';
+
+            if (currentMode === 'upsert') {
+                badge.className = 'badge-pill bg-slate-800 text-slate-400 text-[10px]';
+                badge.textContent = 'NOT PRESENT';
+                props.style.opacity = '0.3';
+            } else {
+                badge.className = 'badge-pill bg-emerald-950 text-emerald-300 border border-emerald-700 text-[10px]';
+                badge.textContent = 'PRESENT (v1.0)';
+                props.style.opacity = '1';
+            }
+        }
+
+        function runAnimation() {
+            if (isAnimating) return;
+            isAnimating = true;
+            const nodeClient = document.getElementById('sim-node-client');
+            const nodeApi = document.getElementById('sim-node-api');
+            const nodeTarget = document.getElementById('sim-node-target');
+            const badge = document.getElementById('sim-entity-badge');
+            const props = document.getElementById('sim-entity-props');
+            const statusPill = document.getElementById('sim-status-pill');
+
+            // Step 1: Client sends
+            statusPill.innerHTML = 'Status: <span class="text-yellow-400 font-bold">Dispatching HTTP POST :commit...</span>';
+            nodeClient.classList.add('border-cyan-400', 'shadow-[0_0_20px_rgba(0,212,255,0.4)]');
+            document.getElementById('sim-client-state').textContent = 'Transmitting...';
+
+            setTimeout(() => {
+                // Step 2: API receives
+                statusPill.innerHTML = 'Status: <span class="text-yellow-400 font-bold">API Gateway validating Bearer token & partitionId...</span>';
+                nodeClient.classList.remove('border-cyan-400', 'shadow-[0_0_20px_rgba(0,212,255,0.4)]');
+                nodeApi.classList.add('border-yellow-400', 'shadow-[0_0_20px_rgba(250,204,21,0.4)]');
+                document.getElementById('sim-api-state').textContent = 'Processing...';
+            }, 800);
+
+            setTimeout(() => {
+                // Step 3: Target executes
+                nodeApi.classList.remove('border-yellow-400', 'shadow-[0_0_20px_rgba(250,204,21,0.4)]');
+                nodeTarget.classList.add('border-emerald-400', 'shadow-[0_0_20px_rgba(16,185,129,0.4)]');
+
+                if (currentMode === 'upsert') {
+                    statusPill.innerHTML = 'Status: <span class="text-emerald-400 font-bold">SUCCESS: Entity upserted in Target!</span>';
+                    document.getElementById('sim-target-state').textContent = 'Entity Written';
+                    badge.className = 'badge-pill bg-emerald-950 text-emerald-300 border border-emerald-700 text-[10px]';
+                    badge.textContent = 'CREATED / OVERWRITTEN';
+                    props.style.opacity = '1';
+                } else {
+                    statusPill.innerHTML = 'Status: <span class="text-rose-400 font-bold">SUCCESS: Entity deleted via Rollback!</span>';
+                    document.getElementById('sim-target-state').textContent = 'Entity Purged';
+                    badge.className = 'badge-pill bg-rose-950 text-rose-300 border border-rose-700 text-[10px]';
+                    badge.textContent = 'DELETED FROM TARGET';
+                    props.style.opacity = '0.2';
+                }
+                isAnimating = false;
+            }, 1800);
+        }
+
+        // Live cURL Generator
+        function updateCurlGenerator() {
+            const pid = document.getElementById('gen-pid').value.trim() || 'TARGET_PROJECT_ID';
+            const db = document.getElementById('gen-db').value.trim();
+            const kind = document.getElementById('gen-kind').value.trim() || 'assetmaster';
+            const key = document.getElementById('gen-key').value.trim() || '4807328926793728';
+            const action = document.getElementById('gen-action').value;
+            const name = document.getElementById('gen-name').value.trim() || 'Dummy Asset 68';
+
+            const url = "https://datastore.googleapis.com/v1/projects/" + pid + ":commit" + (db ? ('?databaseId=' + db) : '');
+            const isNumeric = /^\d+$/.test(key);
+            const pathElement = isNumeric ? { kind, id: key } : { kind, name: key };
+
+            let payload;
+            if (action === 'delete') {
+                payload = {
+                    mode: "NON_TRANSACTIONAL",
+                    mutations: [{
+                        delete: {
+                            partitionId: { projectId: pid, namespaceId: "" },
+                            path: [pathElement]
+                        }
+                    }]
+                };
+            } else {
+                payload = {
+                    mode: "NON_TRANSACTIONAL",
+                    mutations: [{
+                        upsert: {
+                            key: {
+                                partitionId: { projectId: pid, namespaceId: "" },
+                                path: [pathElement]
+                            },
+                            properties: {
+                                assetName: { stringValue: name },
+                                status: { stringValue: "ACTIVE" },
+                                lastUpdated: { timestampValue: "2026-09-05T14:30:00Z" }
+                            }
+                        }
+                    }]
+                };
+            }
+
+            const curlCmd = 'curl -X POST "' + url + '" \\n' +
+                '  -H "Authorization: Bearer $(gcloud auth print-access-token)" \\n' +
+                '  -H "Content-Type: application/json" \\n' +
+                '  -d '' + JSON.stringify(payload, null, 2) + ''';
+
+            document.getElementById('code-generated-curl').textContent = curlCmd;
+        }
+
+        // Initialize defaults
+        resetAnimation();
+        updateCurlGenerator();
+    </script>
+</body>
+</html>
