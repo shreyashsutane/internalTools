@@ -689,6 +689,15 @@ export const UI = {
                 errDiv.style.display = 'none';
             };
 
+            inp.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (inp.value.trim() && !submitBtn.disabled) {
+                        submitBtn.click();
+                    }
+                }
+            });
+
             cancelBtn.onclick = () => {
                 UI.closeModal();
                 reject(new Error("Auth Error"));

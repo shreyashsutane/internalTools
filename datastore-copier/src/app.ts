@@ -76,6 +76,14 @@ export const App = {
                 const btn = Utils.$('btn-verify') as HTMLButtonElement | null;
                 if (btn) btn.disabled = !verifyInp.value.trim();
             };
+            verifyInp.addEventListener('keydown', (e: KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (verifyInp.value.trim()) {
+                        void App.verify();
+                    }
+                }
+            });
         }
         const verifyBtn = Utils.$('btn-verify');
         if (verifyBtn) verifyBtn.onclick = App.verify;

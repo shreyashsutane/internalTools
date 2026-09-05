@@ -19,6 +19,13 @@ export const App = {
             const btn = Utils.$('btn-verify') as HTMLButtonElement;
             if (btn) btn.disabled = !val;
         });
+        Utils.$('inp-token')?.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = (Utils.$('inp-token') as HTMLInputElement)?.value.trim();
+                if (val) void App.handleVerifyToken();
+            }
+        });
 
         Utils.$('btn-toggle-token')?.addEventListener('click', () => {
             const inp = Utils.$('inp-token') as HTMLInputElement;
