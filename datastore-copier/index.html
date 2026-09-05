@@ -882,7 +882,7 @@ FROM `source-project-prod.analytics.orders`</code></pre>
     </template>
 
     <template id="template-ds-filter-row">
-        <div class="filter-row flex gap-1.5 items-center mb-2.5 anim-up">
+        <div class="filter-row flex gap-1.5 items-start mb-2.5 anim-up">
             <select class="inp filter-kind font-semibold text-xs filter-kind-width" title="Kind Scope">
                 <option value="all">All Kinds</option>
             </select>
@@ -908,9 +908,9 @@ FROM `source-project-prod.analytics.orders`</code></pre>
                 <option value="null">Null</option>
             </select>
             <div class="filter-val-container">
-                <input class="inp filter-val text-xs filter-val-width" placeholder="Value">
+                <textarea class="inp filter-val text-xs filter-val-width resize-none" rows="1" placeholder="Value" style="min-height:32px; height:32px; line-height:1.4; overflow-y:auto;"></textarea>
             </div>
-            <button type="button" class="btn btn-d btn-remove-filter btn-trash-padding" title="Remove Filter"><i class="fa-solid fa-trash-can"></i></button>
+            <button type="button" class="btn btn-d btn-remove-filter btn-trash-padding" title="Remove Filter" style="height:32px; display:inline-flex; align-items:center; justify-content:center;"><i class="fa-solid fa-trash-can"></i></button>
         </div>
     </template>
 

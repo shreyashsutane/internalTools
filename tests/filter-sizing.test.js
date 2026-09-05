@@ -10,8 +10,9 @@ const uiTsPath = path.join(__dirname, '../datastore-copier/src/ui.ts');
 test('CSS rules ensure responsive and content-adaptive sizing without rigid truncation', () => {
     const css = fs.readFileSync(cssPath, 'utf8');
 
-    // .filter-row should allow wrapping
+    // .filter-row should allow wrapping and top alignment for multiline values
     assert.match(css, /\.filter-row\s*\{[^}]*flex-wrap:\s*wrap/);
+    assert.match(css, /\.filter-row\s*\{[^}]*align-items:\s*flex-start/);
 
     // .filter-prop-width should have min-width at least 200px to accommodate "__key__ (ID / Name)"
     assert.match(css, /\.filter-prop-width\s*\{[^}]*min-width:\s*210px/);
@@ -23,29 +24,32 @@ test('CSS rules ensure responsive and content-adaptive sizing without rigid trun
     // .filter-type-width should be compact
     assert.match(css, /\.filter-type-width\s*\{[^}]*min-width:\s*78px/);
 
-    // .filter-val-width should support field-sizing: content
+    // .filter-val-width should support field-sizing: content and auto-height multiline styling
     assert.match(css, /\.filter-val-width\s*\{[^}]*field-sizing:\s*content/);
+    assert.match(css, /\.filter-val-width\s*\{[^}]*min-height:\s*32px/);
+    assert.match(css, /\.filter-val-width\s*\{[^}]*resize:\s*none/);
 
     // Find & Replace adaptive styles
     assert.match(css, /\.ds-rule-grid\s*\{[^}]*flex-wrap:\s*wrap/);
     assert.match(css, /\.inp-rule-target[^}]*field-sizing:\s*content/);
 });
 
-test('HTML template removes hardcoded inline width on filter-kind', () => {
+test('HTML template uses textarea for filter-val to allow vertical expansion and multiline wrapping', () => {
     const html = fs.readFileSync(htmlPath, 'utf8');
     const templateMatch = html.match(/<template id="template-ds-filter-row">([\s\S]*?)<\/template>/);
     assert.ok(templateMatch, 'template-ds-filter-row must exist');
     
     const templateContent = templateMatch[1];
     assert.doesNotMatch(templateContent, /class="[^"]*filter-kind[^"]*"[^>]*style="width:130px"/, 'filter-kind must not have hardcoded width:130px');
+    assert.match(templateContent, /<textarea[^>]*class="[^"]*filter-val[^"]*"/, 'filter-val in template must be a textarea for vertical growth');
 });
 
 test('UI implementation in ui.ts applies dynamic auto-sizing to inputs and Find & Replace textareas', () => {
     const uiTs = fs.readFileSync(uiTsPath, 'utf8');
 
-    // Check that adjustValWidth is present in addDsFilter
-    assert.match(uiTs, /adjustValWidth/);
-    assert.match(uiTs, /valInput\.style\.minWidth/);
+    // Check that adjustValSizing adjusts height based on scrollHeight
+    assert.match(uiTs, /adjustValSizing/);
+    assert.match(uiTs, /valInput\.style\.height\s*=\s*Math\.max\(32,\s*Math\.min\(valInput\.scrollHeight/);
 
     // Check that propSelect has minWidth dynamic expansion
     assert.match(uiTs, /propSelect\.style\.minWidth/);

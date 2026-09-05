@@ -579,22 +579,28 @@ export const UI = {
                 valContainer.innerHTML = `
                     <input class="inp filter-val text-xs filter-val-width" placeholder="2026-08-19T00:00:00Z">
                 `;
-            } else if (selectedType === 'integer') {
+            } else if (selectedType === 'integer' && currentOp !== 'IN' && currentOp !== 'NOT_IN') {
                 valContainer.innerHTML = `
                     <input class="inp filter-val text-xs filter-val-width" type="number" step="1" placeholder="${placeholder}">
                 `;
-            } else if (selectedType === 'double') {
+            } else if (selectedType === 'double' && currentOp !== 'IN' && currentOp !== 'NOT_IN') {
                 valContainer.innerHTML = `
                     <input class="inp filter-val text-xs filter-val-width" type="number" step="any" placeholder="${placeholder}">
                 `;
             } else {
                 valContainer.innerHTML = `
-                    <input class="inp filter-val text-xs filter-val-width" placeholder="${placeholder}">
+                    <textarea class="inp filter-val text-xs filter-val-width resize-none" rows="1" placeholder="${placeholder}" style="min-height:32px; height:32px; line-height:1.4; overflow-y:auto;"></textarea>
                 `;
             }
-            const valInput = valContainer.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | null;
-            const adjustValWidth = () => {
-                if (valInput instanceof HTMLInputElement) {
+            const valInput = valContainer.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+            const adjustValSizing = () => {
+                if (valInput instanceof HTMLTextAreaElement) {
+                    valInput.style.height = 'auto';
+                    valInput.style.height = Math.max(32, Math.min(valInput.scrollHeight + 2, 160)) + 'px';
+                    const textLen = valInput.value ? valInput.value.length : (valInput.placeholder ? valInput.placeholder.length : 15);
+                    const ch = Math.min(Math.max(textLen + 3, 22), 65);
+                    valInput.style.minWidth = ch + 'ch';
+                } else if (valInput instanceof HTMLInputElement) {
                     const textLen = valInput.value ? valInput.value.length : (valInput.placeholder ? valInput.placeholder.length : 15);
                     const ch = Math.min(Math.max(textLen + 3, 22), 65);
                     valInput.style.minWidth = ch + 'ch';
@@ -602,15 +608,23 @@ export const UI = {
             };
             if (valInput) {
                 if (presetVal) valInput.value = presetVal;
-                adjustValWidth();
+                adjustValSizing();
                 valInput.oninput = () => {
-                    adjustValWidth();
+                    adjustValSizing();
                     UI.updateGqlPreview();
                 };
                 valInput.onchange = () => {
-                    adjustValWidth();
+                    adjustValSizing();
                     UI.updateGqlPreview();
                 };
+                if (valInput instanceof HTMLTextAreaElement) {
+                    valInput.onkeydown = (e: KeyboardEvent) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            UI.updateGqlPreview();
+                        }
+                    };
+                }
             }
             UI.updateGqlPreview();
         };

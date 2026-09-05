@@ -448,9 +448,9 @@ h1, h2, h3 {
 .diff-mapped { background: rgba(16, 185, 129, 0.10); border-left: 4px solid var(--ok); }
 
 
-.filter-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
+.filter-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; flex-wrap: wrap; }
 .filter-row .inp { flex: 1 1 auto; }
-.filter-row select.inp { flex: 0 1 auto; cursor: pointer; }
+.filter-row select.inp { flex: 0 1 auto; cursor: pointer; height: 32px; }
 
 #modal-root { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999999; pointer-events: none; }
 #modal-root > * { pointer-events: auto; }
@@ -620,7 +620,12 @@ h1, h2, h3 {
     width: 100%;
     min-width: 160px;
     field-sizing: content;
-    padding: 4px 8px;
+    padding: 5px 8px;
+    min-height: 32px;
+    line-height: 1.4;
+    resize: none;
+    overflow-y: auto;
+    transition: width 0.1s ease, height 0.1s ease;
 }
 /* Find & Replace Adaptive Rules Layout */
 .ds-rule-card {
