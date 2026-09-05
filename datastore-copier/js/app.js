@@ -601,9 +601,9 @@
                                 <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:2px"></i>
                             </div>
                             ${g.displayName?`
-                            <div class="text-[11px] font-medium flex items-center gap-1.5 mt-1" style="color:var(--accent2);opacity:0.95" title="${i.escapeHtml(g.displayField||"Name")}: ${i.escapeHtml(g.displayName)}">
-                                <i class="fa-solid fa-arrow-turn-up fa-rotate-90 text-[9px] opacity-60" style="color:var(--muted)"></i>
-                                <span class="truncate max-w-2xl font-sans">"${i.escapeHtml(g.displayName)}"</span>
+                            <div class="text-xs font-medium flex items-center gap-1.5 mt-1" style="color:var(--accent2)" title="${i.escapeHtml(g.displayField||"Name")}: ${i.escapeHtml(g.displayName)}">
+                                <i class="fa-solid fa-arrow-turn-up fa-rotate-90 text-[10px]" style="color:var(--muted)"></i>
+                                <span class="truncate max-w-2xl">"${i.escapeHtml(g.displayName)}"</span>
                             </div>`:""}
                         </td>
                         <td class="px-4 py-3 align-top"><span class="badge font-semibold" style="background:${w.b};color:${w.c}">${w.l}</span></td>
