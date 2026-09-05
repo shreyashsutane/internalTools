@@ -1311,9 +1311,13 @@ export const App = {
                             State.ds.stats.total++;
                             totalScanned++;
                             const tgtEnt = tgtMap.get(kStr);
+                            const disp = extractEntityDisplayName(srcE.entity) || (tgtEnt ? extractEntityDisplayName(tgtEnt) : null);
+                            const displayName = disp ? disp.value : undefined;
+                            const displayField = disp ? disp.fieldName : undefined;
+
                             if (missingSet.has(kStr) || !tgtEnt) {
                                 State.ds.stats.missing++;
-                                State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'missing', diffSum: 'Missing in Target', srcEntity: srcE.entity, tgtEntity: null });
+                                State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'missing', diffSum: 'Missing in Target', srcEntity: srcE.entity, tgtEntity: null, displayName, displayField });
                             } else {
                                 const diff = App.compareEntities(srcE.entity, tgtEnt);
                                 const hasRealDiff = diff.some(d => d.type !== 'mapped');
@@ -1322,14 +1326,14 @@ export const App = {
                                 if (hasRealDiff) {
                                     State.ds.stats.different++;
                                     const diffSum = diff.filter(d => d.type !== 'mapped').map(d => d.prop).join(', ');
-                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'different', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
+                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'different', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
                                 } else if (hasMapped) {
                                     State.ds.stats.mapped++;
                                     const diffSum = diff.map(d => `${d.prop} (project mapped)`).join(', ');
-                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'mapped', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt });
+                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'mapped', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
                                 } else {
                                     State.ds.stats.identical++;
-                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff: [], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt });
+                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff: [], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
                                 }
                             }
                         }
@@ -1444,8 +1448,8 @@ export const App = {
     },
 
     exportDsCsv: (): void => {
-        const rows = [['Kind', 'Key', 'Status', 'Diff Summary']];
-        State.ds.results.forEach(r => rows.push([r.kind || '—', r.keyStr, r.status, r.diffSum]));
+        const rows = [['Kind', 'Key', 'Name', 'Status', 'Diff Summary']];
+        State.ds.results.forEach(r => rows.push([r.kind || '—', r.keyStr, r.displayName || '—', r.status, r.diffSum]));
         const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
@@ -1476,11 +1480,11 @@ export const App = {
             `* **Project Mapped:** ${State.ds.stats.mapped}`,
             `* **Generated At:** ${new Date().toISOString()}`,
             '',
-            `| Kind | Entity Key | Status | Diff Summary |`,
-            `| :--- | :--- | :--- | :--- |`
+            `| Kind | Entity Key | Name | Status | Diff Summary |`,
+            `| :--- | :--- | :--- | :--- | :--- |`
         ];
         State.ds.results.forEach(r => {
-            lines.push(`| \`${r.kind || '—'}\` | \`${r.keyStr}\` | **${r.status.toUpperCase()}** | ${r.diffSum} |`);
+            lines.push(`| \`${r.kind || '—'}\` | \`${r.keyStr}\` | ${r.displayName ? `"${r.displayName}"` : '—'} | **${r.status.toUpperCase()}** | ${r.diffSum} |`);
         });
         const md = lines.join('\n');
         const a = document.createElement('a');
@@ -1497,7 +1501,12 @@ export const App = {
         }
         State.ds.filtered = State.ds.results.filter(r => 
             (State.ds.filterStatus === 'all' || r.status === State.ds.filterStatus) &&
-            (r.keyStr.toLowerCase().includes(t) || r.diffSum.toLowerCase().includes(t))
+            (
+                r.keyStr.toLowerCase().includes(t) || 
+                r.diffSum.toLowerCase().includes(t) ||
+                (r.displayName && r.displayName.toLowerCase().includes(t)) ||
+                (r.displayField && r.displayField.toLowerCase().includes(t))
+            )
         );
         State.ds.page = 1;
         App.renderDsTable();
@@ -1705,7 +1714,7 @@ export const App = {
                         <thead>
                             <tr style="background:var(--bg2);border-bottom:1px solid var(--brd)">
                                 <th class="text-left px-4 py-2.5 w-10"></th>
-                                <th class="text-left px-4 py-2.5" style="color:var(--muted)">Key</th>
+                                <th class="text-left px-4 py-2.5" style="color:var(--muted)">Key / Name</th>
                                 <th class="text-left px-4 py-2.5 w-32" style="color:var(--muted)">Status</th>
                                 <th class="text-left px-4 py-2.5 w-64" style="color:var(--muted)">Diff Summary</th>
                             </tr>
@@ -1731,10 +1740,20 @@ export const App = {
                     const tr = document.createElement('tr');
                     tr.style.borderBottom = '1px solid var(--brd)';
                     tr.innerHTML = `
-                        <td class="px-4 py-3"><div class="chk chk-row ${sel ? 'on' : ''}" data-key="${Utils.escapeHtml(r.keyStr)}"></div></td>
-                        <td class="px-4 py-3 cursor-pointer" style="color:var(--fg)">${Utils.escapeHtml(r.keyStr)} <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:4px"></i></td>
-                        <td class="px-4 py-3"><span class="badge font-semibold" style="background:${stCfg.b};color:${stCfg.c}">${stCfg.l}</span></td>
-                        <td class="px-4 py-3" style="color:var(--muted)">${Utils.escapeHtml(r.diffSum)}</td>
+                        <td class="px-4 py-3 align-top"><div class="chk chk-row ${sel ? 'on' : ''}" data-key="${Utils.escapeHtml(r.keyStr)}"></div></td>
+                        <td class="px-4 py-2.5 cursor-pointer" style="color:var(--fg)">
+                            <div class="flex items-center gap-1.5 font-medium">
+                                <span class="mono">${Utils.escapeHtml(r.keyStr)}</span>
+                                <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:2px"></i>
+                            </div>
+                            ${r.displayName ? `
+                            <div class="text-[11px] font-medium flex items-center gap-1.5 mt-1" style="color:var(--accent2);opacity:0.95" title="${Utils.escapeHtml(r.displayField || 'Name')}: ${Utils.escapeHtml(r.displayName)}">
+                                <i class="fa-solid fa-arrow-turn-up fa-rotate-90 text-[9px] opacity-60" style="color:var(--muted)"></i>
+                                <span class="truncate max-w-2xl font-sans">"${Utils.escapeHtml(r.displayName)}"</span>
+                            </div>` : ''}
+                        </td>
+                        <td class="px-4 py-3 align-top"><span class="badge font-semibold" style="background:${stCfg.b};color:${stCfg.c}">${stCfg.l}</span></td>
+                        <td class="px-4 py-3 align-top" style="color:var(--muted)">${Utils.escapeHtml(r.diffSum)}</td>
                     `;
 
                     const chk = tr.querySelector('.chk') as HTMLElement;

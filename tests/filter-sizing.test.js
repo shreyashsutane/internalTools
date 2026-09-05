@@ -69,3 +69,16 @@ test('UI implementation in ui.ts applies dynamic auto-sizing to inputs and Find 
     assert.match(uiTs, /updateRuleSizing/);
     assert.match(uiTs, /colFind\.style\.flex\s*=\s*'1 1 100%'/);
 });
+
+test('Datastore comparison table renders entity name below ID (Option 2)', () => {
+    const appTsPath = path.join(__dirname, '../datastore-copier/src/app.ts');
+    const appTs = fs.readFileSync(appTsPath, 'utf8');
+
+    // Table header should indicate Key / Name
+    assert.match(appTs, /<th[^>]*>Key \/ Name<\/th>/);
+
+    // Row rendering should place displayName below keyStr in a dedicated container
+    assert.match(appTs, /r\.keyStr/);
+    assert.match(appTs, /r\.displayName\s*\?/);
+    assert.match(appTs, /fa-arrow-turn-up fa-rotate-90/);
+});

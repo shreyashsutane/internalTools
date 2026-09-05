@@ -708,47 +708,57 @@ export const extractEntityDisplayName = (entity: any): EntityDisplayNameInfo | n
     }
     const props = entity.properties;
 
+    const getPropVal = (p: any): string | null => {
+        if (!p) return null;
+        const rawVal = p.stringValue !== undefined ? p.stringValue
+            : p.integerValue !== undefined ? p.integerValue
+            : p.booleanValue !== undefined ? p.booleanValue
+            : p.timestampValue !== undefined ? p.timestampValue
+            : null;
+        if (rawVal !== null && rawVal !== undefined && String(rawVal).trim() !== '') {
+            return String(rawVal).trim();
+        }
+        return null;
+    };
+
     const priorityFields = [
-        'referenceName',
-        'chainName',
         'name',
-        'displayName',
-        'title',
-        'jobName',
-        'taskName',
+        'referencename',
+        'displayname',
         'username',
-        'email',
-        'label',
-        'code',
-        'slug',
-        'description'
+        'chainname',
+        'jobname',
+        'taskname'
     ];
 
     // 1. Exact Priority Match (Case-Insensitive)
     for (const field of priorityFields) {
         const key = Object.keys(props).find(k => k.toLowerCase() === field.toLowerCase());
         if (key && props[key]) {
-            const rawVal = props[key].stringValue !== undefined ? props[key].stringValue
-                : props[key].integerValue !== undefined ? props[key].integerValue
-                : props[key].booleanValue !== undefined ? props[key].booleanValue
-                : props[key].timestampValue !== undefined ? props[key].timestampValue
-                : null;
-            if (rawVal !== null && rawVal !== undefined && String(rawVal).trim() !== '') {
-                return { fieldName: key, value: String(rawVal) };
+            const val = getPropVal(props[key]);
+            if (val !== null) {
+                return { fieldName: key, value: val };
             }
         }
     }
 
-    // 2. Any property ending in 'name' or 'title' or 'id'
+    // 2. Any field containing "name" (case-insensitive)
+    for (const key of Object.keys(props)) {
+        if (key.toLowerCase().includes('name') && props[key]) {
+            const val = getPropVal(props[key]);
+            if (val !== null) {
+                return { fieldName: key, value: val };
+            }
+        }
+    }
+
+    // 3. Fallback: Any property ending in 'title' or 'label'
     for (const key of Object.keys(props)) {
         const lower = key.toLowerCase();
-        if ((lower.endsWith('name') || lower.endsWith('title') || lower.endsWith('label')) && props[key]) {
-            const rawVal = props[key].stringValue !== undefined ? props[key].stringValue
-                : props[key].integerValue !== undefined ? props[key].integerValue
-                : props[key].booleanValue !== undefined ? props[key].booleanValue
-                : null;
-            if (rawVal !== null && rawVal !== undefined && String(rawVal).trim() !== '') {
-                return { fieldName: key, value: String(rawVal) };
+        if ((lower.endsWith('title') || lower.endsWith('label')) && props[key]) {
+            const val = getPropVal(props[key]);
+            if (val !== null) {
+                return { fieldName: key, value: val };
             }
         }
     }

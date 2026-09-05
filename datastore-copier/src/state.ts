@@ -25,6 +25,8 @@ export interface DsResult {
     diffSum: string;
     srcEntity: any | null;
     tgtEntity: any | null;
+    displayName?: string;
+    displayField?: string;
 }
 
 export interface FindReplaceRule {
