@@ -1747,8 +1747,8 @@ export const App = {
                                 <i class="fa-solid fa-chevron-down" style="font-size:9px;color:var(--muted);margin-left:2px"></i>
                             </div>
                             ${r.displayName ? `
-                            <div class="text-xs font-medium flex items-center gap-1.5 mt-1" style="color:var(--accent2)" title="${Utils.escapeHtml(r.displayField || 'Name')}: ${Utils.escapeHtml(r.displayName)}">
-                                <i class="fa-solid fa-arrow-turn-up fa-rotate-90 text-[10px]" style="color:var(--muted)"></i>
+                            <div class="text-sm font-semibold flex items-center gap-1.5 mt-1" style="color:var(--accent2)" title="${Utils.escapeHtml(r.displayField || 'Name')}: ${Utils.escapeHtml(r.displayName)}">
+                                <i class="fa-solid fa-arrow-turn-up fa-rotate-90 text-[11px]" style="color:var(--muted)"></i>
                                 <span class="truncate max-w-2xl">"${Utils.escapeHtml(r.displayName)}"</span>
                             </div>` : ''}
                         </td>
