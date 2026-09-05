@@ -29,12 +29,16 @@ test('CSS rules ensure responsive and content-adaptive sizing without rigid trun
     assert.match(css, /\.filter-val-width\s*\{[^}]*min-height:\s*32px/);
     assert.match(css, /\.filter-val-width\s*\{[^}]*resize:\s*none/);
 
+    // .filter-kind-width should not have rigid 200px cap, max-width is 100%
+    assert.match(css, /\.filter-kind-width\s*\{[^}]*max-width:\s*100%/);
+    assert.doesNotMatch(css, /\.filter-kind-width\s*\{[^}]*max-width:\s*200px/);
+
     // Find & Replace adaptive styles
     assert.match(css, /\.ds-rule-grid\s*\{[^}]*flex-wrap:\s*wrap/);
     assert.match(css, /\.inp-rule-target[^}]*field-sizing:\s*content/);
 });
 
-test('HTML template uses textarea for filter-val to allow vertical expansion and multiline wrapping', () => {
+test('HTML template uses textarea for filter-val and sections have expanded widths', () => {
     const html = fs.readFileSync(htmlPath, 'utf8');
     const templateMatch = html.match(/<template id="template-ds-filter-row">([\s\S]*?)<\/template>/);
     assert.ok(templateMatch, 'template-ds-filter-row must exist');
@@ -42,6 +46,10 @@ test('HTML template uses textarea for filter-val to allow vertical expansion and
     const templateContent = templateMatch[1];
     assert.doesNotMatch(templateContent, /class="[^"]*filter-kind[^"]*"[^>]*style="width:130px"/, 'filter-kind must not have hardcoded width:130px');
     assert.match(templateContent, /<textarea[^>]*class="[^"]*filter-val[^"]*"/, 'filter-val in template must be a textarea for vertical growth');
+
+    // Section width should be expanded to max-w-7xl
+    assert.match(html, /id="sec-forms"[^>]*class="[^"]*max-w-7xl/);
+    assert.match(html, /id="sec-modes"[\s\S]*?class="card max-w-7xl/);
 });
 
 test('UI implementation in ui.ts applies dynamic auto-sizing to inputs and Find & Replace textareas', () => {
@@ -51,8 +59,10 @@ test('UI implementation in ui.ts applies dynamic auto-sizing to inputs and Find 
     assert.match(uiTs, /adjustValSizing/);
     assert.match(uiTs, /valInput\.style\.height\s*=\s*Math\.max\(32,\s*Math\.min\(valInput\.scrollHeight/);
 
-    // Check that propSelect has minWidth dynamic expansion
+    // Check that propSelect and kindSelect have dynamic width expansion without hardcoded caps
     assert.match(uiTs, /propSelect\.style\.minWidth/);
+    assert.match(uiTs, /adjustKindSelectWidth/);
+    assert.match(uiTs, /kindSelect\.style\.minWidth\s*=\s*Math\.max\(txt\.length \+ 5,\s*14\)\s*\+\s*'ch'/);
 
     // Check that renderDsRules uses ds-rule-grid and updateRuleSizing
     assert.match(uiTs, /ds-rule-grid/);

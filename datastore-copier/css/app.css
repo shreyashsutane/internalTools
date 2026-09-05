@@ -582,7 +582,7 @@ h1, h2, h3 {
 .filter-kind-width {
     min-width: 120px;
     width: auto;
-    max-width: 200px;
+    max-width: 100%;
     flex: 0 1 auto;
     field-sizing: content;
     padding: 4px 8px;
@@ -590,7 +590,7 @@ h1, h2, h3 {
 .filter-prop-width {
     min-width: 210px;
     width: auto;
-    max-width: 340px;
+    max-width: 100%;
     flex: 1 1 auto;
     field-sizing: content;
     padding: 4px 8px;
@@ -598,7 +598,7 @@ h1, h2, h3 {
 .filter-op-width {
     min-width: 58px;
     width: auto;
-    max-width: 130px;
+    max-width: 100%;
     flex: 0 0 auto;
     field-sizing: content;
     padding: 4px 8px;
@@ -606,7 +606,7 @@ h1, h2, h3 {
 .filter-type-width {
     min-width: 78px;
     width: auto;
-    max-width: 120px;
+    max-width: 100%;
     flex: 0 0 auto;
     field-sizing: content;
     padding: 4px 8px;

@@ -377,11 +377,11 @@ export const UI = {
 
             if (propSelect.selectedIndex >= 0) {
                 const txt = propSelect.options[propSelect.selectedIndex]?.text || '';
-                propSelect.style.minWidth = Math.min(Math.max(txt.length + 3, 20), 45) + 'ch';
+                propSelect.style.minWidth = Math.max(txt.length + 4, 18) + 'ch';
             }
             if (kindSelect && kindSelect.selectedIndex >= 0) {
                 const txt = kindSelect.options[kindSelect.selectedIndex]?.text || '';
-                kindSelect.style.minWidth = Math.min(Math.max(txt.length + 3, 12), 30) + 'ch';
+                kindSelect.style.minWidth = Math.max(txt.length + 5, 14) + 'ch';
             }
         });
     },
@@ -451,6 +451,13 @@ export const UI = {
         const typeSelect = fragment.querySelector('.filter-type') as HTMLSelectElement;
         const valContainer = fragment.querySelector('.filter-val-container') as HTMLElement;
 
+        const adjustKindSelectWidth = () => {
+            if (kindSelect && kindSelect.selectedIndex >= 0) {
+                const txt = kindSelect.options[kindSelect.selectedIndex]?.text || '';
+                kindSelect.style.minWidth = Math.max(txt.length + 5, 14) + 'ch';
+            }
+        };
+
         if (kindSelect) {
             kindSelect.replaceChildren();
             if (selectedKinds.length > 1) {
@@ -468,8 +475,10 @@ export const UI = {
                 else if (!presetKind && selectedKinds.length === 1 && idx === 0) opt.selected = true;
                 kindSelect.appendChild(opt);
             });
+            adjustKindSelectWidth();
 
             kindSelect.onchange = async () => {
+                adjustKindSelectWidth();
                 const chosen = kindSelect.value;
                 if (chosen !== 'all' && State.ds.src && (!State.ds.kindProperties || !State.ds.kindProperties[chosen])) {
                     if (propSelect) {
@@ -519,7 +528,7 @@ export const UI = {
 
             if (propSelect.selectedIndex >= 0) {
                 const txt = propSelect.options[propSelect.selectedIndex]?.text || '';
-                propSelect.style.minWidth = Math.min(Math.max(txt.length + 3, 20), 45) + 'ch';
+                propSelect.style.minWidth = Math.max(txt.length + 4, 18) + 'ch';
             }
         };
 
@@ -528,7 +537,7 @@ export const UI = {
             propSelect.onchange = () => {
                 if (propSelect.selectedIndex >= 0) {
                     const txt = propSelect.options[propSelect.selectedIndex]?.text || '';
-                    propSelect.style.minWidth = Math.min(Math.max(txt.length + 3, 20), 45) + 'ch';
+                    propSelect.style.minWidth = Math.max(txt.length + 4, 18) + 'ch';
                 }
                 updateValInput();
                 UI.updateGqlPreview();
