@@ -1927,5 +1927,20 @@ h1, h2, h3 {
     display: block;
 }
 
-
-
+/* Thought-Leader Quotes Styles */
+.quote-pill {
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    color: #00d4ff;
+    border-radius: 9999px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+@keyframes fadeInScaleQuote {
+    0% { opacity: 0; transform: translateY(5px) scale(0.985); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.anim-quote-swap {
+    animation: fadeInScaleQuote 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

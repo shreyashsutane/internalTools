@@ -1,0 +1,170 @@
+[
+  {
+    "name": "Jensen Huang",
+    "role": "Founder & CEO, NVIDIA",
+    "netWorth": "~$195 Billion - $200 Billion",
+    "category": "Workforce & Augmentation",
+    "quote": "AI is not likely to replace you, but someone using AI better than you might."
+  },
+  {
+    "name": "Bill Gates",
+    "role": "Co-Founder, Microsoft & Co-Chair, Gates Foundation",
+    "netWorth": "~$105 Billion - $108 Billion",
+    "category": "Industry Transformation",
+    "quote": "AI will change the way people work, learn, travel, get health care, and communicate with each other. Entire industries will reorient around it. Businesses will distinguish themselves by how well they use it."
+  },
+  {
+    "name": "Sam Altman",
+    "role": "CEO, OpenAI",
+    "netWorth": "~$3.4 Billion - $4 Billion",
+    "category": "Workforce & Leverage",
+    "quote": "AI will not replace humans, but humans using AI will do jobs that previously took a lot of people. A single person will be able to do what used to take a 10-person company."
+  },
+  {
+    "name": "Marc Andreessen",
+    "role": "Co-Founder & General Partner, a16z",
+    "netWorth": "~$1.9 Billion - $2.0 Billion",
+    "category": "AI Philosophy",
+    "quote": "AI doesn't want, it doesn't have goals, it doesn't want to kill you, because it's not alive. And AI is a machine — is not going to come alive any more than your toaster will."
+  },
+  {
+    "name": "Sundar Pichai",
+    "role": "CEO, Alphabet & Google",
+    "netWorth": "~$1.3 Billion - $1.8 Billion",
+    "category": "Workforce & Augmentation",
+    "quote": "The future of AI is not about replacing humans, it's about augmenting human capabilities."
+  },
+  {
+    "name": "Satya Nadella",
+    "role": "Chairman & CEO, Microsoft",
+    "netWorth": "~$750 Million - $1 Billion",
+    "category": "Human-Centric AI",
+    "quote": "The whole design choice we've made is to put humans at the center, which is why we call it Copilot, not Autopilot."
+  },
+  {
+    "name": "Demis Hassabis",
+    "role": "Co-Founder & CEO, Google DeepMind",
+    "netWorth": "~$520 Million - $650 Million",
+    "category": "Macro Impact",
+    "quote": "AI is going to be 10 times bigger than the Industrial Revolution, and maybe 10 times faster."
+  },
+  {
+    "name": "Thomas Kurian",
+    "role": "CEO, Google Cloud",
+    "netWorth": "~$100 Million+",
+    "category": "Workforce & Augmentation",
+    "quote": "AI is not going to replace people. People who use AI will replace people who don't. The goal is to make people dramatically more productive and let them do what humans do best: create, communicate, and solve problems."
+  },
+  {
+    "name": "Andrew Ng",
+    "role": "Founder, DeepLearning.AI & Managing General Partner, AI Fund",
+    "netWorth": "~$75 Million - $100 Million",
+    "category": "Macro Impact",
+    "quote": "AI is the new electricity. Just as electricity transformed almost everything 100 years ago, today I actually have a hard time thinking of an industry that I do not think AI will transform in the next several years."
+  },
+  {
+    "name": "Ginni Rometty",
+    "role": "Former Chairman & CEO, IBM",
+    "netWorth": "~$50 Million - $100 Million",
+    "category": "Human Augmentation",
+    "quote": "Some people call this artificial intelligence, but the reality is this technology will enhance us. So instead of artificial intelligence, I think we'll augment our intelligence."
+  },
+  {
+    "name": "Arvind Krishna",
+    "role": "Chairman & CEO, IBM",
+    "netWorth": "~$40 Million - $60 Million",
+    "category": "Developer Productivity",
+    "quote": "If you can produce 30 percent more code with the same number of people, are you going to get more code written or less? It's a tool. If the quality that everybody produces becomes better using these tools, then even for the consumer, now you're consuming better-quality products."
+  },
+  {
+    "name": "Mustafa Suleyman",
+    "role": "CEO, Microsoft AI & Co-Founder, DeepMind",
+    "netWorth": "~$40 Million+",
+    "category": "Human Augmentation",
+    "quote": "Over the next decade, AI will augment human capability on an unprecedented scale. It's not about replacing humanity; it's about amplifying what makes us capable."
+  },
+  {
+    "name": "Garry Kasparov",
+    "role": "Former World Chess Champion & AI Thought Leader",
+    "netWorth": "~$5 Million",
+    "category": "Workforce & Augmentation",
+    "quote": "AI won't replace humans, but those who use AI will replace those who don't. Weak human plus machine plus better process was superior to a strong computer alone."
+  },
+  {
+    "name": "Karim R. Lakhani",
+    "role": "Professor & Co-Founder of Laboratory for Innovation Science, Harvard Business School",
+    "netWorth": "Academic (Undisclosed)",
+    "category": "Workforce & Augmentation",
+    "quote": "AI won't replace humans — but humans with AI will replace humans without AI."
+  },
+  {
+    "name": "Richard Baldwin",
+    "role": "Professor of International Economics, Geneva Graduate Institute & IMD",
+    "netWorth": "Academic (Undisclosed)",
+    "category": "Workforce & Augmentation",
+    "quote": "AI won't take your job. It's somebody using AI that will take your job."
+  },
+  {
+    "name": "Dr. Fei-Fei Li",
+    "role": "Co-Director, Stanford HAI & Co-Founder, World Labs",
+    "netWorth": "Academic / Venture (Undisclosed)",
+    "category": "Human Augmentation",
+    "quote": "It really, truly bothers me when people use the word 'replace' when it's connected to AI. I think we should really replace that word, and think about AI as augmenting or enhancing humans rather than replacing them."
+  },
+  {
+    "name": "Yann LeCun",
+    "role": "Chief AI Scientist, Meta & Turing Award Laureate",
+    "netWorth": "Corporate Executive / Academic (Undisclosed)",
+    "category": "AI Philosophy",
+    "quote": "Our intelligence is what makes us human, and AI is an extension of that quality."
+  },
+  {
+    "name": "Geoffrey Hinton",
+    "role": "Nobel Laureate & Turing Award Laureate ('Godfather of AI')",
+    "netWorth": "Academic / Former Google VP (Undisclosed)",
+    "category": "Workforce & Society",
+    "quote": "In a sensibly organized society, if you improve productivity, there is room for everybody to benefit. The problem isn't the technology, but the way the benefits are shared out."
+  },
+  {
+    "name": "Dario Amodei",
+    "role": "Co-Founder & CEO, Anthropic",
+    "netWorth": "Private Venture Equity (Undisclosed)",
+    "category": "Intellectual Acceleration",
+    "quote": "I think of AI as a tool that dramatically accelerates intellectual work, allowing small teams or individuals to do science, engineering, and creative work at a scale never seen before."
+  },
+  {
+    "name": "Andrej Karpathy",
+    "role": "Founding Member, OpenAI & Former Director of AI, Tesla",
+    "netWorth": "~$20 Million - $50 Million",
+    "category": "English as Programming Language",
+    "quote": "The hottest new programming language is English."
+  },
+  {
+    "name": "Jensen Huang",
+    "role": "Founder & CEO, NVIDIA",
+    "netWorth": "~$195 Billion - $200 Billion",
+    "category": "English as Programming Language",
+    "quote": "It is our job to create computing technology such that nobody has to program, and that the programming language is human. Everybody in the world is now a programmer. This is the miracle of AI."
+  },
+  {
+    "name": "Satya Nadella",
+    "role": "Chairman & CEO, Microsoft",
+    "netWorth": "~$750 Million - $1 Billion",
+    "category": "English as Programming Language",
+    "quote": "Natural language is the new UI and programming language... Software development is shifting from writing syntax to expressing intent."
+  },
+  {
+    "name": "Amjad Masad",
+    "role": "Founder & CEO, Replit",
+    "netWorth": "~$100 Million - $300 Million",
+    "category": "English as Programming Language",
+    "quote": "English is replacing code syntax. In the near future, programming will look much more like speaking to and directing a smart colleague than writing intricate syntax."
+  },
+  {
+    "name": "Peter Norvig",
+    "role": "Director of Research, Google & Co-Author of 'AI: A Modern Approach'",
+    "netWorth": "~$10 Million - $20 Million",
+    "category": "English as Programming Language",
+    "quote": "For sixty years, we wrote rigid code that instructed machines deterministically. Now, natural language prompt engineering has become the primary mechanism to steer emergent intelligence."
+  }
+]

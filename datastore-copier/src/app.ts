@@ -8,6 +8,7 @@ import { AssistUI } from './assist-ui';
 import { AssistManager } from './assist';
 import { SoundFX } from './sound';
 import { D0198EasterEgg } from './easter-egg';
+import { QuotesManager } from './quotes';
 import {
     buildDatastoreFilterObject,
     cloneDatastoreValue,
@@ -59,6 +60,7 @@ export const App = {
     },
     init: (): void => {
         SoundFX.init();
+        QuotesManager.initWelcomeQuote();
         const toggleBtn = Utils.$('btn-toggle-token');
         const tokenInp = Utils.$('inp-token') as HTMLInputElement | null;
         if (toggleBtn && tokenInp) {

@@ -1,3 +1,5 @@
+import { QuotesManager } from './quotes';
+
 export const Utils = {
     $: (id: string): HTMLElement | null => document.getElementById(id),
 
@@ -36,6 +38,7 @@ export const Utils = {
             if (id === 'sec-loading') {
                 el.classList.add('active-overlay');
                 el.style.display = 'flex';
+                QuotesManager.startLoadingQuotes();
             } else {
                 el.style.display = '';
             }
@@ -46,6 +49,7 @@ export const Utils = {
         if (el) {
             if (id === 'sec-loading') {
                 el.classList.remove('active-overlay');
+                QuotesManager.stopLoadingQuotes();
             }
             el.style.display = 'none';
         }

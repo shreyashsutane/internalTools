@@ -142,6 +142,50 @@
         </header>
 
         <section id="sec-auth" class="anim-up d1">
+            <!-- WELCOME SPOTLIGHT QUOTE CARD -->
+            <div class="max-w-2xl mx-auto mb-6">
+                <div id="welcome-quote-box" class="card p-6 relative overflow-hidden shadow-2xl transition-all" style="border-color: rgba(0, 212, 255, 0.35); background: linear-gradient(135deg, rgba(13, 19, 38, 0.95), rgba(10, 17, 32, 0.95));">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="quote-pill"><i class="fa-solid fa-sparkles mr-1"></i> <span id="welcome-quote-cat">Workforce &amp; Augmentation</span></span>
+                            <span id="welcome-quote-networth-pill" class="px-2.5 py-0.5 rounded-full mono text-xs font-semibold flex items-center gap-1.5 shadow-sm" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7;">
+                                <i class="fa-solid fa-vault text-[11px]" style="color: #34d399;"></i>
+                                <span>Net Worth: <strong id="welcome-quote-networth" style="color: #a7f3d0;">~$100 Million+</strong></span>
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs mono" style="color: var(--muted);"><span id="welcome-quote-idx">8</span> of 24</span>
+                            <button id="welcome-quote-shuffle" type="button" class="btn btn-s text-xs mono font-semibold flex items-center gap-1.5 px-3 py-1 rounded-lg" style="background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); color: #00d4ff;" title="Show another quote">
+                                <i class="fa-solid fa-shuffle"></i> <span>Shuffle 🎲</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="relative pl-7 sm:pl-8 pr-2 mb-5">
+                        <i class="fa-solid fa-quote-left text-3xl sm:text-4xl absolute -top-3 left-0 pointer-events-none" style="color: rgba(0, 212, 255, 0.2);"></i>
+                        <p id="welcome-quote-text" class="text-lg sm:text-xl font-semibold leading-relaxed italic tracking-wide" style="color: #f8fafc;">
+                            "AI is not going to replace people. People who use AI will replace people who don't. The goal is to make people dramatically more productive and let them do what humans do best: create, communicate, and solve problems."
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t" style="border-top-color: var(--brd);">
+                        <div class="flex items-center gap-3">
+                            <div id="welcome-author-avatar" class="w-10 h-10 rounded-full font-bold flex items-center justify-center text-sm" style="background: rgba(0, 212, 255, 0.15); border: 1px solid rgba(0, 212, 255, 0.4); color: #00d4ff;">
+                                TK
+                            </div>
+                            <div>
+                                <div class="text-base font-bold text-white tracking-wide" id="welcome-quote-author">Thomas Kurian</div>
+                                <div class="text-xs font-medium" id="welcome-quote-role" style="color: #67e8f9;">CEO, Google Cloud</div>
+                            </div>
+                        </div>
+                        <div class="text-left sm:text-right px-3 py-1 rounded-lg" style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--brd);">
+                            <div class="text-[10px] uppercase tracking-wider font-bold" style="color: var(--muted);">Estimated Net Worth</div>
+                            <div id="welcome-quote-networth-detail" class="text-xs mono font-bold" style="color: #34d399;">~$100 Million+</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card max-w-2xl mx-auto" style="border-color:var(--brd2)">
                 <h2 class="font-semibold text-base mb-6">1. Authenticate</h2>
                 
@@ -387,7 +431,7 @@ FROM `source-project-prod.analytics.orders`</code></pre>
 
         <!-- PROGRESS OVERLAY WITH ROCKET LAUNCHER LOADER -->
         <section id="sec-loading" style="display:none">
-            <div class="card max-w-xl mx-auto text-center py-8">
+            <div class="card max-w-2xl mx-auto text-center py-8">
                 <!-- ROCKET LAUNCHER LOADER -->
                 <div class="rocket-loader-wrap mx-auto mb-2">
                     <div class="rocket-animation mx-auto" style="width: 230px; height: 230px;">
@@ -500,6 +544,57 @@ FROM `source-project-prod.analytics.orders`</code></pre>
                     <div class="p-2 rounded-lg" style="background:var(--bg)"><div class="text-xl font-bold mono" style="color:var(--ok)" id="ld-identical">0</div><div class="text-xs" style="color:var(--muted)">Identical</div></div>
                     <div class="p-2 rounded-lg" style="background:var(--bg)"><div class="text-xl font-bold mono" style="color:var(--warn)" id="ld-different">0</div><div class="text-xs" style="color:var(--muted)">Different</div></div>
                     <div class="p-2 rounded-lg" style="background:var(--bg)"><div class="text-xl font-bold mono" style="color:var(--danger)" id="ld-missing">0</div><div class="text-xs" style="color:var(--muted)">Missing in Tgt</div></div>
+                </div>
+
+                <!-- ROTATING LOADING QUOTE CARD (DYNAMIC WAITING TIME) -->
+                <div id="loading-quote-card" class="card p-5 text-left relative overflow-hidden shadow-2xl mt-4 mx-2" style="background: rgba(12, 16, 29, 0.95); border-color: rgba(245, 158, 11, 0.35);">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-xs tracking-wider uppercase flex items-center gap-1.5 mono" style="color: #fbbf24;">
+                                <i class="fa-regular fa-lightbulb"></i> Food For Thought
+                            </span>
+                            <span id="loading-quote-cat" class="px-2 py-0.5 rounded text-[10px] font-semibold" style="background: rgba(245, 158, 11, 0.15); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.3);">Industry Transformation</span>
+                        </div>
+                        
+                        <!-- Dynamic waiting time controls & badge -->
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="flex items-center gap-1.5 text-xs mono rounded-lg px-2.5 py-1 shadow-sm" style="background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(245, 158, 11, 0.3); color: #fde68a;">
+                                <i class="fa-solid fa-wand-magic-sparkles text-[11px]" style="color: #fbbf24;"></i>
+                                <span>Reading Time: <strong id="loading-quote-timer" style="color: #ffffff;">17s</strong></span>
+                                <span style="color: var(--muted); font-size: 10px;">•</span>
+                                <span id="loading-quote-word-count" style="color: var(--muted); font-size: 10px;">34 words</span>
+                            </div>
+                            <button id="btn-next-loading-quote" type="button" class="btn btn-s text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 mono" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24;" title="Skip to next quote">
+                                <span>Next</span> <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 pl-4 py-1" style="border-left: 4px solid #fbbf24;">
+                        <p id="loading-quote-text" class="text-base sm:text-lg font-medium leading-relaxed italic" style="color: #f8fafc;">
+                            "AI will change the way people work, learn, travel, get health care, and communicate with each other. Entire industries will reorient around it. Businesses will distinguish themselves by how well they use it."
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t text-xs" style="border-top-color: var(--brd);">
+                        <div class="flex items-center gap-3">
+                            <div id="loading-author-avatar" class="w-9 h-9 rounded-full font-bold flex items-center justify-center text-xs" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #fde68a;">
+                                BG
+                            </div>
+                            <div>
+                                <div class="font-bold text-white text-sm tracking-wide" id="loading-quote-author">Bill Gates</div>
+                                <div class="text-xs font-medium" id="loading-quote-role" style="color: #fde68a;">Co-Founder, Microsoft &amp; Co-Chair, Gates Foundation</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="px-3 py-1 rounded-full font-mono text-xs font-semibold flex items-center gap-1.5 shadow-sm" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #6ee7b7;">
+                                <i class="fa-solid fa-vault text-[11px]" style="color: #34d399;"></i>
+                                <span>Net Worth: <strong id="loading-quote-networth" style="color: #a7f3d0;">~$105 Billion - $108 Billion</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="absolute bottom-0 left-0 h-[3px] transition-all duration-100" id="loading-quote-progress-bar" style="width: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b);"></div>
                 </div>
                 <button id="btn-cancel-ds" class="btn btn-d mt-4" style="display:none"><i class="fa-solid fa-stop"></i> Cancel Process</button>
             </div>
