@@ -164,3 +164,30 @@ test('Admin Console: layout and styling guarantees full screen width with no hor
     assert.ok(adminHtml.includes('.audit-entity-table {') && adminHtml.includes('table-layout: fixed;'), 'audit-entity-table must have table-layout fixed');
 });
 
+test('Normal Portal Audit Log: project route and status column styling prevents overflow bleed', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const indexHtml = fs.readFileSync(path.join(__dirname, '../datastore-copier/index.html'), 'utf8');
+    const appCss = fs.readFileSync(path.join(__dirname, '../datastore-copier/css/app.css'), 'utf8');
+    const auditTs = fs.readFileSync(path.join(__dirname, '../datastore-copier/src/audit.ts'), 'utf8');
+    const appTs = fs.readFileSync(path.join(__dirname, '../datastore-copier/src/app.ts'), 'utf8');
+
+    // 1. Table thead width and alignment
+    assert.ok(indexHtml.includes('width: 250px; color:var(--muted)">PROJECT ROUTE</th>'), 'PROJECT ROUTE th must have 250px width');
+    assert.ok(indexHtml.includes('width: 95px; color:var(--muted)">STATUS</th>'), 'STATUS th must have 95px width');
+
+    // 2. template-log-row route and status cells
+    assert.ok(indexHtml.includes('overflow:hidden; max-width: 250px;'), 'Route td must constrain overflow and width');
+    assert.ok(indexHtml.includes('whitespace-nowrap') && indexHtml.includes('max-width: 95px;'), 'Status td must have whitespace-nowrap');
+
+    // 3. app.css audit-route-badge has strict box sizing and overflow hidden
+    assert.ok(appCss.includes('.audit-route-badge {') && appCss.includes('max-width: 100%;') && appCss.includes('box-sizing: border-box;') && appCss.includes('overflow: hidden;'), 'audit-route-badge must be constrained with overflow hidden');
+
+    // 4. audit.ts uses flex-1 min-w-0 for project route pills
+    assert.ok(auditTs.includes('flex-1 min-w-0 text-left overflow-hidden'), 'Project route pill sides must be flex-1 min-w-0 overflow-hidden');
+
+    // 5. App.verify invokes AuditLog.renderLogs(true) on login
+    assert.ok(appTs.includes('await AuditLog.renderLogs(true);'), 'App.verify must refresh audit logs immediately upon login');
+});
+
+

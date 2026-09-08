@@ -68,17 +68,41 @@ const enforceRateLimit = async email => {
     });
 };
 
+const queryUserLogsWithFallback = async (email, boundLimit) => {
+    try {
+        return await db.collection('audit_logs')
+            .where('user', '==', email)
+            .orderBy('timestampEpochMs', 'desc')
+            .limit(boundLimit)
+            .get();
+    } catch (err) {
+        logger.warn(`Query index fallback for user: ${err?.message}`);
+        return await db.collection('audit_logs')
+            .where('user', '==', email)
+            .get();
+    }
+};
+
+const queryRevertedLogsWithFallback = async (email, boundLimit) => {
+    try {
+        return await db.collection('audit_logs')
+            .where('revertedBy', '==', email)
+            .orderBy('timestampEpochMs', 'desc')
+            .limit(boundLimit)
+            .get();
+    } catch (err) {
+        logger.warn(`Query index fallback for revertedBy: ${err?.message}`);
+        return await db.collection('audit_logs')
+            .where('revertedBy', '==', email)
+            .get();
+    }
+};
+
 const readOwnLogs = async (email, limit) => {
     const boundLimit = Math.min(Math.max(Number(limit) || 100, 1), 500);
     const [userSnapshot, revertedSnapshot] = await Promise.all([
-        db.collection('audit_logs')
-            .where('user', '==', email)
-            .limit(boundLimit)
-            .get(),
-        db.collection('audit_logs')
-            .where('revertedBy', '==', email)
-            .limit(boundLimit)
-            .get()
+        queryUserLogsWithFallback(email, boundLimit),
+        queryRevertedLogsWithFallback(email, boundLimit)
     ]);
 
     const seenIds = new Set();

@@ -1983,10 +1983,15 @@ h1, h2, h3 {
     border: 1px solid var(--brd);
     padding: 3px 8px;
     border-radius: 6px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 .audit-route-arrow {
     color: var(--accent2);
     font-size: 10px;
+    flex-shrink: 0;
 }
 .audit-tag {
     display: inline-flex;

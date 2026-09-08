@@ -308,6 +308,7 @@ export const App = {
                     'warn'
                 );
             }
+            await AuditLog.renderLogs(true);
         } catch(e: any) {
             if (verifyBtn) {
                 verifyBtn.disabled = false;

@@ -853,14 +853,14 @@ FROM `source-project-prod.analytics.orders`</code></pre>
                     <table class="w-full text-xs text-left" style="border-collapse:collapse; table-layout: fixed;">
                         <thead style="background:var(--bg2)">
                             <tr style="border-bottom: 1px solid var(--brd2)">
-                                <th class="px-3 py-3 text-center" style="width: 38px; color:var(--muted)"></th>
-                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 135px; color:var(--muted)">TIMESTAMP</th>
-                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 180px; color:var(--muted)">USER</th>
-                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 140px; color:var(--muted)">OPERATION</th>
-                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 220px; color:var(--muted)">PROJECT ROUTE</th>
-                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 90px; color:var(--muted)">STATUS</th>
-                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">SUMMARY &amp; DETAILS</th>
-                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider text-center" style="width: 95px; color:var(--muted)">ACTIONS</th>
+                                <th class="px-2 py-3 text-center" style="width: 36px; color:var(--muted)"></th>
+                                <th class="px-3 py-3 font-semibold text-[10px] tracking-wider" style="width: 130px; color:var(--muted)">TIMESTAMP</th>
+                                <th class="px-3 py-3 font-semibold text-[10px] tracking-wider" style="width: 170px; color:var(--muted)">USER</th>
+                                <th class="px-3 py-3 font-semibold text-[10px] tracking-wider" style="width: 135px; color:var(--muted)">OPERATION</th>
+                                <th class="px-3 py-3 font-semibold text-[10px] tracking-wider" style="width: 250px; color:var(--muted)">PROJECT ROUTE</th>
+                                <th class="px-2 py-3 font-semibold text-[10px] tracking-wider text-center" style="width: 95px; color:var(--muted)">STATUS</th>
+                                <th class="px-3 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">SUMMARY &amp; DETAILS</th>
+                                <th class="px-2 py-3 font-semibold text-[10px] tracking-wider text-center" style="width: 95px; color:var(--muted)">ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="audit-table-body">
@@ -1164,25 +1164,25 @@ FROM `source-project-prod.analytics.orders`</code></pre>
 
     <template id="template-log-row">
         <tr class="log-row border-b log-row-cursor">
-            <td class="text-center py-3">
+            <td class="text-center py-3 px-2" style="width: 36px;">
                 <button class="btn-toggle-log text-zinc-400 hover:text-zinc-200 log-chevron-btn">
                     <i class="fa-solid fa-chevron-right log-chevron-icon"></i>
                 </button>
             </td>
-            <td class="log-date px-6 py-3 text-[11px] font-medium mono text-[var(--muted)] log-row-cell-wrap"></td>
-            <td class="log-user px-6 py-3 text-[11px] font-semibold text-fg log-row-cell-wrap"></td>
-            <td class="px-6 py-3 text-[11px]"><span class="badge log-op bg-[var(--brd2)] text-[var(--accent2)] text-[10px]"></span></td>
-            <td class="px-6 py-3 text-[11px] log-row-cell-wrap">
+            <td class="log-date px-3 py-3 text-[11px] font-medium mono text-[var(--muted)] log-row-cell-wrap"></td>
+            <td class="log-user px-3 py-3 text-[11px] font-semibold text-fg log-row-cell-wrap"></td>
+            <td class="px-3 py-3 text-[11px]"><span class="badge log-op bg-[var(--brd2)] text-[var(--accent2)] text-[10px]"></span></td>
+            <td class="px-3 py-3 text-[11px] overflow-hidden" style="overflow:hidden; max-width: 250px;">
                 <div class="flex flex-col">
                     <span class="mono text-fg"><span class="text-[9px] text-[var(--muted)]">Src:</span> <span class="log-src"></span></span>
                     <span class="mono text-fg"><span class="text-[9px] text-[var(--muted)]">Tgt:</span> <span class="log-tgt"></span></span>
                 </div>
             </td>
-            <td class="px-6 py-3 text-[11px]">
-                <span class="badge log-status"></span>
+            <td class="px-2 py-3 text-[11px] text-center whitespace-nowrap" style="overflow:hidden; max-width: 95px;">
+                <span class="badge log-status inline-block"></span>
             </td>
-            <td class="log-details px-6 py-3 text-[11px] text-[var(--muted)] log-details-cell-wrap"></td>
-            <td class="px-6 py-3 text-center log-revert-td"></td>
+            <td class="log-details px-3 py-3 text-[11px] text-[var(--muted)] log-details-cell-wrap"></td>
+            <td class="px-2 py-3 text-center log-revert-td" style="width: 95px;"></td>
         </tr>
     </template>
 

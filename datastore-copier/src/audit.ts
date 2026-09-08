@@ -136,7 +136,7 @@ export const AuditLog = {
         }
         return payload;
     },
-    readLogs: async (limit = 25): Promise<any[]> => {
+    readLogs: async (limit = 100): Promise<any[]> => {
         try {
             if (!State.token) return [];
             const data = await AuditLog.request(
@@ -436,7 +436,7 @@ export const AuditLog = {
         if (!container) return;
 
         // 1. Instant 0ms cache restore from localStorage
-        if (cachedUserLogs.length === 0) {
+        if (cachedUserLogs.length === 0 && !forceFetch) {
             try {
                 const saved = localStorage.getItem('normal_portal_cached_logs') || sessionStorage.getItem('normal_portal_cached_logs');
                 if (saved) {
@@ -463,26 +463,33 @@ export const AuditLog = {
             `;
         }
 
-        // 3. Fast background fetch (limit 25)
-        const fetchPromise = AuditLog.readLogs(25).then(logs => {
-            if (Array.isArray(logs) && logs.length > 0) {
-                cachedUserLogs = logs;
-                try {
-                    localStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
-                    sessionStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
-                } catch (e) {}
-                AuditLog.updateStats(cachedUserLogs);
+        // 3. Fast background or forced fetch (limit 100)
+        if (State.token) {
+            const fetchPromise = AuditLog.readLogs(100).then(logs => {
+                if (Array.isArray(logs) && logs.length > 0) {
+                    cachedUserLogs = logs;
+                    try {
+                        localStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
+                        sessionStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
+                    } catch (e) {}
+                    AuditLog.updateStats(cachedUserLogs);
+                    AuditLog.renderCurrentPage();
+                }
+            }).catch(err => {
+                console.warn("Failed to background refresh audit logs:", err);
+            });
+
+            AuditLog.initControls();
+            if (forceFetch || cachedUserLogs.length === 0) {
+                await fetchPromise;
+            } else {
                 AuditLog.renderCurrentPage();
             }
-        }).catch(err => {
-            console.warn("Failed to background refresh audit logs:", err);
-        });
-
-        AuditLog.initControls();
-        if (cachedUserLogs.length > 0) {
-            AuditLog.renderCurrentPage();
         } else {
-            await fetchPromise;
+            AuditLog.initControls();
+            if (cachedUserLogs.length > 0) {
+                AuditLog.renderCurrentPage();
+            }
         }
     },
     updateStats: (logs: any[]): void => {
@@ -611,6 +618,7 @@ export const AuditLog = {
                 const q = auditFilterState.search;
                 const match = (
                     (log.user || '').toLowerCase().includes(q) ||
+                    (log.revertedBy || '').toLowerCase().includes(q) ||
                     (log.operation || '').toLowerCase().includes(q) ||
                     (log.srcProject || '').toLowerCase().includes(q) ||
                     (log.tgtProject || '').toLowerCase().includes(q) ||
@@ -710,22 +718,22 @@ export const AuditLog = {
                 if (hasRoute) {
                     routeTd.innerHTML = `
                         <div class="audit-route-badge" title="${Utils.escapeHtml(log.srcProject)}${srcName ? ` (${Utils.escapeHtml(srcName)})` : ''} → ${Utils.escapeHtml(log.tgtProject)}${tgtName ? ` (${Utils.escapeHtml(tgtName)})` : ''}">
-                            <div class="flex flex-col min-w-0 max-w-[130px] text-left">
-                                ${srcName ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate" title="${Utils.escapeHtml(srcName)}">${Utils.escapeHtml(srcName)}</span>` : ''}
-                                <span class="mono text-[10px] text-[var(--muted)] truncate" title="${Utils.escapeHtml(log.srcProject)}">${Utils.escapeHtml(log.srcProject)}</span>
+                            <div class="flex flex-col flex-1 min-w-0 text-left overflow-hidden">
+                                ${srcName ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate block" title="${Utils.escapeHtml(srcName)}">${Utils.escapeHtml(srcName)}</span>` : ''}
+                                <span class="mono text-[10px] text-[var(--muted)] truncate block" title="${Utils.escapeHtml(log.srcProject)}">${Utils.escapeHtml(log.srcProject)}</span>
                             </div>
                             <i class="fa-solid fa-arrow-right-long audit-route-arrow mx-1 shrink-0 text-[10px]"></i>
-                            <div class="flex flex-col min-w-0 max-w-[130px] text-left">
-                                ${tgtName ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate" title="${Utils.escapeHtml(tgtName)}">${Utils.escapeHtml(tgtName)}</span>` : ''}
-                                <span class="mono text-[10px] text-[var(--muted)] truncate" title="${Utils.escapeHtml(log.tgtProject)}">${Utils.escapeHtml(log.tgtProject)}</span>
+                            <div class="flex flex-col flex-1 min-w-0 text-left overflow-hidden">
+                                ${tgtName ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate block" title="${Utils.escapeHtml(tgtName)}">${Utils.escapeHtml(tgtName)}</span>` : ''}
+                                <span class="mono text-[10px] text-[var(--muted)] truncate block" title="${Utils.escapeHtml(log.tgtProject)}">${Utils.escapeHtml(log.tgtProject)}</span>
                             </div>
                         </div>
                     `;
                 } else {
                     routeTd.innerHTML = `
-                        <div class="flex flex-col max-w-[200px] text-left">
-                            ${(srcName || tgtName) ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate" title="${Utils.escapeHtml(srcName || tgtName)}">${Utils.escapeHtml(srcName || tgtName)}</span>` : ''}
-                            <span class="mono text-[10px] text-[var(--muted)] truncate" title="${Utils.escapeHtml(log.srcProject || log.tgtProject || '—')}">${Utils.escapeHtml(log.srcProject || log.tgtProject || '—')}</span>
+                        <div class="flex flex-col w-full max-w-full text-left overflow-hidden">
+                            ${(srcName || tgtName) ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate block" title="${Utils.escapeHtml(srcName || tgtName)}">${Utils.escapeHtml(srcName || tgtName)}</span>` : ''}
+                            <span class="mono text-[10px] text-[var(--muted)] truncate block" title="${Utils.escapeHtml(log.srcProject || log.tgtProject || '—')}">${Utils.escapeHtml(log.srcProject || log.tgtProject || '—')}</span>
                         </div>
                     `;
                 }
