@@ -91,12 +91,12 @@ export const AuditLog = {
         }
         return payload;
     },
-    readLogs: async (): Promise<any[]> => {
+    readLogs: async (limit = 100): Promise<any[]> => {
         try {
             if (!State.token) return [];
             const data = await AuditLog.request(
                 `${CONFIG.FIRESTORE_AUDIT_LOG_URL}/runQuery`,
-                { limit: 500 }
+                { limit }
             );
             const ownLogs = Array.isArray(data.logs) ? data.logs : [];
             ownLogs.forEach((log: any) => {
@@ -174,17 +174,36 @@ export const AuditLog = {
                 prevState: prepared.inline
             });
             if (typeof result.id !== 'string') return null;
+            let finalManifest = prepared.inline;
             if (prepared.chunks) {
-                const completeManifest = await AuditLog.persistChunks(result.id, prepared);
+                finalManifest = await AuditLog.persistChunks(result.id, prepared);
                 await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, {
                     id: result.id,
                     status: status || 'SUCCESS',
                     details: details || '',
-                    prevState: completeManifest
+                    prevState: finalManifest
                 });
             }
+
+            // Optimistic in-memory update: instant local addition without re-querying Firestore
+            const newLog = {
+                id: result.id,
+                operation,
+                srcProject: srcProject || '—',
+                tgtProject: tgtProject || '—',
+                status: status || 'SUCCESS',
+                details: details || '',
+                timestamp: new Date().toISOString(),
+                timestampEpochMs: Date.now(),
+                user: State.authEmail || 'User',
+                prevState: finalManifest
+            };
+            cachedUserLogs = [newLog, ...cachedUserLogs.filter((l: any) => l.id !== result.id)];
+            AuditLog.updateStats(cachedUserLogs);
+
             if (!skipRender) {
-                await AuditLog.renderLogs();
+                AuditLog.initControls();
+                AuditLog.renderCurrentPage();
             }
             return typeof result.id === 'string' ? result.id : null;
         } catch(e) {
@@ -195,13 +214,25 @@ export const AuditLog = {
     updateLog: async (id: string, status: string, details: string, prevState?: any, skipRender = false): Promise<boolean> => {
         try {
             const body: Record<string, any> = { id, status, details };
+            let finalPrev = prevState;
             if (prevState !== undefined) {
                 const prepared = prevState ? await preparePrevState(prevState) : { inline: null };
                 body.prevState = await AuditLog.persistChunks(id, prepared);
+                finalPrev = body.prevState;
             }
             await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, body);
-            if (!skipRender) {
-                await AuditLog.renderLogs();
+
+            // Optimistic in-memory update for fast response
+            const existing = cachedUserLogs.find((l: any) => l.id === id);
+            if (existing) {
+                existing.status = status;
+                existing.details = details;
+                if (prevState !== undefined) existing.prevState = finalPrev;
+                AuditLog.updateStats(cachedUserLogs);
+                if (!skipRender) {
+                    AuditLog.initControls();
+                    AuditLog.renderCurrentPage();
+                }
             }
             return true;
         } catch (error) {
@@ -236,8 +267,11 @@ export const AuditLog = {
         if (!logged) Utils.toast('Audit export succeeded, but the export action could not be logged.', 'warn');
     },
     revertLog: async (logId: string): Promise<void> => {
-        const logs = await AuditLog.readLogs();
-        const log = logs.find(x => x.id === logId);
+        let log = cachedUserLogs.find((x: any) => x.id === logId);
+        if (!log) {
+            const logs = await AuditLog.readLogs(100);
+            log = logs.find((x: any) => x.id === logId);
+        }
         if (!log) {
             Utils.toast("Log entry not found", "err");
             return;
@@ -346,7 +380,7 @@ export const AuditLog = {
             }
         };
     },
-    renderLogs: async (forceFetch = true): Promise<void> => {
+    renderLogs: async (forceFetch = false): Promise<void> => {
         const container = Utils.$('audit-table-body');
         if (!container) return;
 
@@ -359,7 +393,7 @@ export const AuditLog = {
                     </td>
                 </tr>
             `;
-            cachedUserLogs = await AuditLog.readLogs();
+            cachedUserLogs = await AuditLog.readLogs(100);
             AuditLog.updateStats(cachedUserLogs);
         }
 
@@ -782,6 +816,73 @@ export const AuditLog = {
             }
         }
 
+        // Fallback: parse itemized records directly from details text for instant render
+        if (!stateDetailsHtml && log.details) {
+            const parsedItems = AuditLog.parseItemizedFromDetails(log.details);
+            if (parsedItems.length > 0) {
+                const rows = parsedItems.map((item: any, idx: number) => {
+                    const isNew = item.action === 'CREATED';
+                    const actionBadge = isNew
+                        ? `<span class="badge text-[10px] font-semibold bg-green-500/15 text-green-400 border border-green-500/30">🟢 CREATED</span>`
+                        : `<span class="badge text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">🟡 UPDATED</span>`;
+
+                    return `
+                        <tr>
+                            <td class="mono font-semibold" style="width: 35px; color:var(--muted)">#${idx + 1}</td>
+                            <td style="width: 130px;"><span class="badge font-mono text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">${Utils.escapeHtml(item.kind)}</span></td>
+                            <td class="mono font-semibold" style="color:var(--fg);">${Utils.escapeHtml(item.keyStr)}</td>
+                            <td style="color:#67e8f9;">${Utils.escapeHtml(item.displayName)}</td>
+                            <td style="width: 120px;">${actionBadge}</td>
+                            <td style="width: 110px; text-align:right;">
+                                <button class="btn btn-s text-[10px] py-1 px-2 btn-view-entity-json" data-idx="${idx}">
+                                    <i class="fa-solid fa-code"></i> Snapshot
+                                </button>
+                            </td>
+                        </tr>
+                        <tr id="entity-json-row-${log.id}-${idx}" style="display:none; background:rgba(0,0,0,0.3)">
+                            <td colspan="6" class="p-3">
+                                <div class="flex items-center justify-between mb-1 text-[10px] text-[var(--muted)]">
+                                    <span>PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
+                                    <button class="btn btn-s text-[9px] py-0.5 px-1.5 btn-copy-entity-json" data-json="">
+                                        <i class="fa-regular fa-copy"></i> Copy JSON
+                                    </button>
+                                </div>
+                                <pre style="padding: 8px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: #34d399; border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${isNew ? 'No pre-mutation target snapshot recorded (entity was newly created).' : 'Snapshot preserved in target audit log.'}</pre>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                stateDetailsHtml = `
+                    <div class="mt-4 pt-3 border-t border-zinc-700/60">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-xs text-[var(--fg)]"><i class="fa-solid fa-layer-group text-cyan-400 mr-1"></i> Itemized Entity Mutations</span>
+                                <span class="badge text-[10px] bg-zinc-800 text-zinc-300">${parsedItems.length} records</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto rounded-lg border border-zinc-700/60">
+                            <table class="audit-entity-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 35px;">#</th>
+                                        <th style="width: 130px;">Kind</th>
+                                        <th>Entity Key ID</th>
+                                        <th>Display / Reference Name</th>
+                                        <th style="width: 120px;">Action</th>
+                                        <th style="width: 110px; text-align:right;">Snapshot</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         // Full expanded details block
         expTr.innerHTML = `
             <td colspan="8" class="px-6 py-4" style="background:var(--bg2)">
@@ -858,6 +959,28 @@ export const AuditLog = {
         tr.after(expTr);
         const icon = tr.querySelector('.btn-toggle-log i') as HTMLElement | null;
         if (icon) icon.style.transform = 'rotate(90deg)';
+    },
+    parseItemizedFromDetails: (details: string): any[] => {
+        if (!details || typeof details !== 'string') return [];
+        const results: any[] = [];
+        const lines = details.split('\n');
+        for (const line of lines) {
+            const trimmed = line.trim();
+            const m = /^[•\-\*]\s*([^:(]+?):([^(\s]+)(?:\s*\((.*?)\))?\s*\[(.*?)\]/.exec(trimmed);
+            if (m) {
+                const kind = m[1].trim();
+                const keyId = m[2].trim();
+                const displayName = m[3] ? m[3].trim() : '—';
+                const action = m[4] ? m[4].trim().toUpperCase() : 'UPDATED';
+                results.push({
+                    kind,
+                    keyStr: `${kind}:${keyId}`,
+                    displayName,
+                    action
+                });
+            }
+        }
+        return results;
     }
 };
 

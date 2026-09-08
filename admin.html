@@ -754,6 +754,32 @@
 
         let cachedLogs = [];
 
+        function parseItemizedRecordsFromDetails(details) {
+            if (!details || typeof details !== 'string') return [];
+            const results = [];
+            const lines = details.split('\n');
+            let idx = 0;
+            for (const line of lines) {
+                const trimmed = line.trim();
+                const m = /^[•\-\*]\s*([^:(]+?):([^(\s]+)(?:\s*\((.*?)\))?\s*\[(.*?)\]/.exec(trimmed);
+                if (m) {
+                    const kind = m[1].trim();
+                    const keyId = m[2].trim();
+                    const displayName = m[3] ? m[3].trim() : '—';
+                    const action = m[4] ? m[4].trim().toUpperCase() : 'UPDATED';
+                    results.push({
+                        idx,
+                        keyStr: `${kind}:${keyId}`,
+                        kind,
+                        displayName,
+                        action
+                    });
+                    idx++;
+                }
+            }
+            return results;
+        }
+
         function toast(message, type = "info") {
             const container = document.getElementById("toast-root");
             const el = document.createElement("div");
@@ -878,7 +904,7 @@
             let failedCount = 0;
 
             try {
-                // Query Firestore for all documents in collection audit_logs
+                // Query Firestore with projection, ordering and limit for instant load (< 1s)
                 const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
                     method: 'POST',
                     headers: {
@@ -887,7 +913,23 @@
                     },
                     body: JSON.stringify({
                         structuredQuery: {
-                            from: [{ collectionId: "audit_logs" }]
+                            select: {
+                                fields: [
+                                    { fieldPath: "timestamp" },
+                                    { fieldPath: "timestampEpochMs" },
+                                    { fieldPath: "operation" },
+                                    { fieldPath: "user" },
+                                    { fieldPath: "userSubject" },
+                                    { fieldPath: "srcProject" },
+                                    { fieldPath: "tgtProject" },
+                                    { fieldPath: "status" },
+                                    { fieldPath: "details" },
+                                    { fieldPath: "hasPrevState" }
+                                ]
+                            },
+                            from: [{ collectionId: "audit_logs" }],
+                            orderBy: [{ field: { fieldPath: "timestamp" }, direction: "DESCENDING" }],
+                            limit: 150
                         }
                     })
                 });
@@ -999,7 +1041,7 @@
                 if (status === 'FAILED' && log.status !== 'FAILED') return false;
                 if (status === 'PARTIAL_CANCEL' && log.status !== 'PARTIAL' && log.status !== 'CANCELLED') return false;
                 if (status === 'REVERTIBLE') {
-                    const hasRev = Boolean(log.prevState && log.prevState.type !== 'BQ_SCHEMA_SYNC');
+                    const hasRev = Boolean((log.prevState && log.prevState.type !== 'BQ_SCHEMA_SYNC') || log.operation === 'DATASTORE_COPY' || log.operation === 'DATASTORE_EDIT' || log.operation === 'QUERY_COPY' || log.hasPrevState);
                     if (!hasRev) return false;
                 }
 
@@ -1303,6 +1345,73 @@
                 }
             }
 
+            // Fallback: parse itemized entity records from details text for instant render without large downloads
+            if (!stateDetailsHtml && log.details) {
+                const parsedItems = parseItemizedRecordsFromDetails(log.details);
+                if (parsedItems.length > 0) {
+                    const rows = parsedItems.map((item, idx) => {
+                        const isNew = item.action === 'CREATED';
+                        const actionBadge = isNew
+                            ? `<span class="badge badge-success" style="font-size:10px;">🟢 CREATED</span>`
+                            : `<span class="badge badge-warn" style="font-size:10px;">🟡 UPDATED</span>`;
+
+                        return `
+                            <tr>
+                                <td class="mono" style="color:var(--muted); font-size:10px;">#${idx + 1}</td>
+                                <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(item.kind)}</span></td>
+                                <td class="mono" style="font-weight:600; color:var(--fg);">${escapeHtml(item.keyStr)}</td>
+                                <td style="color:#60a5fa;">${escapeHtml(item.displayName)}</td>
+                                <td>${actionBadge}</td>
+                                <td style="text-align:right;">
+                                    <button class="btn-sec admin-btn-view-snapshot" style="padding:2px 8px; font-size:10px;" data-idx="${idx}" data-key="${escapeHtml(item.keyStr)}">
+                                        <i class="bi bi-code-slash"></i> Snapshot
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr id="admin-entity-json-${log.id}-${idx}" style="display:none; background:rgba(0,0,0,0.3)">
+                                <td colspan="6" style="padding:10px 14px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; font-size:10px; color:var(--muted);">
+                                        <span>PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
+                                        <button class="btn-sec admin-btn-copy-json" style="padding:2px 6px; font-size:9px;" data-json="">
+                                            <i class="bi bi-clipboard"></i> Copy JSON
+                                        </button>
+                                    </div>
+                                    <pre style="padding:8px 10px; border-radius:6px; font-family:'Roboto Mono', monospace; font-size:10px; max-height:140px; overflow-y:auto; background:rgba(0,0,0,0.4); color:#34d399; border:1px solid var(--brd2); white-space:pre-wrap; margin:0;">${isNew ? 'No pre-mutation target snapshot recorded (entity was newly created).' : 'Click to inspect target pre-mutation snapshot from database.'}</pre>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    stateDetailsHtml = `
+                        <div style="margin-top: 15px; border-top: 1px solid var(--brd2); padding-top: 12px;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                                <div style="font-weight:600; font-size:12px; color:var(--accent); display:flex; align-items:center; gap:8px;">
+                                    <i class="bi bi-layers-fill"></i> Itemized Entity Mutations
+                                    <span class="badge" style="background:rgba(255,255,255,0.06); font-size:10px;">${parsedItems.length} records</span>
+                                </div>
+                            </div>
+                            <div style="overflow-x:auto; border-radius:8px; border:1px solid var(--brd2);">
+                                <table class="audit-entity-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width:35px">#</th>
+                                            <th style="width:120px">KIND</th>
+                                            <th>ENTITY KEY ID</th>
+                                            <th>DISPLAY / REFERENCE NAME</th>
+                                            <th style="width:110px">ACTION</th>
+                                            <th style="width:100px; text-align:right;">PAYLOAD</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${rows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
             expTr.innerHTML = `
                 <td colspan="7" style="padding: 15px 20px; background: rgba(13, 20, 30, 0.4);">
                     <div style="padding: 20px; border-radius: 8px; border: 1px solid var(--brd2); background: rgba(13, 20, 30, 0.95); font-size: 12px; text-align: left; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8)">
@@ -1352,12 +1461,55 @@
             });
 
             expTr.querySelectorAll('.admin-btn-view-snapshot').forEach(btn => {
-                btn.onclick = (e) => {
+                btn.onclick = async (e) => {
                     e.stopPropagation();
                     const idx = btn.dataset.idx;
+                    const keyStr = btn.dataset.key || '';
                     const jsonRow = expTr.querySelector(`#admin-entity-json-${log.id}-${idx}`);
-                    if (jsonRow) {
-                        jsonRow.style.display = jsonRow.style.display === 'none' ? '' : 'none';
+                    if (!jsonRow) return;
+
+                    if (jsonRow.style.display !== 'none') {
+                        jsonRow.style.display = 'none';
+                        return;
+                    }
+
+                    jsonRow.style.display = '';
+                    const preEl = jsonRow.querySelector('pre');
+                    const copyBtn = jsonRow.querySelector('.admin-btn-copy-json');
+
+                    if (preEl && preEl.dataset.loaded === 'true') {
+                        return;
+                    }
+
+                    // If snapshot needs to be fetched on demand:
+                    if (preEl && (!log.prevState || !log.prevState.backupData) && !preEl.textContent.includes('No pre-mutation')) {
+                        preEl.textContent = 'Loading entity snapshot from database...';
+                        try {
+                            const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs/${log.id}`, {
+                                headers: { 'Authorization': `Bearer ${State.token}` }
+                            });
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            const doc = await res.json();
+                            const parsed = Crypto.parseFirestoreDoc(doc);
+                            let state = parsed ? parsed.prevState : null;
+                            if (typeof state === 'string') {
+                                try { state = JSON.parse(state); } catch(e) {}
+                            }
+                            if (state && state.compressed && state.data) {
+                                state = await decompressJsonFromBase64(state.data);
+                            }
+                            log.prevState = state;
+
+                            const items = state?.backupData || [];
+                            const match = items.find(x => x.keyStr === keyStr || (x.prevEntity?.key?.path && x.prevEntity.key.path.some(p => p.id === keyStr || p.name === keyStr || `${p.kind}:${p.id || p.name}` === keyStr)));
+                            const prevData = match?.prevEntity?.properties || match?.prevEntity || null;
+                            const prevStr = prevData ? JSON.stringify(prevData, null, 2) : 'No prior state recorded on target (entity was newly created).';
+                            preEl.textContent = prevStr;
+                            preEl.dataset.loaded = 'true';
+                            if (copyBtn) copyBtn.dataset.json = encodeURIComponent(prevStr);
+                        } catch(err) {
+                            preEl.textContent = 'Could not load entity snapshot: ' + err.message;
+                        }
                     }
                 };
             });

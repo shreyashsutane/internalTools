@@ -69,15 +69,16 @@ const enforceRateLimit = async email => {
 };
 
 const readOwnLogs = async (email, limit) => {
+    const boundLimit = Math.min(Math.max(Number(limit) || 100, 1), 500);
     const snapshot = await db.collection('audit_logs')
         .where('user', '==', email)
-        .limit(500)
+        .limit(boundLimit)
         .get();
 
     return snapshot.docs
         .map(document => ({ id: document.id, ...document.data() }))
         .sort((a, b) => Number(b.timestampEpochMs || 0) - Number(a.timestampEpochMs || 0))
-        .slice(0, limit)
+        .slice(0, boundLimit)
         .map(log => {
             const { createdAt, ...safeLog } = log;
             return safeLog;
