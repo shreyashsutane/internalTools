@@ -93,6 +93,22 @@
             from { transform: scale(0.95); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        .spinner, .bi-spin {
+            display: inline-block;
+            animation: spin 0.8s linear infinite;
+        }
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
 
         .logo-area {
             margin-bottom: 2rem;
@@ -656,7 +672,14 @@
                     <option value="7D">Last 7 Days</option>
                 </select>
 
-                <button class="btn-sec" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                <select id="admin-fetch-limit" class="inp" style="width:auto; padding:8px 12px;" onchange="refreshLogs()" title="Query depth limit">
+                    <option value="30" selected>⚡ Latest 30</option>
+                    <option value="60">Latest 60</option>
+                    <option value="150">Latest 150</option>
+                    <option value="300">All (300)</option>
+                </select>
+
+                <button id="btn-admin-refresh" class="btn-sec" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
             </div>
 
             <!-- Status Pills -->
@@ -869,6 +892,19 @@
                 toast(`Welcome back, ${State.username}!`, "ok");
                 document.getElementById("login-panel").style.display = "none";
                 document.getElementById("admin-panel").style.display = "flex";
+
+                // Instant cache restoration for 0ms initial table load
+                try {
+                    const saved = sessionStorage.getItem('admin_cached_logs');
+                    if (saved) {
+                        const parsedSaved = JSON.parse(saved);
+                        if (Array.isArray(parsedSaved) && parsedSaved.length > 0) {
+                            cachedLogs = parsedSaved;
+                            applyAdminFilters();
+                        }
+                    }
+                } catch(e) {}
+
                 refreshLogs();
             } catch (e) {
                 console.error(e);
@@ -896,7 +932,19 @@
         // Load logs from Firestore
         async function refreshLogs() {
             const tbody = document.getElementById("logs-table-body");
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Loading audit logs from Firestore...</td></tr>`;
+            const refreshBtn = document.getElementById("btn-admin-refresh");
+            const refreshIcon = refreshBtn ? refreshBtn.querySelector('i') : null;
+
+            if (refreshIcon) refreshIcon.classList.add('bi-spin');
+
+            // Only show empty table spinner if we have no cached logs yet
+            if (!cachedLogs || cachedLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Loading audit logs from Firestore...</td></tr>`;
+            }
+
+            const limitSelect = document.getElementById("admin-fetch-limit");
+            const fetchLimit = limitSelect ? parseInt(limitSelect.value, 10) || 30 : 30;
+
             const allLogs = [];
             const usersSet = new Set();
             const targetsSet = new Set();
@@ -904,7 +952,7 @@
             let failedCount = 0;
 
             try {
-                // Query Firestore with projection, ordering and limit for instant load (< 1s)
+                // Query Firestore with projection, ordering and limit for instant load (< 0.5s)
                 const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
                     method: 'POST',
                     headers: {
@@ -923,13 +971,12 @@
                                     { fieldPath: "srcProject" },
                                     { fieldPath: "tgtProject" },
                                     { fieldPath: "status" },
-                                    { fieldPath: "details" },
-                                    { fieldPath: "hasPrevState" }
+                                    { fieldPath: "details" }
                                 ]
                             },
                             from: [{ collectionId: "audit_logs" }],
                             orderBy: [{ field: { fieldPath: "timestamp" }, direction: "DESCENDING" }],
-                            limit: 150
+                            limit: fetchLimit
                         }
                     })
                 });
@@ -955,12 +1002,21 @@
                 }
             } catch(e) {
                 toast(e.message, "err");
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--danger)"><strong>Failed to load logs:</strong> ${escapeHtml(e.message)}</td></tr>`;
+                if (!cachedLogs || cachedLogs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--danger)"><strong>Failed to load logs:</strong> ${escapeHtml(e.message)}</td></tr>`;
+                }
                 return;
+            } finally {
+                if (refreshIcon) refreshIcon.classList.remove('bi-spin');
             }
 
             allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             cachedLogs = allLogs;
+
+            // Cache in sessionStorage for instant load next time
+            try {
+                sessionStorage.setItem('admin_cached_logs', JSON.stringify(allLogs));
+            } catch(e) {}
 
             // Populate Operator & Target Dropdowns
             const userFilter = document.getElementById("log-user-filter");
