@@ -91,7 +91,7 @@ export const AuditLog = {
         }
         return payload;
     },
-    readLogs: async (limit = 100): Promise<any[]> => {
+    readLogs: async (limit = 25): Promise<any[]> => {
         try {
             if (!State.token) return [];
             const data = await AuditLog.request(
@@ -199,6 +199,10 @@ export const AuditLog = {
                 prevState: finalManifest
             };
             cachedUserLogs = [newLog, ...cachedUserLogs.filter((l: any) => l.id !== result.id)];
+            try {
+                localStorage.setItem('normal_portal_cached_logs', JSON.stringify(cachedUserLogs));
+                sessionStorage.setItem('normal_portal_cached_logs', JSON.stringify(cachedUserLogs));
+            } catch(e) {}
             AuditLog.updateStats(cachedUserLogs);
 
             if (!skipRender) {
@@ -384,7 +388,24 @@ export const AuditLog = {
         const container = Utils.$('audit-table-body');
         if (!container) return;
 
-        if (forceFetch || cachedUserLogs.length === 0) {
+        // 1. Instant 0ms cache restore from localStorage
+        if (cachedUserLogs.length === 0) {
+            try {
+                const saved = localStorage.getItem('normal_portal_cached_logs') || sessionStorage.getItem('normal_portal_cached_logs');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        cachedUserLogs = parsed;
+                        AuditLog.updateStats(cachedUserLogs);
+                        AuditLog.initControls();
+                        AuditLog.renderCurrentPage();
+                    }
+                }
+            } catch (e) {}
+        }
+
+        // 2. If still empty, display spinner
+        if (cachedUserLogs.length === 0) {
             container.innerHTML = `
                 <tr>
                     <td colspan="8" class="px-6 py-8 text-center text-xs" style="color:var(--muted)">
@@ -393,12 +414,29 @@ export const AuditLog = {
                     </td>
                 </tr>
             `;
-            cachedUserLogs = await AuditLog.readLogs(100);
-            AuditLog.updateStats(cachedUserLogs);
         }
 
+        // 3. Fast background fetch (limit 25)
+        const fetchPromise = AuditLog.readLogs(25).then(logs => {
+            if (Array.isArray(logs) && logs.length > 0) {
+                cachedUserLogs = logs;
+                try {
+                    localStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
+                    sessionStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
+                } catch (e) {}
+                AuditLog.updateStats(cachedUserLogs);
+                AuditLog.renderCurrentPage();
+            }
+        }).catch(err => {
+            console.warn("Failed to background refresh audit logs:", err);
+        });
+
         AuditLog.initControls();
-        AuditLog.renderCurrentPage();
+        if (cachedUserLogs.length > 0) {
+            AuditLog.renderCurrentPage();
+        } else {
+            await fetchPromise;
+        }
     },
     updateStats: (logs: any[]): void => {
         const totalEl = Utils.$('audit-stat-total');
@@ -679,6 +717,157 @@ export const AuditLog = {
             container.appendChild(fragment);
         });
     },
+    formatAuditTime: (ts: string) => {
+        if (!ts) return { formatted: '—', ago: '—' };
+        const date = new Date(ts);
+        if (isNaN(date.getTime())) return { formatted: ts, ago: '—' };
+        const formatted = date.toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        const diffSec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+        let ago = 'just now';
+        if (diffSec >= 86400) {
+            ago = `${Math.floor(diffSec / 86400)}d ago`;
+        } else if (diffSec >= 3600) {
+            ago = `${Math.floor(diffSec / 3600)}h ago`;
+        } else if (diffSec >= 60) {
+            ago = `${Math.floor(diffSec / 60)}m ago`;
+        }
+        return { formatted, ago };
+    },
+    parseAuditPipeline: (log: any, state: any) => {
+        const details = log.details || '';
+        
+        // Source
+        let srcProject = log.srcProject && log.srcProject !== '—' ? log.srcProject : '';
+        let srcDb = '(default)';
+        const srcMatch = details.match(/Source:\s*([^\s(]+)(?:\s*\(database:\s*(\([^)]+\)|[^)]+)\))?/i);
+        if (srcMatch) {
+            if (!srcProject) srcProject = srcMatch[1];
+            if (srcMatch[2]) srcDb = srcMatch[2];
+        }
+        if (state?.srcDb) srcDb = state.srcDb;
+
+        // Target
+        let tgtProject = log.tgtProject && log.tgtProject !== '—' ? log.tgtProject : '';
+        let tgtDb = '(default)';
+        const tgtMatch = details.match(/Target:\s*([^\s(]+)(?:\s*\(database:\s*(\([^)]+\)|[^)]+)\))?/i);
+        if (tgtMatch) {
+            if (!tgtProject) tgtProject = tgtMatch[1];
+            if (tgtMatch[2]) tgtDb = tgtMatch[2];
+        }
+        if (state?.tgtDb || state?.dbId) tgtDb = state.tgtDb || state.dbId;
+
+        // Rules
+        const rules: any[] = [];
+        const ruleRegex = /-\s*Rule\s*(\d+)\s*\[field\s*"([^"]+)"\]:\s*"([^"]+)"\s*->\s*"([^"]+)"/g;
+        let rMatch: RegExpExecArray | null;
+        while ((rMatch = ruleRegex.exec(details)) !== null) {
+            rules.push({
+                ruleNum: rMatch[1],
+                field: rMatch[2],
+                from: rMatch[3],
+                to: rMatch[4]
+            });
+        }
+
+        // Headline & status
+        const firstLine = (details.split('\n')[0] || '').trim();
+        const headline = firstLine || log.operation || 'Audit Operation';
+
+        let writtenCount = 0;
+        let failedCount = 0;
+        const statusMatch = details.match(/Status:\s*(\d+)\s*entities written successfully\s*\((\d+)\s*failed\)/i);
+        if (statusMatch) {
+            writtenCount = parseInt(statusMatch[1], 10);
+            failedCount = parseInt(statusMatch[2], 10);
+        }
+
+        let kinds: string[] = [];
+        const kindsMatch = details.match(/across kinds:\s*([^.\n]+)/i);
+        if (kindsMatch) {
+            kinds = kindsMatch[1].split(',').map((s: string) => s.trim());
+        } else if (Array.isArray(state?.kinds)) {
+            kinds = state.kinds;
+        } else if (state?.kind) {
+            kinds = [state.kind];
+        }
+
+        // Items
+        let items: any[] = [];
+        if (state && Array.isArray(state.backupData) && state.backupData.length > 0) {
+            items = state.backupData.map((bItem: any, idx: number) => {
+                const isNew = bItem.action === 'delete' || bItem.action === 'CREATE' || bItem.action === 'CREATED';
+                const refInfo = state.entityDisplayNames?.[bItem.keyStr];
+                const displayName = refInfo ? `${refInfo.value} (${refInfo.fieldName})` : (bItem.displayName || '—');
+                const prevStr = bItem.prevEntity ? JSON.stringify(bItem.prevEntity.properties || bItem.prevEntity, null, 2) : '';
+                const entityKind = bItem.prevEntity?.key?.path?.[bItem.prevEntity.key.path.length - 1]?.kind || state.kind || 'Entity';
+                return {
+                    idx,
+                    keyStr: bItem.keyStr,
+                    kind: entityKind,
+                    displayName,
+                    action: isNew ? 'CREATED' : 'UPDATED',
+                    prevStr,
+                    hasPreState: Boolean(bItem.prevEntity)
+                };
+            });
+        } else {
+            const bulletRegex = /^[•\-*]\s*([^:\s]+):([^\s(]+)(?:\s*\(([^)]+)\))?\s*\[([A-Z]+)\]/gm;
+            let bMatch: RegExpExecArray | null;
+            let idx = 0;
+            while ((bMatch = bulletRegex.exec(details)) !== null) {
+                items.push({
+                    idx: idx++,
+                    kind: bMatch[1],
+                    keyStr: `${bMatch[1]}:${bMatch[2]}`,
+                    displayName: bMatch[3] || '—',
+                    action: bMatch[4] || 'UPDATED',
+                    prevStr: '',
+                    hasPreState: false
+                });
+            }
+        }
+
+        // Single entity edit fallback
+        if (items.length === 0 && log.operation === 'DATASTORE_EDIT') {
+            const editMatch = details.match(/edited entity properties for\s*([^:\s]+):([^\s.]+)/i);
+            if (editMatch) {
+                items.push({
+                    idx: 0,
+                    kind: editMatch[1],
+                    keyStr: `${editMatch[1]}:${editMatch[2]}`,
+                    displayName: 'Inline Edited Property',
+                    action: 'UPDATED',
+                    prevStr: '',
+                    hasPreState: false
+                });
+                if (kinds.length === 0) kinds.push(editMatch[1]);
+            }
+        }
+
+        if (writtenCount === 0 && items.length > 0) {
+            writtenCount = items.length;
+        }
+
+        return {
+            srcProject,
+            srcDb,
+            tgtProject,
+            tgtDb,
+            rules,
+            headline,
+            writtenCount,
+            failedCount,
+            kinds,
+            items
+        };
+    },
     toggleLogExpand: async (tr: HTMLElement, logId: string, logs: any[]) => {
         const existingNext = tr.nextElementSibling;
         if (existingNext && existingNext.classList.contains('expand-row')) {
@@ -691,238 +880,253 @@ export const AuditLog = {
         const log = logs.find(x => x.id === logId);
         if (!log) return;
 
+        const isReversible = (log.operation === 'DATASTORE_COPY' || log.operation === 'DATASTORE_EDIT' || log.operation === 'QUERY_SYNC')
+            && log.status !== 'FAILED'
+            && log.status !== 'CANCELLED'
+            && Boolean(log.tgtProject)
+            && log.tgtProject !== '—';
+
         const expTr = document.createElement('tr');
         expTr.className = 'expand-row';
-        expTr.style.background = 'rgba(10, 15, 26, 0.7)';
+        expTr.style.background = 'rgba(10, 15, 26, 0.6)';
 
-        let stateDetailsHtml = '';
-        if (log.prevState) {
-            let state = log.prevState;
+        let state = log.prevState;
+        if (state) {
             try {
                 state = await AuditLog.resolvePrevState(log.id, state);
             } catch (e) {
                 console.error("Failed to load backup data", e);
             }
-
-            if (state && typeof state === 'object') {
-                if (state.type === 'DATASTORE_COPY') {
-                    const items = state.backupData || [];
-                    const kindsLabel = Array.isArray(state.kinds) && state.kinds.length > 0
-                        ? state.kinds.join(', ')
-                        : (state.kind || 'all');
-
-                    const rows = items.map((item: any, idx: number) => {
-                        const isNew = item.action === 'delete' || item.action === 'CREATE' || item.action === 'CREATED';
-                        const actionBadge = isNew
-                            ? `<span class="badge text-[10px] font-semibold bg-green-500/15 text-green-400 border border-green-500/30">🟢 CREATED</span>`
-                            : `<span class="badge text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">🟡 UPDATED</span>`;
-
-                        const refInfo = state.entityDisplayNames?.[item.keyStr];
-                        const displayName = refInfo ? `${refInfo.value} (${refInfo.fieldName})` : '—';
-                        const prevStr = item.prevEntity ? JSON.stringify(item.prevEntity.properties || item.prevEntity, null, 2) : '—';
-                        const entityKind = item.prevEntity?.key?.path?.[item.prevEntity.key.path.length - 1]?.kind || state.kind || 'Entity';
-
-                        return `
-                            <tr>
-                                <td class="mono font-semibold" style="width: 35px; color:var(--muted)">#${idx + 1}</td>
-                                <td style="width: 130px;"><span class="badge font-mono text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">${Utils.escapeHtml(entityKind)}</span></td>
-                                <td class="mono font-semibold" style="color:var(--fg);">${Utils.escapeHtml(item.keyStr)}</td>
-                                <td style="color:#67e8f9;">${Utils.escapeHtml(displayName)}</td>
-                                <td style="width: 120px;">${actionBadge}</td>
-                                <td style="width: 110px; text-align:right;">
-                                    <button class="btn btn-s text-[10px] py-1 px-2 btn-view-entity-json" data-idx="${idx}">
-                                        <i class="fa-solid fa-code"></i> Snapshot
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr id="entity-json-row-${log.id}-${idx}" style="display:none; background:rgba(0,0,0,0.3)">
-                                <td colspan="6" class="p-3">
-                                    <div class="flex items-center justify-between mb-1 text-[10px] text-[var(--muted)]">
-                                        <span>PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
-                                        <button class="btn btn-s text-[9px] py-0.5 px-1.5 btn-copy-entity-json" data-json="${encodeURIComponent(prevStr)}">
-                                            <i class="fa-regular fa-copy"></i> Copy JSON
-                                        </button>
-                                    </div>
-                                    <pre style="padding: 8px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: #34d399; border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(prevStr)}</pre>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
-
-                    stateDetailsHtml = `
-                        <div class="mt-4 pt-3 border-t border-zinc-700/60">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold text-xs text-[var(--fg)]"><i class="fa-solid fa-layer-group text-cyan-400 mr-1"></i> Itemized Entity Mutations</span>
-                                    <span class="badge text-[10px] bg-zinc-800 text-zinc-300">Kind: ${Utils.escapeHtml(kindsLabel)}</span>
-                                    <span class="badge text-[10px] bg-zinc-800 text-zinc-300">${items.length} records</span>
-                                </div>
-                            </div>
-                            <div class="overflow-x-auto rounded-lg border border-zinc-700/60">
-                                <table class="audit-entity-table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>KIND</th>
-                                            <th>ENTITY KEY ID</th>
-                                            <th>DISPLAY / REFERENCE NAME</th>
-                                            <th>ACTION</th>
-                                            <th style="text-align:right;">PAYLOAD</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${items.length > 0 ? rows : '<tr><td colspan="6" class="p-4 text-center text-muted">No entity records in this batch.</td></tr>'}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    `;
-                } else if (state.type === 'QUERY_SYNC') {
-                    const rows = (state.backupData || []).map((item: any) => {
-                        const prevStr = item.prevQuery ? JSON.stringify(item.prevQuery, null, 2) : '—';
-                        const newStr = item.newQuery ? JSON.stringify(item.newQuery, null, 2) : '—';
-                        return `
-                            <div class="p-3 mb-2 rounded-lg border border-zinc-700/60" style="background:rgba(0,0,0,0.2)">
-                                <div class="font-semibold text-xs text-fg mb-2">Query: ${Utils.escapeHtml(item.displayName || item.name)} (${item.action})</div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div>
-                                        <div class="text-[10px] font-bold text-muted mb-1">PREVIOUS CONFIGURATION:</div>
-                                        <pre style="padding: 8px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: var(--ok); border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(prevStr)}</pre>
-                                    </div>
-                                    <div>
-                                        <div class="text-[10px] font-bold text-muted mb-1">NEW CONFIGURATION:</div>
-                                        <pre style="padding: 8px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: var(--ok); border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(newStr)}</pre>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                    stateDetailsHtml = `<div class="mt-4 pt-3 border-t border-zinc-700/60">${rows}</div>`;
-                } else if (state.type === 'BQ_SCHEMA_SYNC') {
-                    const rows = (state.backupData || []).map((item: any) => {
-                        const prevStr = item.prevSchema ? JSON.stringify(item.prevSchema, null, 2) : '—';
-                        return `
-                            <div class="p-3 mb-2 rounded-lg border border-zinc-700/60" style="background:rgba(0,0,0,0.2)">
-                                <div class="font-semibold text-xs text-fg mb-2">Table: ${Utils.escapeHtml(item.tablePath)} (${item.action})</div>
-                                <div>
-                                    <div class="text-[10px] font-bold text-muted mb-1">PREVIOUS SCHEMA:</div>
-                                    <pre style="padding: 8px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: var(--ok); border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(prevStr)}</pre>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                    stateDetailsHtml = `<div class="mt-4 pt-3 border-t border-zinc-700/60">${rows}</div>`;
-                }
-            }
         }
 
-        // Fallback: parse itemized records directly from details text for instant render
-        if (!stateDetailsHtml && log.details) {
-            const parsedItems = AuditLog.parseItemizedFromDetails(log.details);
-            if (parsedItems.length > 0) {
-                const rows = parsedItems.map((item: any, idx: number) => {
-                    const isNew = item.action === 'CREATED';
-                    const actionBadge = isNew
-                        ? `<span class="badge text-[10px] font-semibold bg-green-500/15 text-green-400 border border-green-500/30">🟢 CREATED</span>`
-                        : `<span class="badge text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">🟡 UPDATED</span>`;
+        const pipeline = AuditLog.parseAuditPipeline(log, state);
+        const timeInfo = AuditLog.formatAuditTime(log.timestamp);
+        const statusBadgeClass = log.status === 'SUCCESS' ? 'badge text-[10px] font-semibold bg-green-500/10 text-green-400 border border-green-500/30' : (log.status === 'FAILED' ? 'badge text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30' : 'badge text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30');
+        const totalCount = pipeline.writtenCount || pipeline.items.length || 0;
 
-                    return `
-                        <tr>
-                            <td class="mono font-semibold" style="width: 35px; color:var(--muted)">#${idx + 1}</td>
-                            <td style="width: 130px;"><span class="badge font-mono text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">${Utils.escapeHtml(item.kind)}</span></td>
-                            <td class="mono font-semibold" style="color:var(--fg);">${Utils.escapeHtml(item.keyStr)}</td>
-                            <td style="color:#67e8f9;">${Utils.escapeHtml(item.displayName)}</td>
-                            <td style="width: 120px;">${actionBadge}</td>
-                            <td style="width: 110px; text-align:right;">
-                                <button class="btn btn-s text-[10px] py-1 px-2 btn-view-entity-json" data-idx="${idx}">
-                                    <i class="fa-solid fa-code"></i> Snapshot
-                                </button>
-                            </td>
-                        </tr>
-                        <tr id="entity-json-row-${log.id}-${idx}" style="display:none; background:rgba(0,0,0,0.3)">
-                            <td colspan="6" class="p-3">
-                                <div class="flex items-center justify-between mb-1 text-[10px] text-[var(--muted)]">
-                                    <span>PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
-                                    <button class="btn btn-s text-[9px] py-0.5 px-1.5 btn-copy-entity-json" data-json="">
-                                        <i class="fa-regular fa-copy"></i> Copy JSON
-                                    </button>
-                                </div>
-                                <pre style="padding: 8px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: #34d399; border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${isNew ? 'No pre-mutation target snapshot recorded (entity was newly created).' : 'Snapshot preserved in target audit log.'}</pre>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-
-                stateDetailsHtml = `
-                    <div class="mt-4 pt-3 border-t border-zinc-700/60">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-xs text-[var(--fg)]"><i class="fa-solid fa-layer-group text-cyan-400 mr-1"></i> Itemized Entity Mutations</span>
-                                <span class="badge text-[10px] bg-zinc-800 text-zinc-300">${parsedItems.length} records</span>
+        let itemsSectionHtml = '';
+        if (state && state.type === 'QUERY_SYNC') {
+            const qRows = (state.backupData || []).map((item: any) => {
+                const prevStr = item.prevQuery ? JSON.stringify(item.prevQuery, null, 2) : '—';
+                const newStr = item.newQuery ? JSON.stringify(item.newQuery, null, 2) : '—';
+                return `
+                    <div class="p-3 mb-2 rounded-lg border border-zinc-700/60" style="background:rgba(0,0,0,0.3)">
+                        <div class="font-semibold text-xs text-[var(--fg)] mb-2">Query: ${Utils.escapeHtml(item.displayName || item.name)} (${Utils.escapeHtml(item.action)})</div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <div class="text-[10px] font-bold text-[var(--muted)] mb-1 uppercase tracking-wider">PREVIOUS CONFIGURATION:</div>
+                                <pre style="padding: 8px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: var(--ok); border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(prevStr)}</pre>
                             </div>
-                        </div>
-                        <div class="overflow-x-auto rounded-lg border border-zinc-700/60">
-                            <table class="audit-entity-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 35px;">#</th>
-                                        <th style="width: 130px;">Kind</th>
-                                        <th>Entity Key ID</th>
-                                        <th>Display / Reference Name</th>
-                                        <th style="width: 120px;">Action</th>
-                                        <th style="width: 110px; text-align:right;">Snapshot</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${rows}
-                                </tbody>
-                            </table>
+                            <div>
+                                <div class="text-[10px] font-bold text-[var(--muted)] mb-1 uppercase tracking-wider">NEW CONFIGURATION:</div>
+                                <pre style="padding: 8px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: var(--bg); color: var(--ok); border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(newStr)}</pre>
+                            </div>
                         </div>
                     </div>
                 `;
-            }
+            }).join('');
+            itemsSectionHtml = `
+                <div class="mb-3">
+                    <div class="font-bold text-xs text-[var(--fg)] mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i> Scheduled Query Config Changes
+                    </div>
+                    ${qRows}
+                </div>
+            `;
+        } else if (pipeline.items.length > 0) {
+            const entityRows = pipeline.items.map((item: any) => {
+                const isNew = item.action === 'CREATED';
+                const actionBadge = isNew
+                    ? `<span class="badge text-[10px] font-semibold bg-green-500/15 text-green-400 border border-green-500/30">🟢 CREATED</span>`
+                    : (item.action === 'DELETED'
+                        ? `<span class="badge text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">🔴 DELETED</span>`
+                        : `<span class="badge text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">🟡 UPDATED</span>`);
+
+                return `
+                    <tr>
+                        <td class="mono font-semibold" style="width: 35px; color:var(--muted)">#${item.idx + 1}</td>
+                        <td style="width: 120px;"><span class="badge font-mono text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/25">${Utils.escapeHtml(item.kind)}</span></td>
+                        <td>
+                            <span class="mono font-semibold audit-clickable-key cursor-pointer" data-key="${Utils.escapeHtml(item.keyStr)}" title="Click to copy key" style="color:var(--fg);">
+                                ${Utils.escapeHtml(item.keyStr)} <i class="fa-regular fa-copy text-[10px] text-[var(--muted)] ml-1"></i>
+                            </span>
+                        </td>
+                        <td style="color:#67e8f9;">${Utils.escapeHtml(item.displayName)}</td>
+                        <td style="width: 110px;">${actionBadge}</td>
+                        <td style="width: 95px; text-align:right;">
+                            <button class="btn btn-s text-[10px] py-1 px-2 btn-view-entity-json whitespace-nowrap" data-idx="${item.idx}">
+                                <i class="fa-solid fa-code"></i> Snapshot
+                            </button>
+                        </td>
+                    </tr>
+                    <tr id="entity-json-row-${log.id}-${item.idx}" style="display:none; background:rgba(0,0,0,0.3)">
+                        <td colspan="6" class="p-3">
+                            <div class="flex items-center justify-between mb-1.5 text-[10px] text-[var(--muted)] font-semibold uppercase tracking-wider">
+                                <span>PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
+                                <button class="btn btn-s text-[9px] py-0.5 px-2 btn-copy-entity-json" data-json="${encodeURIComponent(item.prevStr)}">
+                                    <i class="fa-regular fa-copy"></i> Copy JSON
+                                </button>
+                            </div>
+                            <pre style="padding: 8px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 150px; overflow-y: auto; background: var(--bg); color: #34d399; border: 1px solid var(--brd); white-space: pre-wrap; margin:0">${Utils.escapeHtml(item.prevStr || (isNew ? 'No pre-mutation target snapshot recorded (entity was newly created).' : 'Snapshot preserved in target audit log.'))}</pre>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            itemsSectionHtml = `
+                <div class="mb-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-xs text-[var(--fg)]"><i class="fa-solid fa-layer-group text-cyan-400 mr-1"></i> Itemized Entity Mutations</span>
+                            <span class="badge text-[10px] bg-zinc-800 text-zinc-300">${pipeline.items.length} records</span>
+                        </div>
+                    </div>
+                    <div class="audit-entity-table-wrapper">
+                        <table class="audit-entity-table" style="width:100%; min-width:620px;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 35px;">#</th>
+                                    <th style="width: 120px;">Kind</th>
+                                    <th>Entity Key ID</th>
+                                    <th>Display / Reference Name</th>
+                                    <th style="width: 110px;">Action</th>
+                                    <th style="width: 95px; text-align:right;">Snapshot</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${entityRows}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
         }
 
-        // Full expanded details block
         expTr.innerHTML = `
-            <td colspan="8" class="px-6 py-4" style="background:var(--bg2)">
-                <div class="flex flex-col gap-3 text-left">
-                    <!-- Top Telemetry Row -->
-                    <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-zinc-700/60" style="background:rgba(0,0,0,0.2)">
+            <td colspan="8" class="p-3" style="background:var(--bg2); max-width:100%; box-sizing:border-box;">
+                <div class="audit-expanded-card">
+                    <!-- 1. Top Telemetry & Action Bar (Zero clipping) -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-zinc-700/60">
                         <div class="flex flex-wrap items-center gap-4">
-                            <div>
-                                <span class="text-[10px] font-bold uppercase text-[var(--muted)] block">LOG DOCUMENT ID</span>
-                                <span class="mono text-xs font-semibold text-cyan-400">${log.id}</span>
+                            <div class="flex items-center gap-1.5">
+                                <div>
+                                    <span class="text-[9px] font-bold uppercase text-[var(--muted)] tracking-wider block">LOG ID</span>
+                                    <span class="mono text-xs font-semibold text-cyan-400">${Utils.escapeHtml(log.id)}</span>
+                                </div>
+                                <button class="btn-copy-log-id text-[var(--muted)] hover:text-cyan-400 cursor-pointer p-1 text-[11px]" data-id="${log.id}" title="Copy Log ID">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
                             </div>
                             <div>
-                                <span class="text-[10px] font-bold uppercase text-[var(--muted)] block">TIMESTAMP</span>
-                                <span class="mono text-xs text-[var(--fg)]">${new Date(log.timestamp).toISOString()}</span>
+                                <span class="text-[9px] font-bold uppercase text-[var(--muted)] tracking-wider block">TIMESTAMP</span>
+                                <span class="text-xs text-[var(--fg)]" title="${new Date(log.timestamp).toISOString()}">
+                                    ${Utils.escapeHtml(timeInfo.formatted)} <span class="text-[var(--muted)] text-[10px]">(${Utils.escapeHtml(timeInfo.ago)})</span>
+                                </span>
                             </div>
                             <div>
-                                <span class="text-[10px] font-bold uppercase text-[var(--muted)] block">AUTHENTICATED OPERATOR</span>
-                                <span class="text-xs font-semibold text-[var(--fg)]">${Utils.escapeHtml(log.user)}</span>
+                                <span class="text-[9px] font-bold uppercase text-[var(--muted)] tracking-wider block">OPERATOR</span>
+                                <span class="text-xs font-semibold text-[var(--fg)] flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-user text-[var(--muted)]"></i> ${Utils.escapeHtml(log.user || '—')}
+                                </span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button class="btn btn-s text-xs btn-copy-log-id" data-id="${log.id}">
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button class="btn btn-s text-xs btn-copy-log-id whitespace-nowrap" data-id="${log.id}">
                                 <i class="fa-regular fa-copy mr-1"></i> Copy Log ID
                             </button>
+                            ${isReversible ? `
+                            <button class="btn btn-s text-xs btn-revert-from-expand whitespace-nowrap" data-id="${log.id}" style="color:#fbbf24; border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.1); font-weight:700;">
+                                <i class="fa-solid fa-rotate-left mr-1"></i> Revert Operation
+                            </button>` : ''}
                         </div>
                     </div>
 
-                    <!-- Details description card -->
-                    <div class="p-3 rounded-lg border border-zinc-700/60" style="background:rgba(0,0,0,0.2)">
-                        <span class="text-[10px] font-bold uppercase text-[var(--muted)] block mb-1">EXECUTIVE SUMMARY</span>
-                        <div class="text-xs leading-relaxed text-[var(--fg)] whitespace-pre-wrap">${Utils.escapeHtml(log.details)}</div>
+                    <!-- 2. Concept 3: Modern Interactive Node Flow -->
+                    <div class="audit-node-grid">
+                        <!-- Source Node -->
+                        <div class="audit-node-box">
+                            <div>
+                                <div class="audit-node-header">
+                                    <span><i class="fa-solid fa-box text-blue-400 mr-1"></i> Source Project</span>
+                                    <span class="badge text-[9px] bg-zinc-800 text-zinc-300 font-mono">db: ${Utils.escapeHtml(pipeline.srcDb)}</span>
+                                </div>
+                                <div class="mono font-semibold text-xs text-[var(--fg)] audit-clickable-key cursor-pointer break-all" data-key="${Utils.escapeHtml(pipeline.srcProject || '')}" title="Click to copy project ID">
+                                    ${Utils.escapeHtml(pipeline.srcProject || '—')}
+                                    ${pipeline.srcProject ? '<i class="fa-regular fa-copy text-[10px] text-[var(--muted)] ml-1"></i>' : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Transform Node -->
+                        <div class="audit-node-box">
+                            <div>
+                                <div class="audit-node-header">
+                                    <span><i class="fa-solid fa-gear text-cyan-400 mr-1"></i> Transformation</span>
+                                    <span class="badge text-[9px] ${pipeline.rules.length > 0 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-zinc-800 text-zinc-300'}">
+                                        ${pipeline.rules.length} Rule(s)
+                                    </span>
+                                </div>
+                                ${pipeline.rules.length > 0 ? `
+                                    <div class="text-xs text-[var(--fg)]">
+                                        ${pipeline.rules.map((r: any) => `
+                                            <div class="mt-1">
+                                                <span class="text-[var(--muted)] text-[10px]">Scope [${Utils.escapeHtml(r.field)}]:</span>
+                                                <div class="mono text-[10px] mt-0.5 break-all">
+                                                    <span class="text-rose-400 line-through">${Utils.escapeHtml(r.from)}</span>
+                                                    <i class="fa-solid fa-arrow-right text-[9px] text-[var(--muted)] mx-1"></i>
+                                                    <span class="text-emerald-400 font-semibold">${Utils.escapeHtml(r.to)}</span>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : `
+                                    <div class="text-xs text-[var(--muted)] mt-1">Direct Pass-Through (No string replacements applied)</div>
+                                `}
+                            </div>
+                        </div>
+
+                        <!-- Target Node -->
+                        <div class="audit-node-box">
+                            <div>
+                                <div class="audit-node-header">
+                                    <span><i class="fa-solid fa-bullseye text-emerald-400 mr-1"></i> Target Project</span>
+                                    <span class="badge text-[9px] bg-zinc-800 text-zinc-300 font-mono">db: ${Utils.escapeHtml(pipeline.tgtDb)}</span>
+                                </div>
+                                <div class="mono font-semibold text-xs text-[var(--fg)] audit-clickable-key cursor-pointer break-all" data-key="${Utils.escapeHtml(pipeline.tgtProject || '')}" title="Click to copy project ID">
+                                    ${Utils.escapeHtml(pipeline.tgtProject || '—')}
+                                    ${pipeline.tgtProject && pipeline.tgtProject !== '—' ? '<i class="fa-regular fa-copy text-[10px] text-[var(--muted)] ml-1"></i>' : ''}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Itemized state mutations -->
-                    ${stateDetailsHtml}
+                    <!-- 3. Execution Result Banner -->
+                    <div class="audit-banner-bar">
+                        <div class="flex flex-wrap items-center gap-2.5">
+                            <span class="${statusBadgeClass}">● ${Utils.escapeHtml(log.status)}</span>
+                            <span class="text-xs font-semibold text-[var(--fg)]">${Utils.escapeHtml(pipeline.headline)}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${pipeline.kinds.length > 0 ? `<span class="badge text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/25 font-mono">Kind: ${Utils.escapeHtml(pipeline.kinds.join(', '))}</span>` : ''}
+                            <span class="badge text-[10px] bg-zinc-800 text-zinc-300">${totalCount} Processed</span>
+                        </div>
+                    </div>
+
+                    <!-- 4. Itemized Mutations Table -->
+                    ${itemsSectionHtml}
+
+                    <!-- 5. Collapsible Raw Audit Log Details -->
+                    <details class="mt-3 rounded-lg border border-zinc-700/60" style="background:rgba(0,0,0,0.25)">
+                        <summary class="p-2.5 text-[10px] font-bold uppercase text-[var(--muted)] tracking-wider cursor-pointer select-none">
+                            <i class="fa-solid fa-terminal mr-1"></i> View Raw Audit Log Details
+                        </summary>
+                        <div class="p-3 text-xs leading-relaxed text-[var(--muted)] whitespace-pre-wrap border-t border-zinc-700/60" style="background:rgba(0,0,0,0.3)">${Utils.escapeHtml(log.details)}</div>
+                    </details>
                 </div>
             </td>
         `;
 
-        // Wire up copy log id and snapshot buttons inside the expanded row
+        // Wire up event listeners
         expTr.querySelectorAll('.btn-copy-log-id').forEach(btn => {
             (btn as HTMLElement).onclick = (e) => {
                 e.stopPropagation();
@@ -932,6 +1136,26 @@ export const AuditLog = {
                 }).catch(() => {
                     Utils.toast('Could not copy to clipboard', 'err');
                 });
+            };
+        });
+
+        expTr.querySelectorAll('.btn-revert-from-expand').forEach(btn => {
+            (btn as HTMLElement).onclick = (e) => {
+                e.stopPropagation();
+                const id = (btn as HTMLElement).dataset.id || '';
+                if (id) AuditLog.revertLog(id);
+            };
+        });
+
+        expTr.querySelectorAll('.audit-clickable-key').forEach(el => {
+            (el as HTMLElement).onclick = (e) => {
+                e.stopPropagation();
+                const key = (el as HTMLElement).dataset.key || '';
+                if (key) {
+                    navigator.clipboard.writeText(key).then(() => {
+                        Utils.toast(`Copied: ${key}`, 'ok');
+                    });
+                }
             };
         });
 

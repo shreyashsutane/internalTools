@@ -440,6 +440,77 @@
             font-size: 12px;
         }
 
+        /* Concept 3: Modern Interactive Node Flow & Card View */
+        .audit-expanded-card {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            padding: 16px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--brd2);
+            background: rgba(13, 20, 30, 0.98);
+            font-size: 12px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5);
+            text-align: left;
+        }
+        .audit-node-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            margin-bottom: 14px;
+            align-items: stretch;
+        }
+        .audit-node-box {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--brd2);
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: border-color 0.2s;
+        }
+        .audit-node-box:hover {
+            border-color: rgba(247, 148, 29, 0.35);
+        }
+        .audit-node-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .audit-banner-bar {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--brd2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .audit-entity-table-wrapper {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--brd2);
+            margin-bottom: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .admin-clickable-key:hover {
+            color: var(--accent) !important;
+            text-decoration: underline;
+        }
+
+
         .modal-overlay {
             display: none;
             position: fixed;
@@ -1282,6 +1353,159 @@
             return JSON.parse(text);
         }
 
+        function formatAuditTime(ts) {
+            if (!ts) return { formatted: '—', ago: '—' };
+            const date = new Date(ts);
+            if (isNaN(date.getTime())) return { formatted: ts, ago: '—' };
+            const formatted = date.toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            const diffSec = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+            let ago = 'just now';
+            if (diffSec >= 86400) {
+                ago = `${Math.floor(diffSec / 86400)}d ago`;
+            } else if (diffSec >= 3600) {
+                ago = `${Math.floor(diffSec / 3600)}h ago`;
+            } else if (diffSec >= 60) {
+                ago = `${Math.floor(diffSec / 60)}m ago`;
+            }
+            return { formatted, ago };
+        }
+
+        function parseAuditPipeline(log, state) {
+            const details = log.details || '';
+            
+            // Source
+            let srcProject = log.srcProject && log.srcProject !== '—' ? log.srcProject : '';
+            let srcDb = '(default)';
+            const srcMatch = details.match(/Source:\s*([^\s(]+)(?:\s*\(database:\s*(\([^)]+\)|[^)]+)\))?/i);
+            if (srcMatch) {
+                if (!srcProject) srcProject = srcMatch[1];
+                if (srcMatch[2]) srcDb = srcMatch[2];
+            }
+            if (state?.srcDb) srcDb = state.srcDb;
+
+            // Target
+            let tgtProject = log.tgtProject && log.tgtProject !== '—' ? log.tgtProject : '';
+            let tgtDb = '(default)';
+            const tgtMatch = details.match(/Target:\s*([^\s(]+)(?:\s*\(database:\s*(\([^)]+\)|[^)]+)\))?/i);
+            if (tgtMatch) {
+                if (!tgtProject) tgtProject = tgtMatch[1];
+                if (tgtMatch[2]) tgtDb = tgtMatch[2];
+            }
+            if (state?.tgtDb || state?.dbId) tgtDb = state.tgtDb || state.dbId;
+
+            // Rules
+            const rules = [];
+            const ruleRegex = /-\s*Rule\s*(\d+)\s*\[field\s*"([^"]+)"\]:\s*"([^"]+)"\s*->\s*"([^"]+)"/g;
+            let rMatch;
+            while ((rMatch = ruleRegex.exec(details)) !== null) {
+                rules.push({
+                    ruleNum: rMatch[1],
+                    field: rMatch[2],
+                    from: rMatch[3],
+                    to: rMatch[4]
+                });
+            }
+
+            // Headline & status
+            const firstLine = (details.split('\n')[0] || '').trim();
+            const headline = firstLine || log.operation || 'Audit Operation';
+
+            let writtenCount = 0;
+            let failedCount = 0;
+            const statusMatch = details.match(/Status:\s*(\d+)\s*entities written successfully\s*\((\d+)\s*failed\)/i);
+            if (statusMatch) {
+                writtenCount = parseInt(statusMatch[1], 10);
+                failedCount = parseInt(statusMatch[2], 10);
+            }
+
+            let kinds = [];
+            const kindsMatch = details.match(/across kinds:\s*([^.\n]+)/i);
+            if (kindsMatch) {
+                kinds = kindsMatch[1].split(',').map(s => s.trim());
+            } else if (Array.isArray(state?.kinds)) {
+                kinds = state.kinds;
+            } else if (state?.kind) {
+                kinds = [state.kind];
+            }
+
+            // Items
+            let items = [];
+            if (state && Array.isArray(state.backupData) && state.backupData.length > 0) {
+                items = state.backupData.map((bItem, idx) => {
+                    const isNew = bItem.action === 'delete' || bItem.action === 'CREATE' || bItem.action === 'CREATED';
+                    const refInfo = state.entityDisplayNames?.[bItem.keyStr];
+                    const displayName = refInfo ? `${refInfo.value} (${refInfo.fieldName})` : (bItem.displayName || '—');
+                    const prevStr = bItem.prevEntity ? JSON.stringify(bItem.prevEntity.properties || bItem.prevEntity, null, 2) : '';
+                    const entityKind = bItem.prevEntity?.key?.path?.[bItem.prevEntity.key.path.length - 1]?.kind || state.kind || 'Entity';
+                    return {
+                        idx,
+                        keyStr: bItem.keyStr,
+                        kind: entityKind,
+                        displayName,
+                        action: isNew ? 'CREATED' : 'UPDATED',
+                        prevStr,
+                        hasPreState: Boolean(bItem.prevEntity)
+                    };
+                });
+            } else {
+                const bulletRegex = /^[•\-*]\s*([^:\s]+):([^\s(]+)(?:\s*\(([^)]+)\))?\s*\[([A-Z]+)\]/gm;
+                let bMatch;
+                let idx = 0;
+                while ((bMatch = bulletRegex.exec(details)) !== null) {
+                    items.push({
+                        idx: idx++,
+                        kind: bMatch[1],
+                        keyStr: `${bMatch[1]}:${bMatch[2]}`,
+                        displayName: bMatch[3] || '—',
+                        action: bMatch[4] || 'UPDATED',
+                        prevStr: '',
+                        hasPreState: false
+                    });
+                }
+            }
+
+            // Single entity edit fallback
+            if (items.length === 0 && log.operation === 'DATASTORE_EDIT') {
+                const editMatch = details.match(/edited entity properties for\s*([^:\s]+):([^\s.]+)/i);
+                if (editMatch) {
+                    items.push({
+                        idx: 0,
+                        kind: editMatch[1],
+                        keyStr: `${editMatch[1]}:${editMatch[2]}`,
+                        displayName: 'Inline Edited Property',
+                        action: 'UPDATED',
+                        prevStr: '',
+                        hasPreState: false
+                    });
+                    if (kinds.length === 0) kinds.push(editMatch[1]);
+                }
+            }
+
+            if (writtenCount === 0 && items.length > 0) {
+                writtenCount = items.length;
+            }
+
+            return {
+                srcProject,
+                srcDb,
+                tgtProject,
+                tgtDb,
+                rules,
+                headline,
+                writtenCount,
+                failedCount,
+                kinds,
+                items
+            };
+        }
+
         async function toggleLogExpand(tr, logId) {
             const existingNext = tr.nextElementSibling;
             if (existingNext && existingNext.classList.contains('expand-row')) {
@@ -1302,11 +1526,10 @@
 
             const expTr = document.createElement('tr');
             expTr.className = 'expand-row';
-            expTr.style.background = 'rgba(13, 20, 30, 0.4)';
+            expTr.style.background = 'rgba(10, 15, 26, 0.6)';
 
-            let stateDetailsHtml = '';
+            let state;
             if (log.prevState) {
-                let state;
                 try {
                     state = typeof log.prevState === 'string' ? JSON.parse(log.prevState) : log.prevState;
                 } catch(e) {
@@ -1320,224 +1543,233 @@
                         console.error("Failed to decompress backup state", e);
                     }
                 }
-
-                if (state && typeof state === 'object') {
-                    if (state.type === 'DATASTORE_COPY') {
-                        const items = state.backupData || [];
-                        const kindsLabel = Array.isArray(state.kinds) && state.kinds.length > 0
-                            ? state.kinds.join(', ')
-                            : (state.kind || 'all');
-
-                        const rows = items.map((item, idx) => {
-                            const isNew = item.action === 'delete' || item.action === 'CREATE' || item.action === 'CREATED';
-                            const actionBadge = isNew
-                                ? `<span class="badge badge-success" style="font-size:10px;">🟢 CREATED</span>`
-                                : `<span class="badge badge-warn" style="font-size:10px;">🟡 UPDATED</span>`;
-
-                            const refInfo = state.entityDisplayNames?.[item.keyStr];
-                            const displayName = refInfo ? `${refInfo.value} (${refInfo.fieldName})` : '—';
-                            const prevStr = item.prevEntity ? JSON.stringify(item.prevEntity.properties || item.prevEntity, null, 2) : '—';
-                            const entityKind = item.prevEntity?.key?.path?.[item.prevEntity.key.path.length - 1]?.kind || state.kind || 'Entity';
-
-                            return `
-                                <tr>
-                                    <td class="mono" style="color:var(--muted); font-size:10px;">#${idx + 1}</td>
-                                    <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(entityKind)}</span></td>
-                                    <td class="mono" style="font-weight:600; color:var(--fg);">${escapeHtml(item.keyStr)}</td>
-                                    <td style="color:#60a5fa;">${escapeHtml(displayName)}</td>
-                                    <td>${actionBadge}</td>
-                                    <td style="text-align:right;">
-                                        <button class="btn-sec admin-btn-view-snapshot" style="padding:2px 8px; font-size:10px;" data-idx="${idx}">
-                                            <i class="bi bi-code-slash"></i> Snapshot
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr id="admin-entity-json-${log.id}-${idx}" style="display:none; background:rgba(0,0,0,0.3)">
-                                    <td colspan="6" style="padding:10px 14px;">
-                                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; font-size:10px; color:var(--muted);">
-                                            <span>PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
-                                            <button class="btn-sec admin-btn-copy-json" style="padding:2px 6px; font-size:9px;" data-json="${encodeURIComponent(prevStr)}">
-                                                <i class="bi bi-clipboard"></i> Copy JSON
-                                            </button>
-                                        </div>
-                                        <pre style="padding:8px 10px; border-radius:6px; font-family:'Roboto Mono', monospace; font-size:10px; max-height:140px; overflow-y:auto; background:rgba(0,0,0,0.4); color:#34d399; border:1px solid var(--brd2); white-space:pre-wrap; margin:0;">${escapeHtml(prevStr)}</pre>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('');
-
-                        stateDetailsHtml = `
-                            <div style="margin-top: 15px; border-top: 1px solid var(--brd2); padding-top: 12px;">
-                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                                    <div style="font-weight:600; font-size:12px; color:var(--accent); display:flex; align-items:center; gap:8px;">
-                                        <i class="bi bi-layers-fill"></i> Itemized Entity Mutations
-                                        <span class="badge badge-op" style="font-size:10px;">Kind: ${escapeHtml(kindsLabel)}</span>
-                                        <span class="badge" style="background:rgba(255,255,255,0.06); font-size:10px;">${items.length} records</span>
-                                    </div>
-                                </div>
-                                <div style="overflow-x:auto; border-radius:8px; border:1px solid var(--brd2);">
-                                    <table class="audit-entity-table">
-                                        <thead>
-                                            <tr>
-                                                <th style="width:35px">#</th>
-                                                <th style="width:120px">KIND</th>
-                                                <th>ENTITY KEY ID</th>
-                                                <th>DISPLAY / REFERENCE NAME</th>
-                                                <th style="width:110px">ACTION</th>
-                                                <th style="width:100px; text-align:right;">PAYLOAD</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${items.length > 0 ? rows : '<tr><td colspan="6" style="padding:12px; text-align:center; color:var(--muted)">No entity records in this batch.</td></tr>'}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        `;
-                    } else if (state.type === 'QUERY_SYNC') {
-                        const rows = (state.backupData || []).map(item => {
-                            const prevStr = item.prevQuery ? JSON.stringify(item.prevQuery, null, 2) : '—';
-                            const newStr = item.newQuery ? JSON.stringify(item.newQuery, null, 2) : '—';
-                            return `
-                                <div style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
-                                    <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Query: ${escapeHtml(item.displayName || item.name)} (${item.action})</div>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                                        <div>
-                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS CONFIG:</div>
-                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
-                                        </div>
-                                        <div>
-                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">NEW CONFIG:</div>
-                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                        stateDetailsHtml += `<div>${rows}</div>`;
-                    } else if (state.type === 'BQ_SCHEMA_SYNC') {
-                        const rows = (state.backupData || []).map(item => {
-                            const prevStr = item.prevSchema ? JSON.stringify(item.prevSchema, null, 2) : '—';
-                            return `
-                                <div style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
-                                    <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Table: ${escapeHtml(item.tablePath)} (${item.action})</div>
-                                    <div>
-                                        <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS SCHEMA:</div>
-                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                        stateDetailsHtml += `<div>${rows}</div>`;
-                    }
-                }
             }
 
-            // Fallback: parse itemized entity records from details text for instant render without large downloads
-            if (!stateDetailsHtml && log.details) {
-                const parsedItems = parseItemizedRecordsFromDetails(log.details);
-                if (parsedItems.length > 0) {
-                    const rows = parsedItems.map((item, idx) => {
-                        const isNew = item.action === 'CREATED';
-                        const actionBadge = isNew
-                            ? `<span class="badge badge-success" style="font-size:10px;">🟢 CREATED</span>`
-                            : `<span class="badge badge-warn" style="font-size:10px;">🟡 UPDATED</span>`;
+            const pipeline = parseAuditPipeline(log, state);
+            const timeInfo = formatAuditTime(log.timestamp);
+            const statusClass = log.status === 'SUCCESS' ? 'badge-success' : (log.status === 'FAILED' ? 'badge-failed' : 'badge-warn');
+            const totalCount = pipeline.writtenCount || pipeline.items.length || 0;
 
-                        return `
-                            <tr>
-                                <td class="mono" style="color:var(--muted); font-size:10px;">#${idx + 1}</td>
-                                <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(item.kind)}</span></td>
-                                <td class="mono" style="font-weight:600; color:var(--fg);">${escapeHtml(item.keyStr)}</td>
-                                <td style="color:#60a5fa;">${escapeHtml(item.displayName)}</td>
-                                <td>${actionBadge}</td>
-                                <td style="text-align:right;">
-                                    <button class="btn-sec admin-btn-view-snapshot" style="padding:2px 8px; font-size:10px;" data-idx="${idx}" data-key="${escapeHtml(item.keyStr)}">
-                                        <i class="bi bi-code-slash"></i> Snapshot
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr id="admin-entity-json-${log.id}-${idx}" style="display:none; background:rgba(0,0,0,0.3)">
-                                <td colspan="6" style="padding:10px 14px;">
-                                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; font-size:10px; color:var(--muted);">
-                                        <span>PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
-                                        <button class="btn-sec admin-btn-copy-json" style="padding:2px 6px; font-size:9px;" data-json="">
-                                            <i class="bi bi-clipboard"></i> Copy JSON
-                                        </button>
-                                    </div>
-                                    <pre style="padding:8px 10px; border-radius:6px; font-family:'Roboto Mono', monospace; font-size:10px; max-height:140px; overflow-y:auto; background:rgba(0,0,0,0.4); color:#34d399; border:1px solid var(--brd2); white-space:pre-wrap; margin:0;">${isNew ? 'No pre-mutation target snapshot recorded (entity was newly created).' : 'Click to inspect target pre-mutation snapshot from database.'}</pre>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
-
-                    stateDetailsHtml = `
-                        <div style="margin-top: 15px; border-top: 1px solid var(--brd2); padding-top: 12px;">
-                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                                <div style="font-weight:600; font-size:12px; color:var(--accent); display:flex; align-items:center; gap:8px;">
-                                    <i class="bi bi-layers-fill"></i> Itemized Entity Mutations
-                                    <span class="badge" style="background:rgba(255,255,255,0.06); font-size:10px;">${parsedItems.length} records</span>
+            // Build itemized entities table or specific diff view
+            let itemsSectionHtml = '';
+            if (state && state.type === 'QUERY_SYNC') {
+                const qRows = (state.backupData || []).map(item => {
+                    const prevStr = item.prevQuery ? JSON.stringify(item.prevQuery, null, 2) : '—';
+                    const newStr = item.newQuery ? JSON.stringify(item.newQuery, null, 2) : '—';
+                    return `
+                        <div style="margin-bottom: 12px; border: 1px solid var(--brd2); border-radius: 8px; padding: 12px; background: rgba(0,0,0,0.3);">
+                            <div style="font-weight: 600; font-size: 12px; color: var(--fg); margin-bottom: 8px;">Query: ${escapeHtml(item.displayName || item.name)} (${escapeHtml(item.action)})</div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+                                <div>
+                                    <div style="font-size: 10px; font-weight:700; color: var(--muted); margin-bottom: 4px;">PREVIOUS CONFIG:</div>
+                                    <pre style="padding: 8px 10px; border-radius: 6px; font-family: 'Roboto Mono', monospace; font-size: 10px; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.4); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
                                 </div>
-                            </div>
-                            <div style="overflow-x:auto; border-radius:8px; border:1px solid var(--brd2);">
-                                <table class="audit-entity-table">
-                                    <thead>
-                                        <tr>
-                                            <th style="width:35px">#</th>
-                                            <th style="width:120px">KIND</th>
-                                            <th>ENTITY KEY ID</th>
-                                            <th>DISPLAY / REFERENCE NAME</th>
-                                            <th style="width:110px">ACTION</th>
-                                            <th style="width:100px; text-align:right;">PAYLOAD</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${rows}
-                                    </tbody>
-                                </table>
+                                <div>
+                                    <div style="font-size: 10px; font-weight:700; color: var(--muted); margin-bottom: 4px;">NEW CONFIG:</div>
+                                    <pre style="padding: 8px 10px; border-radius: 6px; font-family: 'Roboto Mono', monospace; font-size: 10px; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.4); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
+                                </div>
                             </div>
                         </div>
                     `;
-                }
+                }).join('');
+                itemsSectionHtml = `
+                    <div style="margin-bottom: 14px;">
+                        <div style="font-weight: 700; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                            <i class="bi bi-clock-history"></i> Scheduled Query Config Changes
+                        </div>
+                        ${qRows}
+                    </div>
+                `;
+            } else if (pipeline.items.length > 0) {
+                const entityRows = pipeline.items.map((item) => {
+                    const isNew = item.action === 'CREATED';
+                    const actionBadge = isNew
+                        ? `<span class="badge badge-success" style="font-size:10px;">🟢 CREATED</span>`
+                        : (item.action === 'DELETED'
+                            ? `<span class="badge badge-failed" style="font-size:10px;">🔴 DELETED</span>`
+                            : `<span class="badge badge-warn" style="font-size:10px;">🟡 UPDATED</span>`);
+
+                    return `
+                        <tr>
+                            <td class="mono" style="color:var(--muted); font-size:10px;">#${item.idx + 1}</td>
+                            <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(item.kind)}</span></td>
+                            <td>
+                                <span class="mono admin-clickable-key" data-key="${escapeHtml(item.keyStr)}" title="Click to copy entity key" style="font-weight:600; color:var(--fg); cursor:pointer;">
+                                    ${escapeHtml(item.keyStr)} <i class="bi bi-clipboard" style="font-size:10px; color:var(--muted); margin-left:4px;"></i>
+                                </span>
+                            </td>
+                            <td style="color:#60a5fa; font-weight:500;">${escapeHtml(item.displayName)}</td>
+                            <td>${actionBadge}</td>
+                            <td style="text-align:right;">
+                                <button class="btn-sec admin-btn-view-snapshot" style="padding:2px 8px; font-size:10px; white-space:nowrap;" data-idx="${item.idx}" data-key="${escapeHtml(item.keyStr)}">
+                                    <i class="bi bi-code-slash"></i> Snapshot
+                                </button>
+                            </td>
+                        </tr>
+                        <tr id="admin-entity-json-${log.id}-${item.idx}" style="display:none; background:rgba(0,0,0,0.35);">
+                            <td colspan="6" style="padding:10px 14px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-size:10px; color:var(--muted);">
+                                    <span style="font-weight:700; letter-spacing:0.5px;">PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
+                                    <button class="btn-sec admin-btn-copy-json" style="padding:2px 8px; font-size:9px;" data-json="${encodeURIComponent(item.prevStr)}">
+                                        <i class="bi bi-clipboard"></i> Copy JSON
+                                    </button>
+                                </div>
+                                <pre style="padding:8px 10px; border-radius:6px; font-family:'Roboto Mono', monospace; font-size:10px; max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.5); color:#34d399; border:1px solid var(--brd2); white-space:pre-wrap; margin:0;">${escapeHtml(item.prevStr || (isNew ? 'No pre-mutation target snapshot recorded (entity was newly created).' : 'Click to inspect target pre-mutation snapshot from database.'))}</pre>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                itemsSectionHtml = `
+                    <div style="margin-bottom: 12px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                            <div style="font-weight:700; font-size:11px; color:var(--accent); display:flex; align-items:center; gap:8px; text-transform:uppercase; letter-spacing:0.5px;">
+                                <i class="bi bi-layers-fill"></i> Itemized Entity Mutations
+                                <span class="badge" style="background:rgba(255,255,255,0.06); font-size:9px;">${pipeline.items.length} records</span>
+                            </div>
+                        </div>
+                        <div class="audit-entity-table-wrapper">
+                            <table class="audit-entity-table" style="width:100%; min-width:620px;">
+                                <thead>
+                                    <tr>
+                                        <th style="width:35px">#</th>
+                                        <th style="width:115px">KIND</th>
+                                        <th>ENTITY KEY ID</th>
+                                        <th>DISPLAY / REFERENCE NAME</th>
+                                        <th style="width:110px">ACTION</th>
+                                        <th style="width:95px; text-align:right;">PAYLOAD</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${entityRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
             }
 
             expTr.innerHTML = `
-                <td colspan="7" style="padding: 15px 20px; background: rgba(13, 20, 30, 0.4);">
-                    <div style="padding: 20px; border-radius: 8px; border: 1px solid var(--brd2); background: rgba(13, 20, 30, 0.95); font-size: 12px; text-align: left; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8)">
-                        <!-- Top Telemetry Row -->
-                        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:15px; padding-bottom:12px; border-bottom:1px solid var(--brd2);">
-                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:15px;">
-                                <div>
-                                    <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 2px; text-transform: uppercase;">Log ID</div>
-                                    <div class="mono" style="color: var(--accent); font-weight:600; font-size: 12px;">${logId}</div>
+                <td colspan="7" style="padding: 12px 16px; background: rgba(10, 15, 26, 0.6); max-width: 100%; box-sizing: border-box;">
+                    <div class="audit-expanded-card">
+                        <!-- 1. Top Telemetry & Actions Bar (Zero-clipping responsive) -->
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--brd2);">
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:16px;">
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <div>
+                                        <div style="font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Log ID</div>
+                                        <div class="mono" style="color: var(--accent); font-weight:700; font-size: 12px;">${escapeHtml(log.id)}</div>
+                                    </div>
+                                    <button class="btn-icon-copy admin-btn-copy-logid" data-id="${log.id}" title="Copy Log ID" style="background:transparent; border:none; color:var(--muted); cursor:pointer; padding:2px 4px; font-size:11px;">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
                                 </div>
                                 <div>
-                                    <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 2px; text-transform: uppercase;">Timestamp</div>
-                                    <div class="mono" style="color: var(--fg); font-size: 11px;">${new Date(log.timestamp).toISOString()}</div>
+                                    <div style="font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Timestamp</div>
+                                    <div style="color: var(--fg); font-size: 11px;" title="${new Date(log.timestamp).toISOString()}">
+                                        ${escapeHtml(timeInfo.formatted)} <span style="color:var(--muted); font-size:10px;">(${escapeHtml(timeInfo.ago)})</span>
+                                    </div>
                                 </div>
                                 <div>
-                                    <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 2px; text-transform: uppercase;">Operator</div>
-                                    <div style="color: var(--fg); font-size: 12px; font-weight:600;">${escapeHtml(log.user || '—')}</div>
+                                    <div style="font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Operator</div>
+                                    <div style="color: var(--fg); font-size: 11px; font-weight:600; display:flex; align-items:center; gap:5px;">
+                                        <i class="bi bi-person-circle" style="color:var(--muted); font-size:12px;"></i> ${escapeHtml(log.user || '—')}
+                                    </div>
                                 </div>
                             </div>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <button class="btn-sec admin-btn-copy-logid" style="padding:4px 10px; font-size:11px;" data-id="${log.id}">
+                            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                                <button class="btn-sec admin-btn-copy-logid" style="padding:4px 10px; font-size:11px; white-space:nowrap;" data-id="${log.id}">
                                     <i class="bi bi-clipboard"></i> Copy Log ID
                                 </button>
                                 ${isReversible ? `
-                                <button class="btn-sec admin-btn-revert" style="padding:4px 12px; font-size:11px; color:#f87171; border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.08); font-weight:600;" data-id="${log.id}">
+                                <button class="btn-sec admin-btn-revert" style="padding:4px 12px; font-size:11px; color:#f87171; border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.08); font-weight:700; white-space:nowrap;" data-id="${log.id}">
                                     <i class="bi bi-arrow-counterclockwise"></i> Revert Operation
                                 </button>
                                 ` : ''}
                             </div>
                         </div>
 
-                        <!-- Details Box -->
-                        <div style="margin-bottom: 15px;">
-                            <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase;">Executive Summary & Details</div>
-                            <div style="color: var(--fg); font-size: 12px; line-height:1.5; background: rgba(0,0,0,0.3); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--brd2); white-space: pre-wrap;">${escapeHtml(log.details)}</div>
+                        <!-- 2. Interactive Pipeline Node Flow (Concept 3) -->
+                        <div class="audit-node-grid">
+                            <!-- Source Node -->
+                            <div class="audit-node-box">
+                                <div>
+                                    <div class="audit-node-header">
+                                        <span><i class="bi bi-box-seam" style="color:#60a5fa; margin-right:4px;"></i> Source Project</span>
+                                        <span class="badge" style="font-size:9px; background:rgba(255,255,255,0.06); font-family:'Roboto Mono',monospace;">db: ${escapeHtml(pipeline.srcDb)}</span>
+                                    </div>
+                                    <div class="mono admin-clickable-key" data-key="${escapeHtml(pipeline.srcProject || '')}" title="Click to copy project ID" style="font-weight:600; font-size:11px; color:var(--fg); cursor:pointer; word-break:break-all;">
+                                        ${escapeHtml(pipeline.srcProject || '—')}
+                                        ${pipeline.srcProject ? '<i class="bi bi-clipboard" style="font-size:9px; color:var(--muted); margin-left:4px;"></i>' : ''}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Transform Node -->
+                            <div class="audit-node-box">
+                                <div>
+                                    <div class="audit-node-header">
+                                        <span><i class="bi bi-gear-wide-connected" style="color:var(--accent); margin-right:4px;"></i> Transformation</span>
+                                        <span class="badge" style="font-size:9px; background:${pipeline.rules.length > 0 ? 'rgba(247,148,29,0.15); color:var(--accent); border:1px solid rgba(247,148,29,0.3)' : 'rgba(255,255,255,0.06)'}">
+                                            ${pipeline.rules.length} Rule(s)
+                                        </span>
+                                    </div>
+                                    ${pipeline.rules.length > 0 ? `
+                                        <div style="font-size:11px; color:var(--fg);">
+                                            ${pipeline.rules.map(r => `
+                                                <div style="margin-top:2px;">
+                                                    <span style="color:var(--muted); font-size:10px;">Scope [${escapeHtml(r.field)}]:</span>
+                                                    <div class="mono" style="font-size:10px; margin-top:2px; word-break:break-all;">
+                                                        <span style="color:#f87171; text-decoration:line-through;">${escapeHtml(r.from)}</span>
+                                                        <i class="bi bi-arrow-right" style="color:var(--muted); font-size:9px; margin:0 4px;"></i>
+                                                        <span style="color:#34d399;">${escapeHtml(r.to)}</span>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : `
+                                        <div style="color:var(--muted); font-size:11px; margin-top:4px;">Direct Pass-Through (No text replacements applied)</div>
+                                    `}
+                                </div>
+                            </div>
+
+                            <!-- Target Node -->
+                            <div class="audit-node-box">
+                                <div>
+                                    <div class="audit-node-header">
+                                        <span><i class="bi bi-bullseye" style="color:#34d399; margin-right:4px;"></i> Target Project</span>
+                                        <span class="badge" style="font-size:9px; background:rgba(255,255,255,0.06); font-family:'Roboto Mono',monospace;">db: ${escapeHtml(pipeline.tgtDb)}</span>
+                                    </div>
+                                    <div class="mono admin-clickable-key" data-key="${escapeHtml(pipeline.tgtProject || '')}" title="Click to copy project ID" style="font-weight:600; font-size:11px; color:var(--fg); cursor:pointer; word-break:break-all;">
+                                        ${escapeHtml(pipeline.tgtProject || '—')}
+                                        ${pipeline.tgtProject && pipeline.tgtProject !== '—' ? '<i class="bi bi-clipboard" style="font-size:9px; color:var(--muted); margin-left:4px;"></i>' : ''}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        ${stateDetailsHtml}
+                        <!-- 3. Execution Result Banner -->
+                        <div class="audit-banner-bar">
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+                                <span class="badge ${statusClass}" style="font-size:10px; padding:3px 8px;">● ${escapeHtml(log.status)}</span>
+                                <span style="font-size:12px; font-weight:600; color:var(--fg);">${escapeHtml(pipeline.headline)}</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                ${pipeline.kinds.length > 0 ? `<span class="badge badge-op" style="font-size:10px;">Kind: ${escapeHtml(pipeline.kinds.join(', '))}</span>` : ''}
+                                <span class="badge" style="font-size:10px; background:rgba(255,255,255,0.08);">${totalCount} Processed</span>
+                            </div>
+                        </div>
+
+                        <!-- 4. Itemized Mutations Table -->
+                        ${itemsSectionHtml}
+
+                        <!-- 5. Collapsible Raw Audit Log Message -->
+                        <details style="margin-top:12px; border:1px solid var(--brd2); border-radius:6px; background:rgba(0,0,0,0.25);">
+                            <summary style="padding:8px 12px; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; user-select:none;">
+                                <i class="bi bi-terminal" style="margin-right:4px;"></i> View Raw Audit Log Details
+                            </summary>
+                            <div style="padding:10px 14px; font-size:11px; line-height:1.5; color:var(--muted); white-space:pre-wrap; border-top:1px solid var(--brd2); background:rgba(0,0,0,0.3);">${escapeHtml(log.details)}</div>
+                        </details>
                     </div>
                 </td>
             `;
@@ -1558,6 +1790,18 @@
                     e.stopPropagation();
                     const id = btn.dataset.id || '';
                     openAdminRevertModal(id);
+                };
+            });
+
+            expTr.querySelectorAll('.admin-clickable-key').forEach(el => {
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    const key = el.dataset.key || '';
+                    if (key) {
+                        navigator.clipboard.writeText(key).then(() => {
+                            toast(`Copied: ${key}`, 'ok');
+                        });
+                    }
                 };
             });
 
