@@ -672,7 +672,19 @@ export const AuditLog = {
 
             const dateStr = new Date(log.timestamp).toLocaleString();
             fragment.querySelector('.log-date')!.textContent = dateStr;
-            fragment.querySelector('.log-user')!.textContent = log.user;
+            const userEl = fragment.querySelector('.log-user') as HTMLElement;
+            if (log.revertedBy) {
+                userEl.innerHTML = `
+                    <div class="flex flex-col text-left">
+                        <span class="font-semibold text-xs text-[var(--fg)] truncate" title="${Utils.escapeHtml(log.user)}">${Utils.escapeHtml(log.user)}</span>
+                        <span class="text-[9px] text-amber-400 font-medium flex items-center gap-1 mt-0.5" title="Reverted by admin: ${Utils.escapeHtml(log.revertedBy)}">
+                            <i class="fa-solid fa-shield-halved text-[8px]"></i> By: ${Utils.escapeHtml(log.revertedBy)}
+                        </span>
+                    </div>
+                `;
+            } else {
+                userEl.textContent = log.user;
+            }
 
             // Operation badge styling
             const opEl = fragment.querySelector('.log-op') as HTMLElement;
@@ -681,7 +693,7 @@ export const AuditLog = {
                 opEl.className = 'badge text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30';
             } else if (log.operation === 'DATASTORE_ANALYZE') {
                 opEl.className = 'badge text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30';
-            } else if (log.operation === 'DATASTORE_REVERT' || log.operation === 'QUERY_REVERT') {
+            } else if (log.operation === 'DATASTORE_REVERT' || log.operation === 'QUERY_REVERT' || log.operation === 'DATASTORE_EDIT_REVERT') {
                 opEl.className = 'badge text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30';
             } else if (log.operation === 'DATASTORE_EDIT') {
                 opEl.className = 'badge text-[10px] font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/30';
@@ -734,10 +746,23 @@ export const AuditLog = {
 
             // Details preview
             const detailsEl = fragment.querySelector('.log-details') as HTMLElement;
-            const cleanSnippet = (log.details || '').split('\n')[0].slice(0, 110);
+            const isRevertedFromAdmin = (log.details || '').includes('[REVERTED FROM ADMIN CONSOLE]') || Boolean(log.revertedBy);
+            const cleanSnippet = (log.details || '')
+                .split('\n')
+                .filter((l: string) => !l.startsWith('[REVERTED FROM ADMIN CONSOLE]') && l.trim())
+                .join(' ')
+                .slice(0, 110) || (log.details || '').split('\n')[0].slice(0, 110);
+
+            const adminBadgeHtml = isRevertedFromAdmin
+                ? `<span class="badge text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0 inline-flex items-center gap-1"><i class="fa-solid fa-shield-halved"></i> Reverted from Admin</span>`
+                : '';
+
             detailsEl.innerHTML = `
                 <div class="flex items-center justify-between gap-2">
-                    <span class="truncate">${Utils.escapeHtml(cleanSnippet)}</span>
+                    <div class="flex items-center gap-1.5 truncate min-w-0 flex-1">
+                        ${adminBadgeHtml}
+                        <span class="truncate">${Utils.escapeHtml(cleanSnippet)}</span>
+                    </div>
                     <span class="text-[9px] text-cyan-400 hover:underline flex-shrink-0 cursor-pointer">Inspect <i class="fa-solid fa-chevron-right text-[8px]"></i></span>
                 </div>
             `;
@@ -838,7 +863,11 @@ export const AuditLog = {
 
         // Headline & status
         const firstLine = (details.split('\n')[0] || '').trim();
-        const headline = firstLine || log.operation || 'Audit Operation';
+        let headline = firstLine || log.operation || 'Audit Operation';
+        if (details.includes('[REVERTED FROM ADMIN CONSOLE]')) {
+            const opMatch = details.match(/Original Operation:\s*([^\n]+)/i);
+            headline = opMatch ? `Reverted from Admin: ${opMatch[1]}` : 'Reverted from Admin Console';
+        }
 
         let writtenCount = 0;
         let failedCount = 0;
@@ -846,23 +875,45 @@ export const AuditLog = {
         if (statusMatch) {
             writtenCount = parseInt(statusMatch[1], 10);
             failedCount = parseInt(statusMatch[2], 10);
+        } else {
+            const revertMatch = details.match(/Revert Status:\s*(\d+)\s*entities restored(?:,\s*(\d+)\s*created entities cleaned up)?/i);
+            if (revertMatch) {
+                writtenCount = parseInt(revertMatch[1], 10) + parseInt(revertMatch[2] || '0', 10);
+            }
         }
 
         let kinds: string[] = [];
         const kindsMatch = details.match(/across kinds:\s*([^.\n]+)/i);
         if (kindsMatch) {
             kinds = kindsMatch[1].split(',').map((s: string) => s.trim());
-        } else if (Array.isArray(state?.kinds)) {
-            kinds = state.kinds;
-        } else if (state?.kind) {
-            kinds = [state.kind];
+        } else {
+            const revertKindsMatch = details.match(/Kinds Affected:\s*([^\n.]+)/i);
+            if (revertKindsMatch) {
+                kinds = revertKindsMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean);
+            } else if (Array.isArray(state?.kinds)) {
+                kinds = state.kinds;
+            } else if (state?.kind) {
+                kinds = [state.kind];
+            }
         }
 
         // Items
         let items: any[] = [];
-        if (state && Array.isArray(state.backupData) && state.backupData.length > 0) {
+        if (state && Array.isArray(state.revertedRecords) && state.revertedRecords.length > 0) {
+            items = state.revertedRecords.map((r: any, idx: number) => ({
+                idx,
+                kind: r.kind,
+                keyStr: `${r.kind}:${r.key}`,
+                displayName: r.name || '—',
+                action: r.action || 'RESTORED',
+                prevStr: '',
+                hasPreState: false
+            }));
+        } else if (state && Array.isArray(state.backupData) && state.backupData.length > 0) {
+            const isRevertOp = log.operation === 'DATASTORE_REVERT' || log.operation === 'DATASTORE_EDIT_REVERT' || state.type === 'DATASTORE_REVERT' || state.type === 'DATASTORE_EDIT_REVERT';
             items = state.backupData.map((bItem: any, idx: number) => {
                 const isNew = bItem.action === 'delete' || bItem.action === 'CREATE' || bItem.action === 'CREATED';
+                const action = isRevertOp ? (isNew ? 'DELETED' : 'RESTORED') : (isNew ? 'CREATED' : 'UPDATED');
                 const refInfo = state.entityDisplayNames?.[bItem.keyStr];
                 const displayName = refInfo ? `${refInfo.value} (${refInfo.fieldName})` : (bItem.displayName || '—');
                 const prevStr = bItem.prevEntity ? JSON.stringify(bItem.prevEntity.properties || bItem.prevEntity, null, 2) : '';
@@ -872,7 +923,7 @@ export const AuditLog = {
                     keyStr: bItem.keyStr,
                     kind: entityKind,
                     displayName,
-                    action: isNew ? 'CREATED' : 'UPDATED',
+                    action,
                     prevStr,
                     hasPreState: Boolean(bItem.prevEntity)
                 };
@@ -1003,9 +1054,11 @@ export const AuditLog = {
                 const isNew = item.action === 'CREATED';
                 const actionBadge = isNew
                     ? `<span class="badge text-[10px] font-semibold bg-green-500/15 text-green-400 border border-green-500/30">🟢 CREATED</span>`
-                    : (item.action === 'DELETED'
-                        ? `<span class="badge text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">🔴 DELETED</span>`
-                        : `<span class="badge text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">🟡 UPDATED</span>`);
+                    : (item.action === 'RESTORED'
+                        ? `<span class="badge text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">🟢 RESTORED</span>`
+                        : (item.action === 'DELETED'
+                            ? `<span class="badge text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">🔴 DELETED</span>`
+                            : `<span class="badge text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">🟡 UPDATED</span>`));
 
                 return `
                     <tr>
@@ -1089,11 +1142,19 @@ export const AuditLog = {
                                 </span>
                             </div>
                             <div>
-                                <span class="text-[9px] font-bold uppercase text-[var(--muted)] tracking-wider block">OPERATOR</span>
+                                <span class="text-[9px] font-bold uppercase text-[var(--muted)] tracking-wider block">${log.revertedBy ? 'TARGET ACCOUNT' : 'OPERATOR'}</span>
                                 <span class="text-xs font-semibold text-[var(--fg)] flex items-center gap-1.5">
                                     <i class="fa-solid fa-circle-user text-[var(--muted)]"></i> ${Utils.escapeHtml(log.user || '—')}
                                 </span>
                             </div>
+                            ${log.revertedBy ? `
+                            <div>
+                                <span class="text-[9px] font-bold uppercase text-amber-400 tracking-wider block">REVERTED BY ADMIN</span>
+                                <span class="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-shield-halved text-amber-400"></i> ${Utils.escapeHtml(log.revertedBy)}
+                                </span>
+                            </div>
+                            ` : ''}
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <button class="btn btn-s text-xs btn-copy-log-id whitespace-nowrap" data-id="${log.id}">

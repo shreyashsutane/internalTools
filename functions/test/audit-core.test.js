@@ -82,6 +82,27 @@ test('audit payload accepts reversible state but ignores user and timestamp fiel
     assert.equal(Object.hasOwn(payload, 'timestamp'), false);
 });
 
+test('audit payload safely accepts targetUser for admin revert operations', () => {
+    const payload = normalizeAuditPayload({
+        operation: 'DATASTORE_REVERT',
+        srcProject: '—',
+        tgtProject: 'target-proj',
+        status: 'SUCCESS',
+        targetUser: 'Operator@Example.com',
+        details: '[REVERTED FROM ADMIN CONSOLE] Reverted log-123'
+    });
+
+    assert.equal(payload.operation, 'DATASTORE_REVERT');
+    assert.equal(payload.targetUser, 'operator@example.com');
+    assert.equal(Object.hasOwn(payload, 'user'), false);
+
+    const invalidTarget = normalizeAuditPayload({
+        operation: 'DATASTORE_REVERT',
+        targetUser: 'not-an-email'
+    });
+    assert.equal(Object.hasOwn(invalidTarget, 'targetUser'), false);
+});
+
 test('legacy Firestore REST-shaped requests remain compatible during rollout', () => {
     const payload = normalizeAuditPayload({
         fields: {

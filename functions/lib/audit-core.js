@@ -169,6 +169,7 @@ const normalizeAuditPayload = rawBody => {
     const srcProject = cleanText(body.srcProject, '—').slice(0, 200) || '—';
     const tgtProject = cleanText(body.tgtProject, '—').slice(0, 200) || '—';
     const details = typeof body.details === 'string' ? body.details.trim() : '';
+    const targetUser = typeof body.targetUser === 'string' && body.targetUser.includes('@') ? cleanText(body.targetUser).toLowerCase().slice(0, 254) : '';
 
     if (!/^[A-Z][A-Z0-9_]{1,63}$/.test(operation)) {
         throw new AuditRequestError(400, 'INVALID_OPERATION', 'Audit operation name is invalid.');
@@ -203,7 +204,8 @@ const normalizeAuditPayload = rawBody => {
         tgtProject,
         status,
         details,
-        prevState
+        prevState,
+        ...(targetUser ? { targetUser } : {})
     };
 };
 

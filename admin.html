@@ -1289,7 +1289,8 @@
                                 { fieldPath: "srcProject" },
                                 { fieldPath: "tgtProject" },
                                 { fieldPath: "status" },
-                                { fieldPath: "details" }
+                                { fieldPath: "details" },
+                                { fieldPath: "revertedBy" }
                             ]
                         },
                         from: [{ collectionId: "audit_logs" }],
@@ -1372,7 +1373,8 @@
                                 { fieldPath: "srcProject" },
                                 { fieldPath: "tgtProject" },
                                 { fieldPath: "status" },
-                                { fieldPath: "details" }
+                                { fieldPath: "details" },
+                                { fieldPath: "revertedBy" }
                             ]
                         },
                         from: [{ collectionId: "audit_logs" }],
@@ -1637,6 +1639,8 @@
                 let opBadgeClass = 'badge-op';
                 if (log.operation === 'DATASTORE_COPY') {
                     opBadgeClass = 'badge';
+                } else if (log.operation === 'DATASTORE_REVERT' || log.operation === 'DATASTORE_EDIT_REVERT' || log.operation === 'QUERY_REVERT') {
+                    opBadgeClass = 'badge badge-warn';
                 }
 
                 const srcName = getCachedProjectName(log.srcProject, log.details);
@@ -1659,7 +1663,26 @@
                          <span class="mono" style="font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.srcProject || log.tgtProject || '—')}">${escapeHtml(log.srcProject || log.tgtProject || '—')}</span>
                        </div>`;
 
-                const cleanSnippet = (log.details || '').split('\n')[0].slice(0, 240);
+                const isRevertedFromAdmin = (log.details || '').includes('[REVERTED FROM ADMIN CONSOLE]') || Boolean(log.revertedBy);
+                const cleanSnippet = (log.details || '')
+                    .split('\n')
+                    .filter(l => !l.startsWith('[REVERTED FROM ADMIN CONSOLE]') && l.trim())
+                    .join(' ')
+                    .slice(0, 240) || (log.details || '').split('\n')[0].slice(0, 240);
+
+                const adminRevertBadge = isRevertedFromAdmin
+                    ? `<span class="badge" style="font-size:9px; padding:2px 6px; background:rgba(245,158,11,0.15); color:#fbbf24; border:1px solid rgba(245,158,11,0.35); white-space:nowrap; shrink-0;"><i class="bi bi-shield-fill-check"></i> Reverted from Admin</span>`
+                    : '';
+
+                const userCellHtml = log.revertedBy
+                    ? `<div style="display:flex; flex-direction:column; min-width:0;">
+                         <span style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.user)}">${escapeHtml(log.user)}</span>
+                         <span style="font-size:9px; color:#fbbf24; display:inline-flex; align-items:center; gap:3px; margin-top:2px;" title="Reverted by admin operator ${escapeHtml(log.revertedBy)}">
+                           <i class="bi bi-shield-check" style="font-size:8px;"></i> By: ${escapeHtml(log.revertedBy)}
+                         </span>
+                       </div>`
+                    : `<span style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.user)}">${escapeHtml(log.user)}</span>`;
+
                 const isReversible = (log.operation === 'DATASTORE_COPY' || log.operation === 'DATASTORE_EDIT' || log.operation === 'QUERY_SYNC') && log.status !== 'FAILED' && log.status !== 'CANCELLED' && log.tgtProject && log.tgtProject !== '—';
                 const revertBadge = isReversible
                     ? `<span class="badge" style="font-size:9px; padding:2px 6px; background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="bi bi-arrow-counterclockwise"></i> Revertible</span>`
@@ -1673,13 +1696,16 @@
                             </button>
                         </td>
                         <td class="mono" style="color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(dateStr)}">${dateStr}</td>
-                        <td style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.user)}">${escapeHtml(log.user)}</td>
-                        <td><span class="badge badge-op" style="font-size:10px; white-space:nowrap;">${escapeHtml(log.operation)}</span></td>
+                        <td style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${userCellHtml}</td>
+                        <td><span class="badge ${opBadgeClass}" style="font-size:10px; white-space:nowrap;">${escapeHtml(log.operation)}</span></td>
                         <td>${routeHtml}</td>
                         <td style="text-align:center">${statusBadge}</td>
                         <td style="color:var(--muted); line-height:1.4; overflow:hidden;">
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-width:0;">
-                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1;" title="${escapeHtml(cleanSnippet)}">${escapeHtml(cleanSnippet)}</span>
+                                <div style="display:flex; align-items:center; gap:6px; overflow:hidden; min-width:0; flex:1;">
+                                    ${adminRevertBadge}
+                                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1;" title="${escapeHtml(cleanSnippet)}">${escapeHtml(cleanSnippet)}</span>
+                                </div>
                                 <div style="display:flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0;">
                                     ${revertBadge}
                                     <span style="font-size:10px; color:var(--accent);">Inspect <i class="bi bi-chevron-right" style="font-size:9px;"></i></span>
@@ -1785,7 +1811,11 @@
 
             // Headline & status
             const firstLine = (details.split('\n')[0] || '').trim();
-            const headline = firstLine || log.operation || 'Audit Operation';
+            let headline = firstLine || log.operation || 'Audit Operation';
+            if (details.includes('[REVERTED FROM ADMIN CONSOLE]')) {
+                const opMatch = details.match(/Original Operation:\s*([^\n]+)/i);
+                headline = opMatch ? `Reverted from Admin: ${opMatch[1]}` : 'Reverted from Admin Console';
+            }
 
             let writtenCount = 0;
             let failedCount = 0;
@@ -1793,23 +1823,45 @@
             if (statusMatch) {
                 writtenCount = parseInt(statusMatch[1], 10);
                 failedCount = parseInt(statusMatch[2], 10);
+            } else {
+                const revertMatch = details.match(/Revert Status:\s*(\d+)\s*entities restored(?:,\s*(\d+)\s*created entities cleaned up)?/i);
+                if (revertMatch) {
+                    writtenCount = parseInt(revertMatch[1], 10) + parseInt(revertMatch[2] || '0', 10);
+                }
             }
 
             let kinds = [];
             const kindsMatch = details.match(/across kinds:\s*([^.\n]+)/i);
             if (kindsMatch) {
                 kinds = kindsMatch[1].split(',').map(s => s.trim());
-            } else if (Array.isArray(state?.kinds)) {
-                kinds = state.kinds;
-            } else if (state?.kind) {
-                kinds = [state.kind];
+            } else {
+                const revertKindsMatch = details.match(/Kinds Affected:\s*([^\n.]+)/i);
+                if (revertKindsMatch) {
+                    kinds = revertKindsMatch[1].split(',').map(s => s.trim()).filter(Boolean);
+                } else if (Array.isArray(state?.kinds)) {
+                    kinds = state.kinds;
+                } else if (state?.kind) {
+                    kinds = [state.kind];
+                }
             }
 
             // Items
             let items = [];
-            if (state && Array.isArray(state.backupData) && state.backupData.length > 0) {
+            if (state && Array.isArray(state.revertedRecords) && state.revertedRecords.length > 0) {
+                items = state.revertedRecords.map((r, idx) => ({
+                    idx,
+                    kind: r.kind,
+                    keyStr: `${r.kind}:${r.key}`,
+                    displayName: r.name || '—',
+                    action: r.action || 'RESTORED',
+                    prevStr: '',
+                    hasPreState: false
+                }));
+            } else if (state && Array.isArray(state.backupData) && state.backupData.length > 0) {
+                const isRevertOp = log.operation === 'DATASTORE_REVERT' || log.operation === 'DATASTORE_EDIT_REVERT' || state.type === 'DATASTORE_REVERT' || state.type === 'DATASTORE_EDIT_REVERT';
                 items = state.backupData.map((bItem, idx) => {
                     const isNew = bItem.action === 'delete' || bItem.action === 'CREATE' || bItem.action === 'CREATED';
+                    const action = isRevertOp ? (isNew ? 'DELETED' : 'RESTORED') : (isNew ? 'CREATED' : 'UPDATED');
                     const refInfo = state.entityDisplayNames?.[bItem.keyStr];
                     const displayName = refInfo ? `${refInfo.value} (${refInfo.fieldName})` : (bItem.displayName || '—');
                     const prevStr = bItem.prevEntity ? JSON.stringify(bItem.prevEntity.properties || bItem.prevEntity, null, 2) : '';
@@ -1819,7 +1871,7 @@
                         keyStr: bItem.keyStr,
                         kind: entityKind,
                         displayName,
-                        action: isNew ? 'CREATED' : 'UPDATED',
+                        action,
                         prevStr,
                         hasPreState: Boolean(bItem.prevEntity)
                     };
@@ -1960,9 +2012,11 @@
                     const isNew = item.action === 'CREATED';
                     const actionBadge = isNew
                         ? `<span class="badge badge-success" style="font-size:10px;">🟢 CREATED</span>`
-                        : (item.action === 'DELETED'
-                            ? `<span class="badge badge-failed" style="font-size:10px;">🔴 DELETED</span>`
-                            : `<span class="badge badge-warn" style="font-size:10px;">🟡 UPDATED</span>`);
+                        : (item.action === 'RESTORED'
+                            ? `<span class="badge badge-success" style="font-size:10px; background:rgba(16,185,129,0.18); color:#34d399; border:1px solid rgba(16,185,129,0.4);">🟢 RESTORED</span>`
+                            : (item.action === 'DELETED'
+                                ? `<span class="badge badge-failed" style="font-size:10px;">🔴 DELETED</span>`
+                                : `<span class="badge badge-warn" style="font-size:10px;">🟡 UPDATED</span>`));
 
                     return `
                         <tr>
@@ -2046,11 +2100,19 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <div style="font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Operator</div>
+                                    <div style="font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${log.revertedBy ? 'Target Account' : 'Operator'}</div>
                                     <div style="color: var(--fg); font-size: 11px; font-weight:600; display:flex; align-items:center; gap:5px;">
                                         <i class="bi bi-person-circle" style="color:var(--muted); font-size:12px;"></i> ${escapeHtml(log.user || '—')}
                                     </div>
                                 </div>
+                                ${log.revertedBy ? `
+                                <div>
+                                    <div style="font-size: 9px; color: #fbbf24; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Reverted By Admin</div>
+                                    <div style="color: #fbbf24; font-size: 11px; font-weight:600; display:flex; align-items:center; gap:5px;">
+                                        <i class="bi bi-shield-check" style="color:#fbbf24; font-size:12px;"></i> ${escapeHtml(log.revertedBy)}
+                                    </div>
+                                </div>
+                                ` : ''}
                             </div>
                             <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
                                 <button class="btn-sec admin-btn-copy-logid" style="padding:4px 10px; font-size:11px; white-space:nowrap;" data-id="${log.id}">
@@ -2757,30 +2819,128 @@
                     throw new Error(`Unsupported revert type: ${state.type || log.operation}`);
                 }
 
-                // Write revert audit log to Firestore
-                const revertDetails = `Admin reverted ${log.operation} from log ${log.id}. Restored: ${restoredCount}, Deleted: ${deletedCount}. Authorized by ${gauthEmail}.`;
+                // Build itemized list of reverted records and metadata
+                const revertedRecords = [];
+                const kindsSet = new Set();
+
+                if (state.type === 'DATASTORE_COPY' || log.operation === 'DATASTORE_COPY') {
+                    for (const item of (state.backupData || [])) {
+                        const isUpsert = item.action === 'upsert';
+                        const keyParts = (item.keyStr || '').split(':');
+                        const kind = keyParts[0] || item.prevEntity?.key?.path?.[item.prevEntity.key.path.length - 1]?.kind || 'Entity';
+                        const keyId = (item.keyStr || '').includes(':') ? (item.keyStr || '').slice(kind.length + 1) : (item.keyStr || 'unknown');
+                        kindsSet.add(kind);
+                        const dispInfo = state.entityDisplayNames?.[item.keyStr];
+                        const displayName = dispInfo ? `${dispInfo.value} (${dispInfo.fieldName})` : (item.displayName || '');
+                        revertedRecords.push({
+                            kind,
+                            key: keyId,
+                            displayName,
+                            action: isUpsert ? 'RESTORED' : 'DELETED',
+                            desc: isUpsert ? 'Restored pre-copy entity state' : 'Deleted entity created by copy'
+                        });
+                    }
+                } else if (state.type === 'DATASTORE_EDIT' || log.operation === 'DATASTORE_EDIT') {
+                    const keyParts = (state.keyStr || '').split(':');
+                    const kind = keyParts[0] || state.prevEntity?.key?.path?.[state.prevEntity.key.path.length - 1]?.kind || 'Entity';
+                    const keyId = (state.keyStr || '').includes(':') ? (state.keyStr || '').slice(kind.length + 1) : (state.keyStr || (state.rawKey?.path ? `${state.rawKey.path[state.rawKey.path.length - 1]?.id || state.rawKey.path[state.rawKey.path.length - 1]?.name}` : 'unknown'));
+                    kindsSet.add(kind);
+                    revertedRecords.push({
+                        kind,
+                        key: keyId,
+                        displayName: 'Inline Edited Property',
+                        action: state.prevEntity ? 'RESTORED' : 'DELETED',
+                        desc: state.prevEntity ? 'Restored pre-edit entity state' : 'Deleted created entity'
+                    });
+                }
+
+                const adminAccount = State.username || State.email || 'admin';
+                const targetProjectName = getCachedProjectName(targetProject, log.details);
+                const targetDb = state.tgtDb || state.dbId || '(default)';
+                const kindsList = Array.from(kindsSet);
+                const revertOp = log.operation === 'DATASTORE_COPY' ? 'DATASTORE_REVERT' : (log.operation === 'QUERY_SYNC' ? 'QUERY_REVERT' : 'DATASTORE_EDIT_REVERT');
+
+                const itemizedSummary = revertedRecords.map(r => `• ${r.kind}:${r.key}${r.displayName ? ` (${r.displayName})` : ''} [${r.action}]`).join('\n');
+
+                const revertDetails = `[REVERTED FROM ADMIN CONSOLE]
+Reverted from Admin Console by operator: ${adminAccount} using Google Account: ${gauthEmail}.
+Original Operation: ${log.operation} (Log ID: ${log.id}) executed by ${log.user} on ${new Date(log.timestamp).toLocaleString()}.
+Target: ${targetProject}${targetProjectName ? ` [${targetProjectName}]` : ''} (database: ${targetDb}).
+Revert Status: ${restoredCount} entities restored, ${deletedCount} created entities cleaned up.
+Kinds Affected: ${kindsList.join(', ') || 'All'}.
+
+Itemized Reverted Records (${revertedRecords.length}):
+${itemizedSummary}`;
+
+                let revertPrevState = {
+                    type: revertOp,
+                    revertedLogId: log.id,
+                    revertedOperation: log.operation,
+                    revertedByAdmin: adminAccount,
+                    revertedByGoogleAccount: gauthEmail,
+                    targetUser: log.user,
+                    tgtProject: targetProject,
+                    tgtDb: targetDb,
+                    kinds: kindsList,
+                    revertedRecords: revertedRecords,
+                    backupData: state.backupData || []
+                };
+
+                // Guard against payload size limit (> 600KB)
                 try {
-                    await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs`, {
+                    if (JSON.stringify(revertPrevState).length > 600000) {
+                        revertPrevState.backupData = (state.backupData || []).map(b => ({
+                            keyStr: b.keyStr,
+                            action: b.action,
+                            displayName: b.displayName
+                        }));
+                    }
+                } catch(e) {}
+
+                // Dispatch revert audit log via backend auditApi so it persists to Firestore and notifies
+                try {
+                    const auditRes = await fetch('/api/audit_logs', {
                         method: 'POST',
                         headers: {
+                            'Authorization': `Bearer ${gauthToken}`,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            fields: {
-                                timestamp: { stringValue: new Date().toISOString() },
-                                timestampEpochMs: { integerValue: String(Date.now()) },
-                                operation: { stringValue: log.operation === 'DATASTORE_COPY' ? 'DATASTORE_REVERT' : 'DATASTORE_EDIT_REVERT' },
-                                user: { stringValue: gauthEmail },
-                                userSubject: { stringValue: State.uid || '' },
-                                srcProject: { stringValue: '—' },
-                                tgtProject: { stringValue: targetProject },
-                                status: { stringValue: 'SUCCESS' },
-                                details: { stringValue: revertDetails }
-                            }
+                            operation: revertOp,
+                            srcProject: '—',
+                            tgtProject: targetProject,
+                            status: 'SUCCESS',
+                            targetUser: log.user,
+                            details: revertDetails,
+                            prevState: revertPrevState
                         })
                     });
-                } catch(e) {
-                    console.warn('Failed to record revert audit log:', e);
+                    if (!auditRes.ok) {
+                        const errText = await auditRes.text().catch(() => '');
+                        console.error('Audit API failed to record revert log:', auditRes.status, errText);
+                    } else {
+                        const auditData = await auditRes.json().catch(() => ({}));
+                        console.log('Successfully recorded revert audit log:', auditData.id);
+                        if (auditData.id) {
+                            const newRevertLog = {
+                                id: auditData.id,
+                                timestamp: new Date().toISOString(),
+                                timestampEpochMs: Date.now(),
+                                operation: revertOp,
+                                user: log.user,
+                                revertedBy: gauthEmail,
+                                srcProject: '—',
+                                tgtProject: targetProject,
+                                status: 'SUCCESS',
+                                details: revertDetails,
+                                prevState: revertPrevState
+                            };
+                            cachedLogs.unshift(newRevertLog);
+                            applyAdminFilters();
+                        }
+                    }
+                } catch(auditErr) {
+                    console.error('Failed to post revert audit record to /api/audit_logs:', auditErr);
                 }
 
                 statusBox.style.background = 'rgba(16, 185, 129, 0.15)';

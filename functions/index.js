@@ -70,12 +70,27 @@ const enforceRateLimit = async email => {
 
 const readOwnLogs = async (email, limit) => {
     const boundLimit = Math.min(Math.max(Number(limit) || 100, 1), 500);
-    const snapshot = await db.collection('audit_logs')
-        .where('user', '==', email)
-        .limit(boundLimit)
-        .get();
+    const [userSnapshot, revertedSnapshot] = await Promise.all([
+        db.collection('audit_logs')
+            .where('user', '==', email)
+            .limit(boundLimit)
+            .get(),
+        db.collection('audit_logs')
+            .where('revertedBy', '==', email)
+            .limit(boundLimit)
+            .get()
+    ]);
 
-    return snapshot.docs
+    const seenIds = new Set();
+    const allDocs = [];
+    for (const doc of [...userSnapshot.docs, ...revertedSnapshot.docs]) {
+        if (!seenIds.has(doc.id)) {
+            seenIds.add(doc.id);
+            allDocs.push(doc);
+        }
+    }
+
+    return allDocs
         .map(document => ({ id: document.id, ...document.data() }))
         .sort((a, b) => Number(b.timestampEpochMs || 0) - Number(a.timestampEpochMs || 0))
         .slice(0, boundLimit)
@@ -87,10 +102,11 @@ const readOwnLogs = async (email, limit) => {
 
 const createAuditLog = async (identity, payload, req) => {
     const now = Date.now();
+    const effectiveUser = payload.targetUser || identity.email;
     const record = {
         timestamp: new Date(now).toISOString(),
         timestampEpochMs: now,
-        user: identity.email,
+        user: effectiveUser,
         userSubject: identity.subject,
         operation: payload.operation,
         srcProject: payload.srcProject,
@@ -100,6 +116,9 @@ const createAuditLog = async (identity, payload, req) => {
         userAgent: String(req.get('user-agent') || '').slice(0, 500),
         createdAt: FieldValue.serverTimestamp()
     };
+    if (payload.targetUser) {
+        record.revertedBy = identity.email;
+    }
     if (payload.prevState !== null) record.prevState = payload.prevState;
 
     const document = await db.collection('audit_logs').add(record);
