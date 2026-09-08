@@ -45,6 +45,12 @@
         body:not(.workspace-active) {
             align-items: center;
         }
+        body.workspace-active {
+            display: block;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
 
         /* Notifications / Toasts */
         .toast-container {
@@ -203,13 +209,13 @@
         /* ADMIN WORKSPACE (FULL SCREEN WIDTH) */
         .workspace {
             display: none;
-            width: 100vw;
+            width: 100%;
             max-width: 100%;
             margin: 0;
-            padding: 1.5rem 2.5rem;
+            padding: 1rem 1.5rem;
             box-sizing: border-box;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.25rem;
             animation: fadeInUp 0.4s ease-out;
         }
         @keyframes fadeInUp {
@@ -302,24 +308,29 @@
         /* Table Card */
         .table-card {
             width: 100%;
+            max-width: 100%;
             overflow: hidden;
+            box-sizing: border-box;
         }
         .table-wrapper {
             width: 100%;
+            max-width: 100%;
             overflow-x: auto;
-            max-height: calc(100vh - 340px);
+            max-height: calc(100vh - 270px);
             min-height: 450px;
+            box-sizing: border-box;
         }
         .table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             text-align: left;
             font-size: 13px;
         }
         .table th {
-            background: rgba(7, 10, 15, 0.4);
+            background: #0c121d !important;
             border-bottom: 1px solid var(--brd);
-            padding: 12px 20px;
+            padding: 12px 14px;
             font-weight: 600;
             color: var(--muted);
             text-transform: uppercase;
@@ -327,18 +338,24 @@
             letter-spacing: 0.5px;
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 20;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
         }
         .table td {
-            padding: 12px 20px;
+            padding: 10px 14px;
             border-bottom: 1px solid rgba(247, 148, 29, 0.05);
             vertical-align: middle;
+            overflow: hidden;
+            box-sizing: border-box;
         }
         .table tr:hover td {
             background: rgba(247, 148, 29, 0.02);
         }
         .table tr:last-child td {
             border-bottom: none;
+        }
+        .expand-row td {
+            overflow: visible !important;
         }
 
         /* Badges */
@@ -462,6 +479,8 @@
             font-size: 12px;
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5);
             text-align: left;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
         .audit-node-grid {
             display: grid;
@@ -469,6 +488,8 @@
             gap: 12px;
             margin-bottom: 14px;
             align-items: stretch;
+            width: 100%;
+            box-sizing: border-box;
         }
         .audit-node-box {
             background: rgba(0, 0, 0, 0.35);
@@ -478,6 +499,10 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            min-width: 0;
+            box-sizing: border-box;
+            word-break: break-word;
+            overflow-wrap: anywhere;
             transition: border-color 0.2s;
         }
         .audit-node-box:hover {
@@ -505,6 +530,8 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
+            width: 100%;
+            box-sizing: border-box;
         }
         .audit-entity-table-wrapper {
             width: 100%;
@@ -513,7 +540,30 @@
             border-radius: 8px;
             border: 1px solid var(--brd2);
             margin-bottom: 12px;
+            box-sizing: border-box;
             -webkit-overflow-scrolling: touch;
+        }
+        .audit-entity-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+        }
+        .audit-entity-table th {
+            background: rgba(0, 0, 0, 0.45);
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--brd2);
+        }
+        .audit-entity-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            vertical-align: middle;
+            font-size: 11px;
+            box-sizing: border-box;
         }
         .admin-clickable-key:hover {
             color: var(--accent) !important;
@@ -785,12 +835,12 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th style="width:36px; text-align:center"></th>
-                            <th style="width:160px">Timestamp</th>
-                            <th style="width:220px">Operator (User)</th>
-                            <th style="width:170px">Operation</th>
-                            <th style="width:340px">Project Route</th>
-                            <th style="width:100px; text-align:center">Status</th>
+                            <th style="width:34px; text-align:center"></th>
+                            <th style="width:145px">Timestamp</th>
+                            <th style="width:180px">Operator (User)</th>
+                            <th style="width:140px">Operation</th>
+                            <th style="width:240px">Project Route</th>
+                            <th style="width:90px; text-align:center">Status</th>
                             <th>Summary &amp; Details</th>
                         </tr>
                     </thead>
@@ -1593,23 +1643,23 @@
                 const tgtName = getCachedProjectName(log.tgtProject, log.details);
                 const hasRoute = log.srcProject && log.tgtProject && log.srcProject !== '—' && log.tgtProject !== '—';
                 const routeHtml = hasRoute
-                    ? `<div class="audit-route-badge" title="${escapeHtml(log.srcProject)}${srcName ? ` (${escapeHtml(srcName)})` : ''} → ${escapeHtml(log.tgtProject)}${tgtName ? ` (${escapeHtml(tgtName)})` : ''}" style="display:inline-flex; align-items:center; gap:6px; max-width:100%;">
-                         <div style="display:flex; flex-direction:column; min-width:0; max-width:145px; text-align:left;">
+                    ? `<div class="audit-route-badge" title="${escapeHtml(log.srcProject)}${srcName ? ` (${escapeHtml(srcName)})` : ''} → ${escapeHtml(log.tgtProject)}${tgtName ? ` (${escapeHtml(tgtName)})` : ''}" style="display:inline-flex; align-items:center; gap:6px; width:100%; max-width:100%; box-sizing:border-box;">
+                         <div style="display:flex; flex-direction:column; min-width:0; flex:1; text-align:left;">
                              ${srcName ? `<span style="font-weight:700; color:var(--fg); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(srcName)}">${escapeHtml(srcName)}</span>` : ''}
                              <span class="mono" style="font-size:10px; color:${srcName ? 'var(--muted)' : 'var(--fg)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.srcProject)}">${escapeHtml(log.srcProject)}</span>
                          </div>
                          <i class="bi bi-arrow-right audit-route-arrow" style="font-size:10px; margin:0 2px; flex-shrink:0;"></i>
-                         <div style="display:flex; flex-direction:column; min-width:0; max-width:145px; text-align:left;">
+                         <div style="display:flex; flex-direction:column; min-width:0; flex:1; text-align:left;">
                              ${tgtName ? `<span style="font-weight:700; color:var(--fg); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(tgtName)}">${escapeHtml(tgtName)}</span>` : ''}
                              <span class="mono" style="font-size:10px; color:${tgtName ? 'var(--muted)' : 'var(--fg)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.tgtProject)}">${escapeHtml(log.tgtProject)}</span>
                          </div>
                        </div>`
-                    : `<div style="display:flex; flex-direction:column; max-width:260px; text-align:left;">
+                    : `<div style="display:flex; flex-direction:column; width:100%; text-align:left;">
                          ${(srcName || tgtName) ? `<span style="font-weight:700; color:var(--fg); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(srcName || tgtName)}">${escapeHtml(srcName || tgtName)}</span>` : ''}
                          <span class="mono" style="font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.srcProject || log.tgtProject || '—')}">${escapeHtml(log.srcProject || log.tgtProject || '—')}</span>
                        </div>`;
 
-                const cleanSnippet = (log.details || '').split('\n')[0].slice(0, 160);
+                const cleanSnippet = (log.details || '').split('\n')[0].slice(0, 240);
                 const isReversible = (log.operation === 'DATASTORE_COPY' || log.operation === 'DATASTORE_EDIT' || log.operation === 'QUERY_SYNC') && log.status !== 'FAILED' && log.status !== 'CANCELLED' && log.tgtProject && log.tgtProject !== '—';
                 const revertBadge = isReversible
                     ? `<span class="badge" style="font-size:9px; padding:2px 6px; background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="bi bi-arrow-counterclockwise"></i> Revertible</span>`
@@ -1622,14 +1672,14 @@
                                 <i class="bi bi-chevron-right" style="transition: transform 0.2s; display:inline-block"></i>
                             </button>
                         </td>
-                        <td class="mono" style="color:var(--muted); font-size:11px;">${dateStr}</td>
-                        <td style="font-weight:600; font-size:12px;">${escapeHtml(log.user)}</td>
-                        <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(log.operation)}</span></td>
+                        <td class="mono" style="color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(dateStr)}">${dateStr}</td>
+                        <td style="font-weight:600; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.user)}">${escapeHtml(log.user)}</td>
+                        <td><span class="badge badge-op" style="font-size:10px; white-space:nowrap;">${escapeHtml(log.operation)}</span></td>
                         <td>${routeHtml}</td>
                         <td style="text-align:center">${statusBadge}</td>
-                        <td style="color:var(--muted); line-height:1.4">
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:600px;">${escapeHtml(cleanSnippet)}</span>
+                        <td style="color:var(--muted); line-height:1.4; overflow:hidden;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-width:0;">
+                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; flex:1;" title="${escapeHtml(cleanSnippet)}">${escapeHtml(cleanSnippet)}</span>
                                 <div style="display:flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0;">
                                     ${revertBadge}
                                     <span style="font-size:10px; color:var(--accent);">Inspect <i class="bi bi-chevron-right" style="font-size:9px;"></i></span>
@@ -1917,13 +1967,13 @@
                     return `
                         <tr>
                             <td class="mono" style="color:var(--muted); font-size:10px;">#${item.idx + 1}</td>
-                            <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(item.kind)}</span></td>
-                            <td>
-                                <span class="mono admin-clickable-key" data-key="${escapeHtml(item.keyStr)}" title="Click to copy entity key" style="font-weight:600; color:var(--fg); cursor:pointer;">
+                            <td><span class="badge badge-op" style="font-size:10px; word-break:break-all;">${escapeHtml(item.kind)}</span></td>
+                            <td style="word-break:break-all; font-size:11px;">
+                                <span class="mono admin-clickable-key" data-key="${escapeHtml(item.keyStr)}" title="Click to copy entity key" style="font-weight:600; color:var(--fg); cursor:pointer; word-break:break-all;">
                                     ${escapeHtml(item.keyStr)} <i class="bi bi-clipboard" style="font-size:10px; color:var(--muted); margin-left:4px;"></i>
                                 </span>
                             </td>
-                            <td style="color:#60a5fa; font-weight:500;">${escapeHtml(item.displayName)}</td>
+                            <td style="color:#60a5fa; font-weight:500; font-size:11px; word-break:break-word;" title="${escapeHtml(item.displayName)}">${escapeHtml(item.displayName)}</td>
                             <td>${actionBadge}</td>
                             <td style="text-align:right;">
                                 <button class="btn-sec admin-btn-view-snapshot" style="padding:2px 8px; font-size:10px; white-space:nowrap;" data-idx="${item.idx}" data-key="${escapeHtml(item.keyStr)}">
@@ -1939,7 +1989,7 @@
                                         <i class="bi bi-clipboard"></i> Copy JSON
                                     </button>
                                 </div>
-                                <pre style="padding:8px 10px; border-radius:6px; font-family:'Roboto Mono', monospace; font-size:10px; max-height:160px; overflow-y:auto; background:rgba(0,0,0,0.5); color:#34d399; border:1px solid var(--brd2); white-space:pre-wrap; margin:0;">${escapeHtml(item.prevStr || (isNew ? 'No pre-mutation target snapshot recorded (entity was newly created).' : 'Click to inspect target pre-mutation snapshot from database.'))}</pre>
+                                <pre style="padding:8px 10px; border-radius:6px; font-family:'Roboto Mono', monospace; font-size:10px; max-height:220px; overflow-y:auto; background:rgba(0,0,0,0.5); color:#34d399; border:1px solid var(--brd2); white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; margin:0;">${escapeHtml(item.prevStr || (isNew ? 'No pre-mutation target snapshot recorded (entity was newly created).' : 'Click to inspect target pre-mutation snapshot from database.'))}</pre>
                             </td>
                         </tr>
                     `;
@@ -1954,13 +2004,13 @@
                             </div>
                         </div>
                         <div class="audit-entity-table-wrapper">
-                            <table class="audit-entity-table" style="width:100%; min-width:620px;">
+                            <table class="audit-entity-table" style="width:100%; table-layout:fixed;">
                                 <thead>
                                     <tr>
                                         <th style="width:35px">#</th>
                                         <th style="width:115px">KIND</th>
-                                        <th>ENTITY KEY ID</th>
-                                        <th>DISPLAY / REFERENCE NAME</th>
+                                        <th style="width:33%">ENTITY KEY ID</th>
+                                        <th style="width:27%">DISPLAY / REFERENCE NAME</th>
                                         <th style="width:110px">ACTION</th>
                                         <th style="width:95px; text-align:right;">PAYLOAD</th>
                                     </tr>
@@ -1975,7 +2025,7 @@
             }
 
             expTr.innerHTML = `
-                <td colspan="7" style="padding: 12px 16px; background: rgba(10, 15, 26, 0.6); max-width: 100%; box-sizing: border-box;">
+                <td colspan="7" style="padding: 12px 14px; background: rgba(10, 15, 26, 0.6); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;">
                     <div class="audit-expanded-card">
                         <!-- 1. Top Telemetry & Actions Bar (Zero-clipping responsive) -->
                         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--brd2);">
@@ -2099,11 +2149,11 @@
                         ${itemsSectionHtml}
 
                         <!-- 5. Collapsible Raw Audit Log Message -->
-                        <details style="margin-top:12px; border:1px solid var(--brd2); border-radius:6px; background:rgba(0,0,0,0.25);">
+                        <details style="margin-top:12px; border:1px solid var(--brd2); border-radius:6px; background:rgba(0,0,0,0.25); width:100%; box-sizing:border-box;">
                             <summary style="padding:8px 12px; font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; cursor:pointer; user-select:none;">
                                 <i class="bi bi-terminal" style="margin-right:4px;"></i> View Raw Audit Log Details
                             </summary>
-                            <div style="padding:10px 14px; font-size:11px; line-height:1.5; color:var(--muted); white-space:pre-wrap; border-top:1px solid var(--brd2); background:rgba(0,0,0,0.3);">${escapeHtml(log.details)}</div>
+                            <div style="padding:10px 14px; font-size:11px; line-height:1.5; color:var(--muted); white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; border-top:1px solid var(--brd2); background:rgba(0,0,0,0.3); max-width:100%; box-sizing:border-box;">${escapeHtml(log.details)}</div>
                         </details>
                     </div>
                 </td>

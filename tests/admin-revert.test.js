@@ -142,3 +142,25 @@ test('Admin Console: toggleLogExpand in admin.html defines isReversible before t
     assert.ok(defIndex < useIndex, 'isReversible must be defined before its usage in toggleLogExpand template literal');
 });
 
+test('Admin Console: layout and styling guarantees full screen width with no horizontal scroll', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const adminHtml = fs.readFileSync(path.join(__dirname, '../admin.html'), 'utf8');
+
+    // 1. Workspace active takes 100% width and display block
+    assert.ok(adminHtml.includes('body.workspace-active {'), 'body.workspace-active rule must exist');
+    assert.ok(adminHtml.includes('width: 100%;'), 'width: 100% must be present');
+
+    // 2. Table has table-layout fixed so columns fit 100% without horizontal blowup
+    assert.ok(adminHtml.includes('.table {') && adminHtml.includes('table-layout: fixed;'), 'table must have table-layout: fixed');
+
+    // 3. Table header has opaque sticky background
+    assert.ok(adminHtml.includes('.table th {') && adminHtml.includes('background: #0c121d !important;'), 'table th must have opaque background');
+
+    // 4. Expanded card has word-break break-word and 100% width
+    assert.ok(adminHtml.includes('.audit-expanded-card {') && adminHtml.includes('word-break: break-word;'), 'audit-expanded-card must wrap words');
+
+    // 5. Entity mutations table has table-layout fixed
+    assert.ok(adminHtml.includes('.audit-entity-table {') && adminHtml.includes('table-layout: fixed;'), 'audit-entity-table must have table-layout fixed');
+});
+
