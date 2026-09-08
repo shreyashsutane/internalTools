@@ -19,11 +19,24 @@ const assertAllowedApiUrl = (url: string): string => {
     return parsed.toString();
 };
 
-const parseProjects = (payload: any): {id: string, name: string}[] =>
-    (payload.projects || []).map((project: any) => ({
+const parseProjects = (payload: any): {id: string, name: string}[] => {
+    const list = (payload.projects || []).map((project: any) => ({
         id: project.projectId,
         name: project.name || ''
     })).sort((a: any, b: any) => a.id.localeCompare(b.id));
+
+    try {
+        const raw = localStorage.getItem('gcp_project_names');
+        const map = raw ? JSON.parse(raw) : {};
+        list.forEach((p: any) => {
+            if (p.id && p.name) map[p.id] = p.name;
+        });
+        localStorage.setItem('gcp_project_names', JSON.stringify(map));
+        sessionStorage.setItem('gcp_project_names', JSON.stringify(map));
+    } catch(e) {}
+
+    return list;
+};
 
 const throwIfAborted = (signal?: AbortSignal): void => {
     if (signal?.aborted) throw new DOMException('Process Cancelled', 'AbortError');

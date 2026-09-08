@@ -2644,9 +2644,12 @@ export const App = {
                     const overflowNote = entitySummary.length > 20 ? `\n... and ${entitySummary.length - 20} more entities` : '';
                     const itemizedSummaryText = `\nItemized Records (${entitySummary.length}):\n• ` + entityNamesList.join('\n• ') + overflowNote;
 
+                    const srcName = State.projects?.find((p: any) => p.id === State.ds.src)?.name;
+                    const tgtName = State.projects?.find((p: any) => p.id === State.ds.tgt)?.name;
+
                     let batchDetails = `Datastore batch ${batchNum}/${totalBatches} copied ${mutations.length} entities across kinds: ${batchKindLabel}.\n` +
-                        `Source: ${State.ds.src} (database: ${State.ds.srcDb || '(default)'})\n` +
-                        `Target: ${State.ds.tgt} (database: ${State.ds.tgtDb || '(default)'})\n` +
+                        `Source: ${State.ds.src}${srcName ? ` [${srcName}]` : ''} (database: ${State.ds.srcDb || '(default)'})\n` +
+                        `Target: ${State.ds.tgt}${tgtName ? ` [${tgtName}]` : ''} (database: ${State.ds.tgtDb || '(default)'})\n` +
                         `Status: ${mutations.length} entities written successfully (0 failed).\n`;
 
                     if (applyMod) {

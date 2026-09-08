@@ -33,13 +33,17 @@
             color: var(--fg);
             font-family: var(--font);
             min-height: 100vh;
+            width: 100%;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             overflow-x: hidden;
             background-image: 
                 radial-gradient(at 0% 0%, rgba(247, 148, 29, 0.08) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(247, 148, 29, 0.05) 0px, transparent 50%);
+        }
+        body:not(.workspace-active) {
+            align-items: center;
         }
 
         /* Notifications / Toasts */
@@ -88,6 +92,7 @@
             padding: 2.5rem;
             text-align: center;
             animation: fadeInScale 0.4s ease-out;
+            margin: auto;
         }
         @keyframes fadeInScale {
             from { transform: scale(0.95); opacity: 0; }
@@ -195,12 +200,14 @@
             transform: translateY(-1px);
         }
 
-        /* ADMIN WORKSPACE (HIDDEN BY DEFAULT) */
+        /* ADMIN WORKSPACE (FULL SCREEN WIDTH) */
         .workspace {
             display: none;
-            width: 100%;
-            max-width: 1200px;
-            margin: 2rem;
+            width: 100vw;
+            max-width: 100%;
+            margin: 0;
+            padding: 1.5rem 2.5rem;
+            box-sizing: border-box;
             flex-direction: column;
             gap: 1.5rem;
             animation: fadeInUp 0.4s ease-out;
@@ -229,10 +236,10 @@
             font-weight: 600;
             font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            transition: all 0.2s;
         }
         .btn-sec:hover {
             background: rgba(247, 148, 29, 0.15);
@@ -294,11 +301,14 @@
 
         /* Table Card */
         .table-card {
+            width: 100%;
             overflow: hidden;
         }
         .table-wrapper {
+            width: 100%;
             overflow-x: auto;
-            max-height: 550px;
+            max-height: calc(100vh - 340px);
+            min-height: 450px;
         }
         .table {
             width: 100%;
@@ -743,14 +753,15 @@
                     <option value="7D">Last 7 Days</option>
                 </select>
 
-                <select id="admin-fetch-limit" class="inp" style="width:auto; padding:8px 12px;" onchange="refreshLogs()" title="Query depth limit">
-                    <option value="15" selected>⚡ Latest 15 (~370ms)</option>
-                    <option value="30">Latest 30</option>
-                    <option value="60">Latest 60</option>
-                    <option value="150">All (150)</option>
+                <select id="admin-fetch-limit" class="inp" style="width:auto; padding:8px 12px;" onchange="refreshLogs(true)" title="Initial query limit">
+                    <option value="30" selected>⚡ Quick (30)</option>
+                    <option value="60">Medium (60)</option>
+                    <option value="150">Deep (150)</option>
+                    <option value="300">Extensive (300)</option>
+                    <option value="600">All Logs (600+)</option>
                 </select>
 
-                <button id="btn-admin-refresh" class="btn-sec" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                <button id="btn-admin-refresh" class="btn-sec" onclick="refreshLogs(true)"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
             </div>
 
             <!-- Status Pills -->
@@ -774,12 +785,12 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th style="width:40px; text-align:center"></th>
-                            <th style="width:150px">Timestamp</th>
-                            <th style="width:200px">Operator (User)</th>
-                            <th style="width:140px">Operation</th>
-                            <th style="width:230px">Project Route</th>
-                            <th style="width:110px">Status</th>
+                            <th style="width:36px; text-align:center"></th>
+                            <th style="width:160px">Timestamp</th>
+                            <th style="width:220px">Operator (User)</th>
+                            <th style="width:170px">Operation</th>
+                            <th style="width:340px">Project Route</th>
+                            <th style="width:100px; text-align:center">Status</th>
                             <th>Summary &amp; Details</th>
                         </tr>
                     </thead>
@@ -795,6 +806,9 @@
             <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:12px 20px; border-top:1px solid var(--brd); font-size:12px; color:var(--muted);">
                 <div id="admin-pagination-count">Showing 0–0 of 0 logs</div>
                 <div style="display:flex; align-items:center; gap:12px;">
+                    <button id="admin-load-more" class="btn-sec" style="padding:4px 10px; font-size:12px;" onclick="loadMoreOldLogs(50)" title="Fetch next 50 historical logs from Firestore">
+                        <i class="bi bi-cloud-arrow-down"></i> Load More Logs
+                    </button>
                     <div style="display:flex; align-items:center; gap:6px;">
                         <span>Per page:</span>
                         <select id="admin-page-size" class="inp" style="width:auto; padding:2px 8px; font-size:12px;" onchange="changeAdminPageSize()">
@@ -804,11 +818,11 @@
                         </select>
                     </div>
                     <div style="display:flex; align-items:center; gap:6px;">
-                        <button id="admin-prev-page" class="btn-sec" style="padding:4px 10px; font-size:12px;" onclick="prevAdminPage()" disabled>
+                        <button id="admin-prev-page" class="btn-sec" style="padding:4px 10px; font-size:12px;" onclick="prevAdminPage()" disabled title="Previous page">
                             <i class="bi bi-chevron-left"></i>
                         </button>
                         <span id="admin-page-indicator" class="mono" style="font-weight:600; padding:0 4px;">Page 1 of 1</span>
-                        <button id="admin-next-page" class="btn-sec" style="padding:4px 10px; font-size:12px;" onclick="nextAdminPage()" disabled>
+                        <button id="admin-next-page" class="btn-sec" style="padding:4px 10px; font-size:12px;" onclick="nextAdminPage()" disabled title="Next page (loads older logs)">
                             <i class="bi bi-chevron-right"></i>
                         </button>
                     </div>
@@ -897,6 +911,8 @@
 
         const State = {
             token: '',
+            refreshToken: '',
+            tokenExpiresAt: 0,
             uid: '',
             email: '',
             username: ''
@@ -907,6 +923,125 @@
             pageSize: 15,
             status: 'ALL'
         };
+
+        let oldestDocTimestamp = null;
+        let hasMoreOldLogs = true;
+        let isLoadingMoreLogs = false;
+
+        function persistAdminSession() {
+            try {
+                const payload = JSON.stringify({
+                    token: State.token,
+                    refreshToken: State.refreshToken,
+                    tokenExpiresAt: State.tokenExpiresAt,
+                    uid: State.uid,
+                    email: State.email,
+                    username: State.username,
+                    savedAt: Date.now()
+                });
+                sessionStorage.setItem('admin_session', payload);
+                if (State.refreshToken) {
+                    sessionStorage.setItem('admin_refresh_token', State.refreshToken);
+                    localStorage.setItem('admin_refresh_token', State.refreshToken);
+                }
+            } catch(e) {}
+        }
+
+        let isRefreshingToken = false;
+        let refreshPromise = null;
+
+        async function refreshAdminIdToken() {
+            if (isRefreshingToken && refreshPromise) {
+                return refreshPromise;
+            }
+            isRefreshingToken = true;
+            refreshPromise = (async () => {
+                try {
+                    const key = window.FIREBASE_CONFIG?.apiKey || 'AIzaSyA2X_2uA01LhkYzD2JrhVpCtMZteyxdYKc';
+                    const rToken = State.refreshToken || sessionStorage.getItem('admin_refresh_token') || localStorage.getItem('admin_refresh_token');
+                    if (!rToken) {
+                        throw new Error('No refresh token available.');
+                    }
+                    const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${key}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(rToken)}`
+                    });
+                    if (!res.ok) {
+                        throw new Error('Admin session refresh failed.');
+                    }
+                    const data = await res.json();
+                    State.token = data.id_token;
+                    if (data.refresh_token) {
+                        State.refreshToken = data.refresh_token;
+                    }
+                    const sec = parseInt(data.expires_in, 10) || 3600;
+                    State.tokenExpiresAt = Date.now() + (sec * 1000);
+                    persistAdminSession();
+                    return State.token;
+                } finally {
+                    isRefreshingToken = false;
+                    refreshPromise = null;
+                }
+            })();
+            return refreshPromise;
+        }
+
+        function handleSessionExpired() {
+            State.token = '';
+            State.refreshToken = '';
+            State.tokenExpiresAt = 0;
+            State.uid = '';
+            State.email = '';
+            State.username = '';
+            try {
+                sessionStorage.removeItem('admin_session');
+                sessionStorage.removeItem('admin_refresh_token');
+                localStorage.removeItem('admin_refresh_token');
+            } catch(e) {}
+            document.body.classList.remove("workspace-active");
+            document.getElementById("admin-panel").style.display = "none";
+            document.getElementById("login-panel").style.display = "block";
+            toast('Your admin session has expired. Please log in again.', 'warn');
+        }
+
+        // Centralized fetch interceptor with auto-refresh on 401
+        async function adminFetch(url, options = {}) {
+            // Proactively refresh if token expires in less than 2 minutes
+            if (State.refreshToken && State.tokenExpiresAt && (Date.now() > State.tokenExpiresAt - 120000)) {
+                try {
+                    await refreshAdminIdToken();
+                } catch(e) {
+                    console.warn('Proactive token refresh error:', e);
+                }
+            }
+
+            const headers = new Headers(options.headers || {});
+            if (State.token && !headers.has('Authorization')) {
+                headers.set('Authorization', `Bearer ${State.token}`);
+            }
+
+            let res = await fetch(url, { ...options, headers });
+
+            // If 401 Unauthorized, automatically renew token and retry once
+            if (res.status === 401 && (State.refreshToken || localStorage.getItem('admin_refresh_token') || sessionStorage.getItem('admin_refresh_token'))) {
+                try {
+                    const newToken = await refreshAdminIdToken();
+                    headers.set('Authorization', `Bearer ${newToken}`);
+                    res = await fetch(url, { ...options, headers });
+                } catch(refreshErr) {
+                    handleSessionExpired();
+                    throw new Error('Your admin session has expired. Please log in again.');
+                }
+            }
+
+            if (res.status === 401) {
+                handleSessionExpired();
+                throw new Error('Your admin session has expired. Please log in again.');
+            }
+
+            return res;
+        }
 
         // Login Handler
         async function handleLogin(event) {
@@ -942,11 +1077,14 @@
                 });
 
                 if (!authRes.ok) {
-                    throw new Error('Invalid username or password.');
+                    const errData = await authRes.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || 'Invalid username or password.');
                 }
 
                 const authData = await authRes.json();
                 const idToken = authData.idToken;
+                const refreshToken = authData.refreshToken;
+                const expiresInSec = parseInt(authData.expiresIn, 10) || 3600;
                 const uid = authData.localId;
 
                 // 2. Check if UID is registered in admins collection
@@ -962,24 +1100,19 @@
                 const parsedAdmin = Crypto.parseFirestoreDoc(adminDataDoc);
 
                 State.token = idToken;
+                State.refreshToken = refreshToken;
+                State.tokenExpiresAt = Date.now() + (expiresInSec * 1000);
                 State.uid = uid;
                 State.email = email;
                 State.username = parsedAdmin ? parsedAdmin.username : user;
 
-                // Persist session to survive tab reloads
-                try {
-                    sessionStorage.setItem('admin_session', JSON.stringify({
-                        token: idToken,
-                        uid,
-                        email,
-                        username: State.username,
-                        savedAt: Date.now()
-                    }));
-                } catch(e) {}
+                // Persist session to survive tab reloads and auto-refresh on expiry
+                persistAdminSession();
 
                 toast(`Welcome back, ${State.username}!`, "ok");
                 document.getElementById("login-panel").style.display = "none";
                 document.getElementById("admin-panel").style.display = "flex";
+                document.body.classList.add("workspace-active");
 
                 // Instant cache restoration for 0ms initial table load
                 try {
@@ -988,12 +1121,13 @@
                         const parsedSaved = JSON.parse(saved);
                         if (Array.isArray(parsedSaved) && parsedSaved.length > 0) {
                             cachedLogs = parsedSaved;
+                            updateAdminDropdownsAndStats();
                             applyAdminFilters();
                         }
                     }
                 } catch(e) {}
 
-                await refreshLogs();
+                refreshLogs(true);
                 checkPendingRevertFromUrl();
             } catch (e) {
                 console.error(e);
@@ -1009,106 +1143,36 @@
         // Logout Handler
         function handleLogout() {
             State.token = '';
+            State.refreshToken = '';
+            State.tokenExpiresAt = 0;
             State.uid = '';
             State.email = '';
             State.username = '';
+            try {
+                sessionStorage.removeItem('admin_session');
+                sessionStorage.removeItem('admin_refresh_token');
+                localStorage.removeItem('admin_refresh_token');
+            } catch(e) {}
+            document.body.classList.remove("workspace-active");
             document.getElementById("login-form").reset();
             document.getElementById("admin-panel").style.display = "none";
             document.getElementById("login-panel").style.display = "block";
             toast("Logged out successfully.", "info");
         }
 
-        // Load logs from Firestore
-        async function refreshLogs() {
-            const tbody = document.getElementById("logs-table-body");
-            const refreshBtn = document.getElementById("btn-admin-refresh");
-            const refreshIcon = refreshBtn ? refreshBtn.querySelector('i') : null;
-
-            if (refreshIcon) refreshIcon.classList.add('bi-spin');
-
-            // Only show empty table spinner if we have no cached logs yet
-            if (!cachedLogs || cachedLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Loading audit logs from Firestore...</td></tr>`;
-            }
-
-            const limitSelect = document.getElementById("admin-fetch-limit");
-            const fetchLimit = limitSelect ? parseInt(limitSelect.value, 10) || 15 : 15;
-
-            const allLogs = [];
+        function updateAdminDropdownsAndStats() {
             const usersSet = new Set();
             const targetsSet = new Set();
             let successCount = 0;
             let failedCount = 0;
 
-            try {
-                // Query Firestore with projection, ordering and limit for instant load (< 0.5s)
-                const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${State.token}`
-                    },
-                    body: JSON.stringify({
-                        structuredQuery: {
-                            select: {
-                                fields: [
-                                    { fieldPath: "timestamp" },
-                                    { fieldPath: "timestampEpochMs" },
-                                    { fieldPath: "operation" },
-                                    { fieldPath: "user" },
-                                    { fieldPath: "userSubject" },
-                                    { fieldPath: "srcProject" },
-                                    { fieldPath: "tgtProject" },
-                                    { fieldPath: "status" },
-                                    { fieldPath: "details" }
-                                ]
-                            },
-                            from: [{ collectionId: "audit_logs" }],
-                            orderBy: [{ field: { fieldPath: "timestamp" }, direction: "DESCENDING" }],
-                            limit: fetchLimit
-                        }
-                    })
-                });
-
-                if (!res.ok) {
-                    throw new Error(`Firestore Error: ${res.statusText || res.status}`);
-                }
-
-                const data = await res.json();
-                
-                // Parse documents
-                for (const item of data) {
-                    if (item.document) {
-                        const parsed = Crypto.parseFirestoreDoc(item.document);
-                        if (parsed) {
-                            allLogs.push(parsed);
-                            if (parsed.user) usersSet.add(parsed.user);
-                            if (parsed.tgtProject && parsed.tgtProject !== '—') targetsSet.add(parsed.tgtProject);
-                            if (parsed.status === 'SUCCESS') successCount++;
-                            if (parsed.status === 'FAILED' || parsed.status === 'CANCELLED') failedCount++;
-                        }
-                    }
-                }
-            } catch(e) {
-                toast(e.message, "err");
-                if (!cachedLogs || cachedLogs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--danger)"><strong>Failed to load logs:</strong> ${escapeHtml(e.message)}</td></tr>`;
-                }
-                return;
-            } finally {
-                if (refreshIcon) refreshIcon.classList.remove('bi-spin');
+            for (const log of cachedLogs) {
+                if (log.user) usersSet.add(log.user);
+                if (log.tgtProject && log.tgtProject !== '—') targetsSet.add(log.tgtProject);
+                if (log.status === 'SUCCESS') successCount++;
+                if (log.status === 'FAILED' || log.status === 'CANCELLED') failedCount++;
             }
 
-            allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            cachedLogs = allLogs;
-
-            // Cache in localStorage and sessionStorage for instant load next time
-            try {
-                localStorage.setItem('admin_cached_logs', JSON.stringify(allLogs));
-                sessionStorage.setItem('admin_cached_logs', JSON.stringify(allLogs));
-            } catch(e) {}
-
-            // Populate Operator & Target Dropdowns
             const userFilter = document.getElementById("log-user-filter");
             if (userFilter) {
                 const prevUser = userFilter.value;
@@ -1126,15 +1190,202 @@
             }
 
             // Update stats widgets
-            document.getElementById("stat-total-events").textContent = allLogs.length;
-            document.getElementById("stat-distinct-users").textContent = usersSet.size;
-            const successRate = allLogs.length > 0 ? Math.round((successCount / allLogs.length) * 100) : 0;
-            document.getElementById("stat-success-rate").textContent = `${successRate}%`;
+            const totalEventsEl = document.getElementById("stat-total-events");
+            if (totalEventsEl) totalEventsEl.textContent = cachedLogs.length;
+            const distUsersEl = document.getElementById("stat-distinct-users");
+            if (distUsersEl) distUsersEl.textContent = usersSet.size;
+            const successRate = cachedLogs.length > 0 ? Math.round((successCount / cachedLogs.length) * 100) : 0;
+            const successRateEl = document.getElementById("stat-success-rate");
+            if (successRateEl) successRateEl.textContent = `${successRate}%`;
             const failedEl = document.getElementById("stat-failed-count");
             if (failedEl) failedEl.textContent = failedCount;
+        }
 
-            adminFilterState.page = 1;
+        // Load logs from Firestore
+        async function refreshLogs(resetPaging = true) {
+            const tbody = document.getElementById("logs-table-body");
+            const refreshBtn = document.getElementById("btn-admin-refresh");
+            const refreshIcon = refreshBtn ? refreshBtn.querySelector('i') : null;
+
+            if (refreshIcon) refreshIcon.classList.add('bi-spin');
+
+            if (resetPaging) {
+                oldestDocTimestamp = null;
+                hasMoreOldLogs = true;
+                adminFilterState.page = 1;
+            }
+
+            // Only show empty table spinner if we have no cached logs yet
+            if (!cachedLogs || cachedLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Loading audit logs from Firestore...</td></tr>`;
+            }
+
+            const limitSelect = document.getElementById("admin-fetch-limit");
+            const fetchLimit = limitSelect ? parseInt(limitSelect.value, 10) || 30 : 30;
+
+            const allLogs = [];
+
+            try {
+                // Query Firestore with projection, ordering and limit for instant load (< 0.5s)
+                const queryBody = {
+                    structuredQuery: {
+                        select: {
+                            fields: [
+                                { fieldPath: "timestamp" },
+                                { fieldPath: "timestampEpochMs" },
+                                { fieldPath: "operation" },
+                                { fieldPath: "user" },
+                                { fieldPath: "userSubject" },
+                                { fieldPath: "srcProject" },
+                                { fieldPath: "tgtProject" },
+                                { fieldPath: "status" },
+                                { fieldPath: "details" }
+                            ]
+                        },
+                        from: [{ collectionId: "audit_logs" }],
+                        orderBy: [{ field: { fieldPath: "timestamp" }, direction: "DESCENDING" }],
+                        limit: fetchLimit
+                    }
+                };
+
+                const res = await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(queryBody)
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Firestore Error: ${res.statusText || res.status}`);
+                }
+
+                const data = await res.json();
+                
+                // Parse documents
+                for (const item of data) {
+                    if (item.document) {
+                        const parsed = Crypto.parseFirestoreDoc(item.document);
+                        if (parsed) {
+                            allLogs.push(parsed);
+                        }
+                    }
+                }
+
+                allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                if (allLogs.length > 0) {
+                    oldestDocTimestamp = allLogs[allLogs.length - 1].timestamp;
+                }
+                hasMoreOldLogs = allLogs.length >= fetchLimit;
+                cachedLogs = allLogs;
+            } catch(e) {
+                toast(e.message, "err");
+                if (!cachedLogs || cachedLogs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--danger)"><strong>Failed to load logs:</strong> ${escapeHtml(e.message)}</td></tr>`;
+                }
+                return;
+            } finally {
+                if (refreshIcon) refreshIcon.classList.remove('bi-spin');
+            }
+
+            // Cache in localStorage and sessionStorage for instant load next time
+            try {
+                localStorage.setItem('admin_cached_logs', JSON.stringify(allLogs));
+                sessionStorage.setItem('admin_cached_logs', JSON.stringify(allLogs));
+            } catch(e) {}
+
+            updateAdminDropdownsAndStats();
             applyAdminFilters();
+        }
+
+        // Fetch older historical logs from Firestore using cursor pagination
+        async function loadMoreOldLogs(batchSize = 50) {
+            if (isLoadingMoreLogs || !hasMoreOldLogs || !oldestDocTimestamp) return;
+            isLoadingMoreLogs = true;
+
+            const loadMoreBtn = document.getElementById("admin-load-more");
+            if (loadMoreBtn) {
+                loadMoreBtn.disabled = true;
+                loadMoreBtn.innerHTML = '<span class="spinner"></span> Loading...';
+            }
+            const nextBtn = document.getElementById("admin-next-page");
+            if (nextBtn) nextBtn.disabled = true;
+
+            try {
+                const queryBody = {
+                    structuredQuery: {
+                        select: {
+                            fields: [
+                                { fieldPath: "timestamp" },
+                                { fieldPath: "timestampEpochMs" },
+                                { fieldPath: "operation" },
+                                { fieldPath: "user" },
+                                { fieldPath: "userSubject" },
+                                { fieldPath: "srcProject" },
+                                { fieldPath: "tgtProject" },
+                                { fieldPath: "status" },
+                                { fieldPath: "details" }
+                            ]
+                        },
+                        from: [{ collectionId: "audit_logs" }],
+                        orderBy: [{ field: { fieldPath: "timestamp" }, direction: "DESCENDING" }],
+                        startAt: {
+                            values: [{ stringValue: oldestDocTimestamp }],
+                            before: false
+                        },
+                        limit: batchSize
+                    }
+                };
+
+                const res = await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(queryBody)
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Firestore Error: ${res.statusText || res.status}`);
+                }
+
+                const data = await res.json();
+                const newLogs = [];
+                for (const item of data) {
+                    if (item.document) {
+                        const parsed = Crypto.parseFirestoreDoc(item.document);
+                        if (parsed && !cachedLogs.some(l => l.id === parsed.id)) {
+                            newLogs.push(parsed);
+                        }
+                    }
+                }
+
+                if (newLogs.length === 0) {
+                    hasMoreOldLogs = false;
+                    toast('Reached earliest audit record.', 'info');
+                } else {
+                    if (newLogs.length < batchSize) {
+                        hasMoreOldLogs = false;
+                    }
+                    cachedLogs.push(...newLogs);
+                    cachedLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    oldestDocTimestamp = cachedLogs[cachedLogs.length - 1].timestamp;
+                    toast(`Loaded ${newLogs.length} older logs (${cachedLogs.length} total)`, 'ok');
+                }
+
+                try {
+                    localStorage.setItem('admin_cached_logs', JSON.stringify(cachedLogs));
+                    sessionStorage.setItem('admin_cached_logs', JSON.stringify(cachedLogs));
+                } catch(e) {}
+
+                updateAdminDropdownsAndStats();
+                applyAdminFilters();
+            } catch(e) {
+                toast(e.message || 'Failed to load older logs', 'err');
+            } finally {
+                isLoadingMoreLogs = false;
+                if (loadMoreBtn) {
+                    loadMoreBtn.disabled = !hasMoreOldLogs;
+                    loadMoreBtn.innerHTML = hasMoreOldLogs ? '<i class="bi bi-cloud-arrow-down"></i> Load More Logs' : '<i class="bi bi-check2-all"></i> All Logs Loaded';
+                }
+                if (nextBtn) nextBtn.disabled = false;
+            }
         }
 
         function setStatusFilter(status, btn) {
@@ -1164,9 +1415,21 @@
             }
         }
 
-        function nextAdminPage() {
-            adminFilterState.page++;
-            applyAdminFilters();
+        async function nextAdminPage() {
+            const filtered = getFilteredAdminLogs();
+            const totalPages = Math.max(1, Math.ceil(filtered.length / adminFilterState.pageSize));
+            if (adminFilterState.page < totalPages) {
+                adminFilterState.page++;
+                applyAdminFilters();
+            } else if (hasMoreOldLogs) {
+                await loadMoreOldLogs(adminFilterState.pageSize * 2);
+                const newFiltered = getFilteredAdminLogs();
+                const newTotalPages = Math.max(1, Math.ceil(newFiltered.length / adminFilterState.pageSize));
+                if (adminFilterState.page < newTotalPages) {
+                    adminFilterState.page++;
+                }
+                applyAdminFilters();
+            }
         }
 
         function getFilteredAdminLogs() {
@@ -1231,7 +1494,9 @@
             if (adminFilterState.page > totalPages) adminFilterState.page = totalPages;
 
             const countBadge = document.getElementById("admin-active-count-badge");
-            if (countBadge) countBadge.textContent = `${total} records match filters`;
+            if (countBadge) {
+                countBadge.textContent = `${total} loaded records match filters${hasMoreOldLogs ? ' (more in cloud)' : ''}`;
+            }
 
             const paginationCount = document.getElementById("admin-pagination-count");
             const indicatorEl = document.getElementById("admin-page-indicator");
@@ -1242,11 +1507,18 @@
             const endIndex = Math.min(startIndex + adminFilterState.pageSize, total);
 
             if (paginationCount) {
-                paginationCount.textContent = total === 0 ? 'Showing 0 of 0 logs' : `Showing ${startIndex + 1}–${endIndex} of ${total} logs`;
+                paginationCount.textContent = total === 0 ? 'Showing 0 of 0 logs' : `Showing ${startIndex + 1}–${endIndex} of ${total} logs${hasMoreOldLogs ? ' (more in cloud)' : ''}`;
             }
-            if (indicatorEl) indicatorEl.textContent = `Page ${adminFilterState.page} of ${totalPages}`;
+            if (indicatorEl) {
+                indicatorEl.textContent = hasMoreOldLogs && adminFilterState.page >= totalPages
+                    ? `Page ${adminFilterState.page} of ${totalPages}+`
+                    : `Page ${adminFilterState.page} of ${totalPages}`;
+            }
             if (prevBtn) prevBtn.disabled = adminFilterState.page <= 1;
-            if (nextBtn) nextBtn.disabled = adminFilterState.page >= totalPages;
+            if (nextBtn) {
+                nextBtn.disabled = adminFilterState.page >= totalPages && !hasMoreOldLogs;
+                nextBtn.title = adminFilterState.page < totalPages ? 'Next page' : (hasMoreOldLogs ? 'Fetch and view older logs' : 'No more logs');
+            }
 
             const pageSlice = filtered.slice(startIndex, endIndex);
             renderLogsTable(pageSlice);
@@ -1255,6 +1527,43 @@
         function filterLogs() {
             adminFilterState.page = 1;
             applyAdminFilters();
+        }
+
+        function getCachedProjectName(projectId, logDetails = '') {
+            if (!projectId || projectId === '—') return '';
+            try {
+                const raw = localStorage.getItem('gcp_project_names');
+                if (raw) {
+                    const map = JSON.parse(raw);
+                    if (map[projectId]) return map[projectId];
+                }
+            } catch(e) {}
+
+            if (logDetails) {
+                const esc = projectId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const match = logDetails.match(new RegExp(`${esc}\\s*(?:\\[([^\\]]+)\\]|\\((?!database:)([^)]+)\\))`, 'i'));
+                if (match) {
+                    const found = match[1] || match[2];
+                    if (found && found.trim()) {
+                        saveProjectName(projectId, found.trim());
+                        return found.trim();
+                    }
+                }
+            }
+            return '';
+        }
+
+        function saveProjectName(projectId, name) {
+            if (!projectId || !name || projectId === name) return;
+            try {
+                const raw = localStorage.getItem('gcp_project_names');
+                const map = raw ? JSON.parse(raw) : {};
+                if (map[projectId] !== name) {
+                    map[projectId] = name;
+                    localStorage.setItem('gcp_project_names', JSON.stringify(map));
+                    sessionStorage.setItem('gcp_project_names', JSON.stringify(map));
+                }
+            } catch(e) {}
         }
 
         function renderLogsTable(logs) {
@@ -1280,16 +1589,27 @@
                     opBadgeClass = 'badge';
                 }
 
+                const srcName = getCachedProjectName(log.srcProject, log.details);
+                const tgtName = getCachedProjectName(log.tgtProject, log.details);
                 const hasRoute = log.srcProject && log.tgtProject && log.srcProject !== '—' && log.tgtProject !== '—';
                 const routeHtml = hasRoute
-                    ? `<div class="audit-route-badge" title="${escapeHtml(log.srcProject)} → ${escapeHtml(log.tgtProject)}">
-                         <span class="mono" style="max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(log.srcProject)}</span>
-                         <i class="bi bi-arrow-right audit-route-arrow"></i>
-                         <span class="mono" style="max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(log.tgtProject)}</span>
+                    ? `<div class="audit-route-badge" title="${escapeHtml(log.srcProject)}${srcName ? ` (${escapeHtml(srcName)})` : ''} → ${escapeHtml(log.tgtProject)}${tgtName ? ` (${escapeHtml(tgtName)})` : ''}" style="display:inline-flex; align-items:center; gap:6px; max-width:100%;">
+                         <div style="display:flex; flex-direction:column; min-width:0; max-width:145px; text-align:left;">
+                             ${srcName ? `<span style="font-weight:700; color:var(--fg); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(srcName)}">${escapeHtml(srcName)}</span>` : ''}
+                             <span class="mono" style="font-size:10px; color:${srcName ? 'var(--muted)' : 'var(--fg)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.srcProject)}">${escapeHtml(log.srcProject)}</span>
+                         </div>
+                         <i class="bi bi-arrow-right audit-route-arrow" style="font-size:10px; margin:0 2px; flex-shrink:0;"></i>
+                         <div style="display:flex; flex-direction:column; min-width:0; max-width:145px; text-align:left;">
+                             ${tgtName ? `<span style="font-weight:700; color:var(--fg); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(tgtName)}">${escapeHtml(tgtName)}</span>` : ''}
+                             <span class="mono" style="font-size:10px; color:${tgtName ? 'var(--muted)' : 'var(--fg)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.tgtProject)}">${escapeHtml(log.tgtProject)}</span>
+                         </div>
                        </div>`
-                    : `<span class="mono" style="font-size:11px; color:var(--muted);">${escapeHtml(log.srcProject || log.tgtProject || '—')}</span>`;
+                    : `<div style="display:flex; flex-direction:column; max-width:260px; text-align:left;">
+                         ${(srcName || tgtName) ? `<span style="font-weight:700; color:var(--fg); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(srcName || tgtName)}">${escapeHtml(srcName || tgtName)}</span>` : ''}
+                         <span class="mono" style="font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(log.srcProject || log.tgtProject || '—')}">${escapeHtml(log.srcProject || log.tgtProject || '—')}</span>
+                       </div>`;
 
-                const cleanSnippet = (log.details || '').split('\n')[0].slice(0, 110);
+                const cleanSnippet = (log.details || '').split('\n')[0].slice(0, 160);
                 const isReversible = (log.operation === 'DATASTORE_COPY' || log.operation === 'DATASTORE_EDIT' || log.operation === 'QUERY_SYNC') && log.status !== 'FAILED' && log.status !== 'CANCELLED' && log.tgtProject && log.tgtProject !== '—';
                 const revertBadge = isReversible
                     ? `<span class="badge" style="font-size:9px; padding:2px 6px; background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="bi bi-arrow-counterclockwise"></i> Revertible</span>`
@@ -1306,11 +1626,11 @@
                         <td style="font-weight:600; font-size:12px;">${escapeHtml(log.user)}</td>
                         <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(log.operation)}</span></td>
                         <td>${routeHtml}</td>
-                        <td>${statusBadge}</td>
+                        <td style="text-align:center">${statusBadge}</td>
                         <td style="color:var(--muted); line-height:1.4">
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px;">${escapeHtml(cleanSnippet)}</span>
-                                <div style="display:flex; align-items:center; gap:6px; white-space:nowrap;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:600px;">${escapeHtml(cleanSnippet)}</span>
+                                <div style="display:flex; align-items:center; gap:6px; white-space:nowrap; flex-shrink:0;">
                                     ${revertBadge}
                                     <span style="font-size:10px; color:var(--accent);">Inspect <i class="bi bi-chevron-right" style="font-size:9px;"></i></span>
                                 </div>
@@ -1492,10 +1812,15 @@
                 writtenCount = items.length;
             }
 
+            const srcProjectName = getCachedProjectName(srcProject, details);
+            const tgtProjectName = getCachedProjectName(tgtProject, details);
+
             return {
                 srcProject,
+                srcProjectName,
                 srcDb,
                 tgtProject,
+                tgtProjectName,
                 tgtDb,
                 rules,
                 headline,
@@ -1698,9 +2023,14 @@
                                         <span><i class="bi bi-box-seam" style="color:#60a5fa; margin-right:4px;"></i> Source Project</span>
                                         <span class="badge" style="font-size:9px; background:rgba(255,255,255,0.06); font-family:'Roboto Mono',monospace;">db: ${escapeHtml(pipeline.srcDb)}</span>
                                     </div>
-                                    <div class="mono admin-clickable-key" data-key="${escapeHtml(pipeline.srcProject || '')}" title="Click to copy project ID" style="font-weight:600; font-size:11px; color:var(--fg); cursor:pointer; word-break:break-all;">
+                                    ${pipeline.srcProjectName ? `
+                                        <div style="font-weight:700; font-size:13px; color:var(--fg); margin-bottom:2px; word-break:break-word;" title="${escapeHtml(pipeline.srcProjectName)}">
+                                            ${escapeHtml(pipeline.srcProjectName)}
+                                        </div>
+                                    ` : ''}
+                                    <div class="mono admin-clickable-key" data-key="${escapeHtml(pipeline.srcProject || '')}" title="Click to copy project ID" style="font-weight:600; font-size:11px; color:${pipeline.srcProjectName ? 'var(--muted)' : 'var(--fg)'}; cursor:pointer; word-break:break-all;">
                                         ${escapeHtml(pipeline.srcProject || '—')}
-                                        ${pipeline.srcProject ? '<i class="bi bi-clipboard" style="font-size:9px; color:var(--muted); margin-left:4px;"></i>' : ''}
+                                        ${pipeline.srcProject && pipeline.srcProject !== '—' ? '<i class="bi bi-clipboard" style="font-size:9px; color:var(--muted); margin-left:4px;"></i>' : ''}
                                     </div>
                                 </div>
                             </div>
@@ -1740,7 +2070,12 @@
                                         <span><i class="bi bi-bullseye" style="color:#34d399; margin-right:4px;"></i> Target Project</span>
                                         <span class="badge" style="font-size:9px; background:rgba(255,255,255,0.06); font-family:'Roboto Mono',monospace;">db: ${escapeHtml(pipeline.tgtDb)}</span>
                                     </div>
-                                    <div class="mono admin-clickable-key" data-key="${escapeHtml(pipeline.tgtProject || '')}" title="Click to copy project ID" style="font-weight:600; font-size:11px; color:var(--fg); cursor:pointer; word-break:break-all;">
+                                    ${pipeline.tgtProjectName ? `
+                                        <div style="font-weight:700; font-size:13px; color:var(--fg); margin-bottom:2px; word-break:break-word;" title="${escapeHtml(pipeline.tgtProjectName)}">
+                                            ${escapeHtml(pipeline.tgtProjectName)}
+                                        </div>
+                                    ` : ''}
+                                    <div class="mono admin-clickable-key" data-key="${escapeHtml(pipeline.tgtProject || '')}" title="Click to copy project ID" style="font-weight:600; font-size:11px; color:${pipeline.tgtProjectName ? 'var(--muted)' : 'var(--fg)'}; cursor:pointer; word-break:break-all;">
                                         ${escapeHtml(pipeline.tgtProject || '—')}
                                         ${pipeline.tgtProject && pipeline.tgtProject !== '—' ? '<i class="bi bi-clipboard" style="font-size:9px; color:var(--muted); margin-left:4px;"></i>' : ''}
                                     </div>
@@ -1830,9 +2165,7 @@
                     if (preEl && (!log.prevState || !log.prevState.backupData) && !preEl.textContent.includes('No pre-mutation')) {
                         preEl.textContent = 'Loading entity snapshot from database...';
                         try {
-                            const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs/${log.id}`, {
-                                headers: { 'Authorization': `Bearer ${State.token}` }
-                            });
+                            const res = await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs/${log.id}`);
                             if (!res.ok) throw new Error(`HTTP ${res.status}`);
                             const doc = await res.json();
                             const parsed = Crypto.parseFirestoreDoc(doc);
@@ -1911,11 +2244,10 @@
             listBody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 12px; color:var(--muted)">Loading admins...</td></tr>`;
 
             try {
-                const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
+                const res = await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents:runQuery`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${State.token}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         structuredQuery: {
@@ -2006,11 +2338,10 @@
                 const newUid = signupData.localId;
 
                 // 2. Register UID in Firestore admins collection
-                const firestoreRes = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/${newUid}?updateMask.fieldPaths=username&updateMask.fieldPaths=email`, {
+                const firestoreRes = await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/${newUid}?updateMask.fieldPaths=username&updateMask.fieldPaths=email`, {
                     method: 'PATCH',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${State.token}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         fields: {
@@ -2045,9 +2376,8 @@
             }
 
             try {
-                const res = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/${uid}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${State.token}` }
+                const res = await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/admins/${uid}`, {
+                    method: 'DELETE'
                 });
 
                 if (!res.ok) throw new Error('Failed to delete permission document.');
@@ -2110,6 +2440,9 @@
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Permissions & Revert';
 
+            const srcName = getCachedProjectName(log.srcProject, log.details);
+            const tgtName = getCachedProjectName(log.tgtProject, log.details);
+
             metaBox.innerHTML = `
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
                     <div>
@@ -2118,30 +2451,35 @@
                     </div>
                     <div>
                         <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Target Project:</span>
-                        <div class="mono" style="font-weight:700; color:#34d399; font-size:12px;">${escapeHtml(log.tgtProject)}</div>
+                        <div style="font-weight:700; color:#34d399; font-size:12px;">
+                            ${tgtName ? `<span>${escapeHtml(tgtName)}</span> <span class="mono" style="font-size:10px; color:var(--muted); font-weight:normal;">(${escapeHtml(log.tgtProject)})</span>` : `<span class="mono">${escapeHtml(log.tgtProject)}</span>`}
+                        </div>
                     </div>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
-                        <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Original Operator:</span>
-                        <div style="color:var(--fg); font-size:11px;">${escapeHtml(log.user)}</div>
+                        <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Timestamp:</span>
+                        <div style="color:var(--fg); font-size:12px;">${new Date(log.timestamp).toLocaleString()}</div>
                     </div>
                     <div>
-                        <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Executed At:</span>
-                        <div class="mono" style="color:var(--muted); font-size:11px;">${new Date(log.timestamp).toLocaleString()}</div>
+                        <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Original Operator:</span>
+                        <div style="color:var(--fg); font-size:12px; font-weight:600;">${escapeHtml(log.user)}</div>
                     </div>
                 </div>
             `;
-
-            modal.classList.add('open');
-            setTimeout(() => tokenInp.focus(), 120);
+            modal.style.display = 'flex';
+            setTimeout(() => tokenInp.focus(), 100);
         }
 
-        function hideAdminRevertModal() {
+        function closeAdminRevertModal() {
             const modal = document.getElementById('admin-revert-modal');
-            if (modal) modal.classList.remove('open');
+            if (modal) {
+                modal.style.display = 'none';
+                modal.classList.remove('open');
+            }
             currentRevertLog = null;
         }
+        const hideAdminRevertModal = closeAdminRevertModal;
 
         function toggleRevertTokenVisibility() {
             const inp = document.getElementById('admin-revert-gauth-token');
@@ -2168,20 +2506,14 @@
 
             if (!gauthToken) {
                 statusBox.style.display = 'block';
-                statusBox.style.background = 'rgba(239, 68, 68, 0.15)';
-                statusBox.style.border = '1px solid #ef4444';
-                statusBox.style.color = '#fca5a5';
-                statusBox.innerHTML = '<strong>Token Required:</strong> Please provide a Google Cloud OAuth access token generated via <code>gcloud auth print-access-token</code>.';
+                statusBox.innerHTML = '<span style="color:#f87171;"><i class="bi bi-exclamation-octagon-fill"></i> Please enter your Google Cloud access token.</span>';
                 tokenInp.focus();
                 return;
             }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner"></span> Verifying Permissions...';
-
+            submitBtn.innerHTML = '<span class="spinner"></span> Processing Revert...';
             statusBox.style.display = 'block';
-            statusBox.style.background = 'rgba(13, 20, 30, 0.8)';
-            statusBox.style.border = '1px solid var(--brd2)';
             statusBox.style.color = 'var(--fg)';
 
             try {
@@ -2192,11 +2524,22 @@
                 const idRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
                     headers: { 'Authorization': `Bearer ${gauthToken}` }
                 });
-                if (!idRes.ok) {
-                    throw new Error(`Invalid or expired Google OAuth access token (${idRes.status}). Please run 'gcloud auth print-access-token' and try again.`);
+                if (idRes.status === 401 || !idRes.ok) {
+                    throw new Error(`Google Cloud OAuth token is invalid or expired (401). Please generate a fresh token with 'gcloud auth print-access-token' and try again.`);
                 }
                 const idData = await idRes.json();
                 if (idData.email) gauthEmail = idData.email;
+
+                // Cache accessible projects in background
+                fetch('https://cloudresourcemanager.googleapis.com/v1/projects', {
+                    headers: { 'Authorization': `Bearer ${gauthToken}` }
+                }).then(r => r.json()).then(d => {
+                    if (Array.isArray(d.projects)) {
+                        d.projects.forEach(p => {
+                            if (p.projectId && p.name) saveProjectName(p.projectId, p.name);
+                        });
+                    }
+                }).catch(() => {});
 
                 // Step 2: Check IAM permissions on target project
                 statusBox.innerHTML = `
@@ -2217,6 +2560,9 @@
                     body: JSON.stringify({ permissions: requiredPermissions })
                 });
 
+                if (testRes.status === 401) {
+                    throw new Error(`Google Cloud OAuth token expired (401). Please generate a fresh token with 'gcloud auth print-access-token' and try again.`);
+                }
                 if (!testRes.ok) {
                     throw new Error(`Insufficient permissions to test IAM on project '${targetProject}' (${testRes.statusText || testRes.status}). You don't have required permissions on this project.`);
                 }
@@ -2257,9 +2603,7 @@
                 // Fetch full log prevState if not present or incomplete
                 let state = log.prevState;
                 if (!state || (!state.backupData && !state.prevEntity && !state.rawKey)) {
-                    const docRes = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs/${log.id}`, {
-                        headers: { 'Authorization': `Bearer ${State.token}` }
-                    });
+                    const docRes = await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs/${log.id}`);
                     if (!docRes.ok) throw new Error(`Failed to load audit backup record from Firestore (${docRes.status})`);
                     const docJson = await docRes.json();
                     const parsed = Crypto.parseFirestoreDoc(docJson);
@@ -2322,6 +2666,9 @@
                             })
                         });
 
+                        if (commitRes.status === 401) {
+                            throw new Error('Google Cloud OAuth token expired (401) during Datastore commit. Please retry with a fresh token.');
+                        }
                         if (!commitRes.ok) {
                             const errBody = await commitRes.json().catch(() => ({}));
                             throw new Error(`Datastore commit failed (${commitRes.status}): ${errBody.error?.message || commitRes.statusText}`);
@@ -2349,6 +2696,9 @@
                         },
                         body: JSON.stringify({ mode: 'NON_TRANSACTIONAL', mutations })
                     });
+                    if (commitRes.status === 401) {
+                        throw new Error('Google Cloud OAuth token expired (401) during Datastore commit. Please retry with a fresh token.');
+                    }
                     if (!commitRes.ok) {
                         const errBody = await commitRes.json().catch(() => ({}));
                         throw new Error(`Datastore commit failed (${commitRes.status}): ${errBody.error?.message || commitRes.statusText}`);
@@ -2360,11 +2710,10 @@
                 // Write revert audit log to Firestore
                 const revertDetails = `Admin reverted ${log.operation} from log ${log.id}. Restored: ${restoredCount}, Deleted: ${deletedCount}. Authorized by ${gauthEmail}.`;
                 try {
-                    await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs`, {
+                    await adminFetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${State.token}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             fields: {
@@ -2426,21 +2775,34 @@
         }
 
         async function initAdminPortal() {
-            // Restore active session if present (within 50 min)
+            // Restore active session if present
             try {
                 const sessionStr = sessionStorage.getItem('admin_session');
-                if (sessionStr) {
-                    const session = JSON.parse(sessionStr);
-                    if (session && session.token && (Date.now() - (session.savedAt || 0) < 50 * 60 * 1000)) {
-                        State.token = session.token;
-                        State.uid = session.uid;
-                        State.email = session.email;
-                        State.username = session.username;
+                const savedRefreshToken = sessionStorage.getItem('admin_refresh_token') || localStorage.getItem('admin_refresh_token');
+                if (sessionStr || savedRefreshToken) {
+                    const session = sessionStr ? JSON.parse(sessionStr) : {};
+                    State.token = session.token || '';
+                    State.refreshToken = session.refreshToken || savedRefreshToken || '';
+                    State.tokenExpiresAt = session.tokenExpiresAt || 0;
+                    State.uid = session.uid || '';
+                    State.email = session.email || '';
+                    State.username = session.username || 'Admin';
+
+                    if (State.refreshToken) {
+                        // If token is missing, expired, or approaching expiry (< 5 min), proactively refresh!
+                        if (!State.token || !State.tokenExpiresAt || Date.now() > State.tokenExpiresAt - 300000) {
+                            refreshAdminIdToken().catch(err => {
+                                console.warn('Background token renewal failed:', err);
+                            });
+                        }
                         document.getElementById("login-panel").style.display = "none";
                         document.getElementById("admin-panel").style.display = "flex";
+                        document.body.classList.add("workspace-active");
                     }
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.warn('Session restoration error:', e);
+            }
 
             // Instant cache restoration for 0ms initial table load
             try {
@@ -2449,14 +2811,15 @@
                     const parsedSaved = JSON.parse(saved);
                     if (Array.isArray(parsedSaved) && parsedSaved.length > 0) {
                         cachedLogs = parsedSaved;
+                        updateAdminDropdownsAndStats();
                         applyAdminFilters();
                     }
                 }
             } catch(e) {}
 
             // If session was restored, revalidate in background
-            if (State.token) {
-                await refreshLogs();
+            if (State.token || State.refreshToken) {
+                refreshLogs(true);
                 checkPendingRevertFromUrl();
             }
 

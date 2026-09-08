@@ -8,6 +8,51 @@ import { compressJsonToBase64, decompressJsonFromBase64, mapConcurrent } from '.
 const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
 const MAX_AUDIT_CHUNK_DATA_BYTES = 650_000;
 
+export const saveProjectName = (projectId: string, name: string): void => {
+    if (!projectId || !name || projectId === name) return;
+    try {
+        const raw = localStorage.getItem('gcp_project_names');
+        const map = raw ? JSON.parse(raw) : {};
+        if (map[projectId] !== name) {
+            map[projectId] = name;
+            localStorage.setItem('gcp_project_names', JSON.stringify(map));
+            sessionStorage.setItem('gcp_project_names', JSON.stringify(map));
+        }
+    } catch(e) {}
+};
+
+export const getCachedProjectName = (projectId?: string, logDetails?: string): string => {
+    if (!projectId || projectId === '—') return '';
+    try {
+        const raw = localStorage.getItem('gcp_project_names') || sessionStorage.getItem('gcp_project_names');
+        if (raw) {
+            const map = JSON.parse(raw);
+            if (map[projectId]) return map[projectId];
+        }
+    } catch(e) {}
+
+    if (Array.isArray(State.projects)) {
+        const found = State.projects.find((p: any) => p.id === projectId);
+        if (found?.name) {
+            saveProjectName(projectId, found.name);
+            return found.name;
+        }
+    }
+
+    if (logDetails) {
+        const esc = projectId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const match = logDetails.match(new RegExp(`${esc}\\s*(?:\\[([^\\]]+)\\]|\\((?!database:)([^)]+)\\))`, 'i'));
+        if (match) {
+            const found = match[1] || match[2];
+            if (found && found.trim()) {
+                saveProjectName(projectId, found.trim());
+                return found.trim();
+            }
+        }
+    }
+    return '';
+};
+
 export interface PreparedPrevState {
     inline: any;
     chunks?: string[];
@@ -300,11 +345,13 @@ export const AuditLog = {
         const { UI } = await import('./ui');
         const { App } = await import('./app');
 
+        const tgtName = getCachedProjectName(log.tgtProject, log.details);
+
         UI.openModal(`
             <div class="p-5 text-left">
                 <h3 class="font-semibold mb-4 text-base">Revert Operation</h3>
                 <div class="warning-box"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Destructive Action!</strong> This will restore the previous state and overwrite or delete changes made during the operation on <strong>${new Date(log.timestamp).toLocaleString()}</strong>.</div></div>
-                <p class="text-sm mt-4 mb-4">Are you sure you want to revert this operation for target project <strong>${Utils.escapeHtml(log.tgtProject)}</strong>?</p>
+                <p class="text-sm mt-4 mb-4">Are you sure you want to revert this operation for target project <strong>${tgtName ? `${Utils.escapeHtml(tgtName)} (${Utils.escapeHtml(log.tgtProject)})` : Utils.escapeHtml(log.tgtProject)}</strong>?</p>
                 <div class="flex justify-end gap-2">
                     <button class="btn btn-s" id="btn-revert-cancel">Cancel</button>
                     <button class="btn btn-p btn-d" id="btn-revert-confirm">Confirm & Revert</button>
@@ -645,17 +692,30 @@ export const AuditLog = {
             // Project Route pill
             const routeTd = fragment.querySelector('.log-src')?.closest('td');
             if (routeTd) {
+                const srcName = getCachedProjectName(log.srcProject, log.details);
+                const tgtName = getCachedProjectName(log.tgtProject, log.details);
                 const hasRoute = log.srcProject && log.tgtProject && log.srcProject !== '—' && log.tgtProject !== '—';
                 if (hasRoute) {
                     routeTd.innerHTML = `
-                        <div class="audit-route-badge" title="${Utils.escapeHtml(log.srcProject)} → ${Utils.escapeHtml(log.tgtProject)}">
-                            <span class="truncate max-w-[95px]">${Utils.escapeHtml(log.srcProject)}</span>
-                            <i class="fa-solid fa-arrow-right-long audit-route-arrow"></i>
-                            <span class="truncate max-w-[95px]">${Utils.escapeHtml(log.tgtProject)}</span>
+                        <div class="audit-route-badge" title="${Utils.escapeHtml(log.srcProject)}${srcName ? ` (${Utils.escapeHtml(srcName)})` : ''} → ${Utils.escapeHtml(log.tgtProject)}${tgtName ? ` (${Utils.escapeHtml(tgtName)})` : ''}">
+                            <div class="flex flex-col min-w-0 max-w-[130px] text-left">
+                                ${srcName ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate" title="${Utils.escapeHtml(srcName)}">${Utils.escapeHtml(srcName)}</span>` : ''}
+                                <span class="mono text-[10px] text-[var(--muted)] truncate" title="${Utils.escapeHtml(log.srcProject)}">${Utils.escapeHtml(log.srcProject)}</span>
+                            </div>
+                            <i class="fa-solid fa-arrow-right-long audit-route-arrow mx-1 shrink-0 text-[10px]"></i>
+                            <div class="flex flex-col min-w-0 max-w-[130px] text-left">
+                                ${tgtName ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate" title="${Utils.escapeHtml(tgtName)}">${Utils.escapeHtml(tgtName)}</span>` : ''}
+                                <span class="mono text-[10px] text-[var(--muted)] truncate" title="${Utils.escapeHtml(log.tgtProject)}">${Utils.escapeHtml(log.tgtProject)}</span>
+                            </div>
                         </div>
                     `;
                 } else {
-                    routeTd.innerHTML = `<span class="mono text-[11px] text-[var(--muted)]">${Utils.escapeHtml(log.srcProject || log.tgtProject || '—')}</span>`;
+                    routeTd.innerHTML = `
+                        <div class="flex flex-col max-w-[200px] text-left">
+                            ${(srcName || tgtName) ? `<span class="font-bold text-[11px] text-[var(--fg)] truncate" title="${Utils.escapeHtml(srcName || tgtName)}">${Utils.escapeHtml(srcName || tgtName)}</span>` : ''}
+                            <span class="mono text-[10px] text-[var(--muted)] truncate" title="${Utils.escapeHtml(log.srcProject || log.tgtProject || '—')}">${Utils.escapeHtml(log.srcProject || log.tgtProject || '—')}</span>
+                        </div>
+                    `;
                 }
             }
 
@@ -855,10 +915,15 @@ export const AuditLog = {
             writtenCount = items.length;
         }
 
+        const srcProjectName = getCachedProjectName(srcProject, details);
+        const tgtProjectName = getCachedProjectName(tgtProject, details);
+
         return {
             srcProject,
+            srcProjectName,
             srcDb,
             tgtProject,
+            tgtProjectName,
             tgtDb,
             rules,
             headline,
@@ -1050,7 +1115,12 @@ export const AuditLog = {
                                     <span><i class="fa-solid fa-box text-blue-400 mr-1"></i> Source Project</span>
                                     <span class="badge text-[9px] bg-zinc-800 text-zinc-300 font-mono">db: ${Utils.escapeHtml(pipeline.srcDb)}</span>
                                 </div>
-                                <div class="mono font-semibold text-xs text-[var(--fg)] audit-clickable-key cursor-pointer break-all" data-key="${Utils.escapeHtml(pipeline.srcProject || '')}" title="Click to copy project ID">
+                                ${pipeline.srcProjectName ? `
+                                    <div class="font-bold text-xs text-[var(--fg)] mb-0.5 truncate" title="${Utils.escapeHtml(pipeline.srcProjectName)}">
+                                        ${Utils.escapeHtml(pipeline.srcProjectName)}
+                                    </div>
+                                ` : ''}
+                                <div class="mono font-semibold text-xs text-[var(--muted)] audit-clickable-key cursor-pointer break-all" data-key="${Utils.escapeHtml(pipeline.srcProject || '')}" title="Click to copy project ID">
                                     ${Utils.escapeHtml(pipeline.srcProject || '—')}
                                     ${pipeline.srcProject ? '<i class="fa-regular fa-copy text-[10px] text-[var(--muted)] ml-1"></i>' : ''}
                                 </div>
@@ -1092,7 +1162,12 @@ export const AuditLog = {
                                     <span><i class="fa-solid fa-bullseye text-emerald-400 mr-1"></i> Target Project</span>
                                     <span class="badge text-[9px] bg-zinc-800 text-zinc-300 font-mono">db: ${Utils.escapeHtml(pipeline.tgtDb)}</span>
                                 </div>
-                                <div class="mono font-semibold text-xs text-[var(--fg)] audit-clickable-key cursor-pointer break-all" data-key="${Utils.escapeHtml(pipeline.tgtProject || '')}" title="Click to copy project ID">
+                                ${pipeline.tgtProjectName ? `
+                                    <div class="font-bold text-xs text-[var(--fg)] mb-0.5 truncate" title="${Utils.escapeHtml(pipeline.tgtProjectName)}">
+                                        ${Utils.escapeHtml(pipeline.tgtProjectName)}
+                                    </div>
+                                ` : ''}
+                                <div class="mono font-semibold text-xs text-[var(--muted)] audit-clickable-key cursor-pointer break-all" data-key="${Utils.escapeHtml(pipeline.tgtProject || '')}" title="Click to copy project ID">
                                     ${Utils.escapeHtml(pipeline.tgtProject || '—')}
                                     ${pipeline.tgtProject && pipeline.tgtProject !== '—' ? '<i class="fa-regular fa-copy text-[10px] text-[var(--muted)] ml-1"></i>' : ''}
                                 </div>
