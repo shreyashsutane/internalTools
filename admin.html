@@ -333,10 +333,90 @@
         .badge-success {
             background: rgba(16, 185, 129, 0.1);
             color: var(--ok);
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
         .badge-failed {
             background: rgba(239, 68, 68, 0.1);
             color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        .badge-warn {
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .audit-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            border: 1px solid var(--brd);
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            user-select: none;
+        }
+        .audit-pill:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--fg);
+        }
+        .audit-pill.active {
+            background: rgba(247, 148, 29, 0.15);
+            color: var(--accent);
+            border-color: rgba(247, 148, 29, 0.5);
+            font-weight: 600;
+            box-shadow: 0 0 12px rgba(247, 148, 29, 0.2);
+        }
+
+        .audit-route-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 11px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--brd);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+        .audit-route-arrow {
+            color: var(--accent);
+            font-size: 10px;
+        }
+
+        .audit-entity-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--brd2);
+        }
+        .audit-entity-table th {
+            background: rgba(0, 0, 0, 0.35);
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            border-bottom: 1px solid var(--brd2);
+            text-align: left;
+        }
+        .audit-entity-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--brd);
+            color: var(--fg);
+        }
+        .audit-entity-table tr:last-child td {
+            border-bottom: none;
+        }
+        .audit-entity-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .mono {
@@ -512,7 +592,7 @@
         </div>
 
         <!-- Stats Widgets -->
-        <div class="stats-grid">
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
             <div class="card stat-card">
                 <div>
                     <div class="stat-label">Total Audit Events</div>
@@ -522,27 +602,76 @@
             </div>
             <div class="card stat-card">
                 <div>
-                    <div class="stat-label">Distinct Users Logged</div>
+                    <div class="stat-label">Success Rate</div>
+                    <div class="stat-value" id="stat-success-rate" style="color:var(--ok)">0%</div>
+                </div>
+                <i class="bi bi-patch-check-fill stat-icon" style="color:var(--ok)"></i>
+            </div>
+            <div class="card stat-card">
+                <div>
+                    <div class="stat-label">Failed / Cancelled</div>
+                    <div class="stat-value" id="stat-failed-count" style="color:var(--danger)">0</div>
+                </div>
+                <i class="bi bi-exclamation-octagon-fill stat-icon" style="color:var(--danger)"></i>
+            </div>
+            <div class="card stat-card">
+                <div>
+                    <div class="stat-label">Distinct Operators</div>
                     <div class="stat-value" id="stat-distinct-users">0</div>
                 </div>
                 <i class="bi bi-people-fill stat-icon"></i>
             </div>
-            <div class="card stat-card">
-                <div>
-                    <div class="stat-label">Successful Actions</div>
-                    <div class="stat-value" id="stat-success-rate">0%</div>
-                </div>
-                <i class="bi bi-patch-check-fill stat-icon" style="color:var(--ok)"></i>
-            </div>
         </div>
 
-        <!-- Controls / Search -->
-        <div class="card controls-card" style="margin-bottom:0">
-            <div class="search-wrapper">
-                <i class="bi bi-search"></i>
-                <input type="text" id="log-search" class="inp search-inp" placeholder="Search by email, operation, target project, or details..." oninput="filterLogs()">
+        <!-- Multi-Filter Controls Bar -->
+        <div class="card controls-card" style="margin-bottom:1rem; flex-direction:column; align-items:stretch; gap:12px;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px;">
+                <div class="search-wrapper" style="flex:1; min-width:240px;">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="log-search" class="inp search-inp" placeholder="Search by email, operation, project, or details..." oninput="applyAdminFilters()">
+                </div>
+                
+                <select id="log-op-filter" class="inp" style="width:auto; padding:8px 12px;" onchange="applyAdminFilters()">
+                    <option value="ALL">All Operations</option>
+                    <option value="DATASTORE_COPY">Datastore Copy</option>
+                    <option value="DATASTORE_ANALYZE">Datastore Analyze</option>
+                    <option value="DATASTORE_EDIT">Datastore Edit</option>
+                    <option value="DATASTORE_REVERT">Datastore Revert</option>
+                    <option value="QUERY_SYNC">Scheduled Query Sync</option>
+                    <option value="BQ_SCHEMA_SYNC">BigQuery Schema Sync</option>
+                </select>
+
+                <select id="log-user-filter" class="inp" style="width:auto; padding:8px 12px;" onchange="applyAdminFilters()">
+                    <option value="ALL">All Operators</option>
+                </select>
+
+                <select id="log-target-filter" class="inp" style="width:auto; padding:8px 12px;" onchange="applyAdminFilters()">
+                    <option value="ALL">All Targets</option>
+                </select>
+
+                <select id="log-date-filter" class="inp" style="width:auto; padding:8px 12px;" onchange="applyAdminFilters()">
+                    <option value="ALL">All Time</option>
+                    <option value="TODAY">Today</option>
+                    <option value="24H">Last 24 Hours</option>
+                    <option value="7D">Last 7 Days</option>
+                </select>
+
+                <button class="btn-sec" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
             </div>
-            <button class="btn-sec" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+
+            <!-- Status Pills -->
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; border-top:1px solid var(--brd); padding-top:10px;">
+                <div id="admin-status-pills" style="display:flex; flex-wrap:wrap; gap:6px;">
+                    <button type="button" class="audit-pill active" data-status="ALL" onclick="setStatusFilter('ALL', this)">All</button>
+                    <button type="button" class="audit-pill" data-status="SUCCESS" onclick="setStatusFilter('SUCCESS', this)">🟢 Success</button>
+                    <button type="button" class="audit-pill" data-status="FAILED" onclick="setStatusFilter('FAILED', this)">🔴 Failed</button>
+                    <button type="button" class="audit-pill" data-status="PARTIAL_CANCEL" onclick="setStatusFilter('PARTIAL_CANCEL', this)">🟡 Other</button>
+                    <button type="button" class="audit-pill" data-status="REVERTIBLE" onclick="setStatusFilter('REVERTIBLE', this)">⏪ Reversible</button>
+                </div>
+                <div id="admin-active-count-badge" style="font-size:12px; color:var(--muted); font-family:'Roboto Mono', monospace;">
+                    0 records match filters
+                </div>
+            </div>
         </div>
 
         <!-- Table Card -->
@@ -552,12 +681,12 @@
                     <thead>
                         <tr>
                             <th style="width:40px; text-align:center"></th>
-                            <th style="width:160px">Timestamp</th>
-                            <th style="width:240px">User (Gmail)</th>
-                            <th style="width:160px">Operation</th>
-                            <th>Projects</th>
+                            <th style="width:150px">Timestamp</th>
+                            <th style="width:200px">Operator (User)</th>
+                            <th style="width:140px">Operation</th>
+                            <th style="width:230px">Project Route</th>
                             <th style="width:110px">Status</th>
-                            <th>Details</th>
+                            <th>Summary &amp; Details</th>
                         </tr>
                     </thead>
                     <tbody id="logs-table-body">
@@ -566,6 +695,30 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Pagination Bar -->
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:12px 20px; border-top:1px solid var(--brd); font-size:12px; color:var(--muted);">
+                <div id="admin-pagination-count">Showing 0–0 of 0 logs</div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span>Per page:</span>
+                        <select id="admin-page-size" class="inp" style="width:auto; padding:2px 8px; font-size:12px;" onchange="changeAdminPageSize()">
+                            <option value="15">15</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button id="admin-prev-page" class="btn-sec" style="padding:4px 10px; font-size:12px;" onclick="prevAdminPage()" disabled>
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <span id="admin-page-indicator" class="mono" style="font-weight:600; padding:0 4px;">Page 1 of 1</span>
+                        <button id="admin-next-page" class="btn-sec" style="padding:4px 10px; font-size:12px;" onclick="nextAdminPage()" disabled>
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -720,7 +873,9 @@
             tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)"><span class="spinner"></span> Loading audit logs from Firestore...</td></tr>`;
             const allLogs = [];
             const usersSet = new Set();
+            const targetsSet = new Set();
             let successCount = 0;
+            let failedCount = 0;
 
             try {
                 // Query Firestore for all documents in collection audit_logs
@@ -749,8 +904,10 @@
                         const parsed = Crypto.parseFirestoreDoc(item.document);
                         if (parsed) {
                             allLogs.push(parsed);
-                            usersSet.add(parsed.user);
+                            if (parsed.user) usersSet.add(parsed.user);
+                            if (parsed.tgtProject && parsed.tgtProject !== '—') targetsSet.add(parsed.tgtProject);
                             if (parsed.status === 'SUCCESS') successCount++;
+                            if (parsed.status === 'FAILED' || parsed.status === 'CANCELLED') failedCount++;
                         }
                     }
                 }
@@ -763,27 +920,188 @@
             allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             cachedLogs = allLogs;
 
+            // Populate Operator & Target Dropdowns
+            const userFilter = document.getElementById("log-user-filter");
+            if (userFilter) {
+                const prevUser = userFilter.value;
+                userFilter.innerHTML = '<option value="ALL">All Operators</option>' +
+                    Array.from(usersSet).sort().map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+                if (usersSet.has(prevUser)) userFilter.value = prevUser;
+            }
+
+            const tgtFilter = document.getElementById("log-target-filter");
+            if (tgtFilter) {
+                const prevTgt = tgtFilter.value;
+                tgtFilter.innerHTML = '<option value="ALL">All Targets</option>' +
+                    Array.from(targetsSet).sort().map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                if (targetsSet.has(prevTgt)) tgtFilter.value = prevTgt;
+            }
+
             // Update stats widgets
             document.getElementById("stat-total-events").textContent = allLogs.length;
             document.getElementById("stat-distinct-users").textContent = usersSet.size;
             const successRate = allLogs.length > 0 ? Math.round((successCount / allLogs.length) * 100) : 0;
             document.getElementById("stat-success-rate").textContent = `${successRate}%`;
+            const failedEl = document.getElementById("stat-failed-count");
+            if (failedEl) failedEl.textContent = failedCount;
 
-            renderLogsTable(allLogs);
+            adminFilterState.page = 1;
+            applyAdminFilters();
+        }
+
+        function setStatusFilter(status, btn) {
+            const pills = document.getElementById('admin-status-pills');
+            if (pills) {
+                pills.querySelectorAll('.audit-pill').forEach(b => b.classList.remove('active'));
+            }
+            if (btn) btn.classList.add('active');
+            adminFilterState.status = status;
+            adminFilterState.page = 1;
+            applyAdminFilters();
+        }
+
+        function changeAdminPageSize() {
+            const sel = document.getElementById("admin-page-size");
+            if (sel) {
+                adminFilterState.pageSize = parseInt(sel.value, 10) || 25;
+                adminFilterState.page = 1;
+                applyAdminFilters();
+            }
+        }
+
+        function prevAdminPage() {
+            if (adminFilterState.page > 1) {
+                adminFilterState.page--;
+                applyAdminFilters();
+            }
+        }
+
+        function nextAdminPage() {
+            adminFilterState.page++;
+            applyAdminFilters();
+        }
+
+        function getFilteredAdminLogs() {
+            const query = (document.getElementById("log-search")?.value || '').toLowerCase().trim();
+            const op = document.getElementById("log-op-filter")?.value || 'ALL';
+            const user = document.getElementById("log-user-filter")?.value || 'ALL';
+            const target = document.getElementById("log-target-filter")?.value || 'ALL';
+            const dateRange = document.getElementById("log-date-filter")?.value || 'ALL';
+            const status = adminFilterState.status;
+
+            const now = Date.now();
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            return cachedLogs.filter(log => {
+                // Status filter
+                if (status === 'SUCCESS' && log.status !== 'SUCCESS') return false;
+                if (status === 'FAILED' && log.status !== 'FAILED') return false;
+                if (status === 'PARTIAL_CANCEL' && log.status !== 'PARTIAL' && log.status !== 'CANCELLED') return false;
+                if (status === 'REVERTIBLE') {
+                    const hasRev = Boolean(log.prevState && log.prevState.type !== 'BQ_SCHEMA_SYNC');
+                    if (!hasRev) return false;
+                }
+
+                // Operation filter
+                if (op !== 'ALL' && log.operation !== op) return false;
+
+                // User filter
+                if (user !== 'ALL' && log.user !== user) return false;
+
+                // Target filter
+                if (target !== 'ALL' && log.tgtProject !== target) return false;
+
+                // Date filter
+                const logEpoch = new Date(log.timestamp).getTime();
+                if (dateRange === 'TODAY' && logEpoch < startOfToday.getTime()) return false;
+                if (dateRange === '24H' && logEpoch < now - 24 * 3600 * 1000) return false;
+                if (dateRange === '7D' && logEpoch < now - 7 * 24 * 3600 * 1000) return false;
+
+                // Query search
+                if (query) {
+                    const match = (
+                        (log.user || '').toLowerCase().includes(query) ||
+                        (log.operation || '').toLowerCase().includes(query) ||
+                        (log.srcProject || '').toLowerCase().includes(query) ||
+                        (log.tgtProject || '').toLowerCase().includes(query) ||
+                        (log.details || '').toLowerCase().includes(query) ||
+                        (log.id || '').toLowerCase().includes(query) ||
+                        (log.status || '').toLowerCase().includes(query)
+                    );
+                    if (!match) return false;
+                }
+
+                return true;
+            });
+        }
+
+        function applyAdminFilters() {
+            const filtered = getFilteredAdminLogs();
+            const total = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(total / adminFilterState.pageSize));
+            if (adminFilterState.page > totalPages) adminFilterState.page = totalPages;
+
+            const countBadge = document.getElementById("admin-active-count-badge");
+            if (countBadge) countBadge.textContent = `${total} records match filters`;
+
+            const paginationCount = document.getElementById("admin-pagination-count");
+            const indicatorEl = document.getElementById("admin-page-indicator");
+            const prevBtn = document.getElementById("admin-prev-page");
+            const nextBtn = document.getElementById("admin-next-page");
+
+            const startIndex = (adminFilterState.page - 1) * adminFilterState.pageSize;
+            const endIndex = Math.min(startIndex + adminFilterState.pageSize, total);
+
+            if (paginationCount) {
+                paginationCount.textContent = total === 0 ? 'Showing 0 of 0 logs' : `Showing ${startIndex + 1}–${endIndex} of ${total} logs`;
+            }
+            if (indicatorEl) indicatorEl.textContent = `Page ${adminFilterState.page} of ${totalPages}`;
+            if (prevBtn) prevBtn.disabled = adminFilterState.page <= 1;
+            if (nextBtn) nextBtn.disabled = adminFilterState.page >= totalPages;
+
+            const pageSlice = filtered.slice(startIndex, endIndex);
+            renderLogsTable(pageSlice);
+        }
+
+        function filterLogs() {
+            adminFilterState.page = 1;
+            applyAdminFilters();
         }
 
         function renderLogsTable(logs) {
             const tbody = document.getElementById("logs-table-body");
             if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)">No audit logs recorded in Firestore yet.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:var(--muted)">No audit logs match the current filter criteria.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = logs.map(log => {
                 const dateStr = new Date(log.timestamp).toLocaleString();
-                const statusBadge = log.status === 'SUCCESS' 
-                    ? '<span class="badge badge-success">Success</span>' 
-                    : '<span class="badge badge-failed">Failed</span>';
+                let statusBadge = '<span class="badge badge-failed">Failed</span>';
+                if (log.status === 'SUCCESS') {
+                    statusBadge = '<span class="badge badge-success">Success</span>';
+                } else if (log.status === 'PARTIAL') {
+                    statusBadge = '<span class="badge badge-warn">Partial</span>';
+                } else if (log.status === 'CANCELLED') {
+                    statusBadge = '<span class="badge" style="background:rgba(255,255,255,0.06); color:var(--muted)">Cancelled</span>';
+                }
+
+                let opBadgeClass = 'badge-op';
+                if (log.operation === 'DATASTORE_COPY') {
+                    opBadgeClass = 'badge';
+                }
+
+                const hasRoute = log.srcProject && log.tgtProject && log.srcProject !== '—' && log.tgtProject !== '—';
+                const routeHtml = hasRoute
+                    ? `<div class="audit-route-badge" title="${escapeHtml(log.srcProject)} → ${escapeHtml(log.tgtProject)}">
+                         <span class="mono" style="max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(log.srcProject)}</span>
+                         <i class="bi bi-arrow-right audit-route-arrow"></i>
+                         <span class="mono" style="max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(log.tgtProject)}</span>
+                       </div>`
+                    : `<span class="mono" style="font-size:11px; color:var(--muted);">${escapeHtml(log.srcProject || log.tgtProject || '—')}</span>`;
+
+                const cleanSnippet = (log.details || '').split('\n')[0].slice(0, 110);
                 
                 return `
                     <tr class="log-row" data-log-id="${log.id}" style="cursor:pointer">
@@ -792,17 +1110,17 @@
                                 <i class="bi bi-chevron-right" style="transition: transform 0.2s; display:inline-block"></i>
                             </button>
                         </td>
-                        <td class="mono" style="color:var(--muted)">${dateStr}</td>
-                        <td style="font-weight:600">${escapeHtml(log.user)}</td>
-                        <td><span class="badge badge-op">${escapeHtml(log.operation)}</span></td>
-                        <td>
-                            <div style="display:flex; flex-direction:column; gap:2px;">
-                                <span class="mono" style="font-size:11px"><span style="color:var(--muted)">Src:</span> ${escapeHtml(log.srcProject)}</span>
-                                <span class="mono" style="font-size:11px"><span style="color:var(--muted)">Tgt:</span> ${escapeHtml(log.tgtProject)}</span>
+                        <td class="mono" style="color:var(--muted); font-size:11px;">${dateStr}</td>
+                        <td style="font-weight:600; font-size:12px;">${escapeHtml(log.user)}</td>
+                        <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(log.operation)}</span></td>
+                        <td>${routeHtml}</td>
+                        <td>${statusBadge}</td>
+                        <td style="color:var(--muted); line-height:1.4">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:280px;">${escapeHtml(cleanSnippet)}</span>
+                                <span style="font-size:10px; color:var(--accent); white-space:nowrap;">Inspect <i class="bi bi-chevron-right" style="font-size:9px;"></i></span>
                             </div>
                         </td>
-                        <td>${statusBadge}</td>
-                        <td style="color:var(--muted); line-height:1.4">${escapeHtml(log.details)}</td>
                     </tr>
                 `;
             }).join('');
@@ -856,9 +1174,6 @@
             expTr.className = 'expand-row';
             expTr.style.background = 'rgba(13, 20, 30, 0.4)';
 
-            const statusClass = log.status === 'SUCCESS' ? '#22c55e' : (log.status === 'PARTIAL' ? '#f59e0b' : '#ef4444');
-            const statusBg = log.status === 'SUCCESS' ? 'rgba(34,197,94,0.08)' : (log.status === 'PARTIAL' ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)');
-
             let stateDetailsHtml = '';
             if (log.prevState) {
                 let state;
@@ -877,35 +1192,78 @@
                 }
 
                 if (state && typeof state === 'object') {
-                    stateDetailsHtml += `
-                        <div style="margin-top: 20px; border-top: 1px solid var(--brd2); padding-top: 15px;">
-                            <div style="font-weight: 600; font-size: 11px; margin-bottom: 12px; color: var(--accent); display: flex; align-items: center; justify-content: space-between;">
-                                <span style="display: flex; align-items: center; gap: 6px;"><i class="bi bi-arrow-left-right"></i> Backup State Changes & Copied Entities</span>
-                                ${state.kind ? `<span class="badge badge-op" style="font-size: 10px;">Kind: ${escapeHtml(state.kind)} (${(state.backupData || []).length} entities)</span>` : ''}
-                            </div>
-                    `;
+                    if (state.type === 'DATASTORE_COPY') {
+                        const items = state.backupData || [];
+                        const kindsLabel = Array.isArray(state.kinds) && state.kinds.length > 0
+                            ? state.kinds.join(', ')
+                            : (state.kind || 'all');
 
-                    if (state.type === 'BQ_SCHEMA_SYNC') {
-                        const rows = (state.backupData || []).map(item => {
-                            const prevStr = item.prevSchema ? JSON.stringify(item.prevSchema, null, 2) : '—';
-                            const newStr = item.newSchema ? JSON.stringify(item.newSchema, null, 2) : '—';
+                        const rows = items.map((item, idx) => {
+                            const isNew = item.action === 'delete' || item.action === 'CREATE' || item.action === 'CREATED';
+                            const actionBadge = isNew
+                                ? `<span class="badge badge-success" style="font-size:10px;">🟢 CREATED</span>`
+                                : `<span class="badge badge-warn" style="font-size:10px;">🟡 UPDATED</span>`;
+
+                            const refInfo = state.entityDisplayNames?.[item.keyStr];
+                            const displayName = refInfo ? `${refInfo.value} (${refInfo.fieldName})` : '—';
+                            const prevStr = item.prevEntity ? JSON.stringify(item.prevEntity.properties || item.prevEntity, null, 2) : '—';
+                            const entityKind = item.prevEntity?.key?.path?.[item.prevEntity.key.path.length - 1]?.kind || state.kind || 'Entity';
+
                             return `
-                                <div style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
-                                    <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Table: ${escapeHtml(item.tablePath)} (${item.action})</div>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                                        <div>
-                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS SCHEMA:</div>
-                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
+                                <tr>
+                                    <td class="mono" style="color:var(--muted); font-size:10px;">#${idx + 1}</td>
+                                    <td><span class="badge badge-op" style="font-size:10px;">${escapeHtml(entityKind)}</span></td>
+                                    <td class="mono" style="font-weight:600; color:var(--fg);">${escapeHtml(item.keyStr)}</td>
+                                    <td style="color:#60a5fa;">${escapeHtml(displayName)}</td>
+                                    <td>${actionBadge}</td>
+                                    <td style="text-align:right;">
+                                        <button class="btn-sec admin-btn-view-snapshot" style="padding:2px 8px; font-size:10px;" data-idx="${idx}">
+                                            <i class="bi bi-code-slash"></i> Snapshot
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr id="admin-entity-json-${log.id}-${idx}" style="display:none; background:rgba(0,0,0,0.3)">
+                                    <td colspan="6" style="padding:10px 14px;">
+                                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; font-size:10px; color:var(--muted);">
+                                            <span>PRE-MUTATION STATE (TARGET ENTITY SNAPSHOT):</span>
+                                            <button class="btn-sec admin-btn-copy-json" style="padding:2px 6px; font-size:9px;" data-json="${encodeURIComponent(prevStr)}">
+                                                <i class="bi bi-clipboard"></i> Copy JSON
+                                            </button>
                                         </div>
-                                        <div>
-                                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">NEW SCHEMA:</div>
-                                            <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newStr)}</pre>
-                                        </div>
-                                    </div>
-                                </div>
+                                        <pre style="padding:8px 10px; border-radius:6px; font-family:'Roboto Mono', monospace; font-size:10px; max-height:140px; overflow-y:auto; background:rgba(0,0,0,0.4); color:#34d399; border:1px solid var(--brd2); white-space:pre-wrap; margin:0;">${escapeHtml(prevStr)}</pre>
+                                    </td>
+                                </tr>
                             `;
                         }).join('');
-                        stateDetailsHtml += `<div>${rows}</div>`;
+
+                        stateDetailsHtml = `
+                            <div style="margin-top: 15px; border-top: 1px solid var(--brd2); padding-top: 12px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                                    <div style="font-weight:600; font-size:12px; color:var(--accent); display:flex; align-items:center; gap:8px;">
+                                        <i class="bi bi-layers-fill"></i> Itemized Entity Mutations
+                                        <span class="badge badge-op" style="font-size:10px;">Kind: ${escapeHtml(kindsLabel)}</span>
+                                        <span class="badge" style="background:rgba(255,255,255,0.06); font-size:10px;">${items.length} records</span>
+                                    </div>
+                                </div>
+                                <div style="overflow-x:auto; border-radius:8px; border:1px solid var(--brd2);">
+                                    <table class="audit-entity-table">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:35px">#</th>
+                                                <th style="width:120px">KIND</th>
+                                                <th>ENTITY KEY ID</th>
+                                                <th>DISPLAY / REFERENCE NAME</th>
+                                                <th style="width:110px">ACTION</th>
+                                                <th style="width:100px; text-align:right;">PAYLOAD</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${items.length > 0 ? rows : '<tr><td colspan="6" style="padding:12px; text-align:center; color:var(--muted)">No entity records in this batch.</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
                     } else if (state.type === 'QUERY_SYNC') {
                         const rows = (state.backupData || []).map(item => {
                             const prevStr = item.prevQuery ? JSON.stringify(item.prevQuery, null, 2) : '—';
@@ -927,70 +1285,20 @@
                             `;
                         }).join('');
                         stateDetailsHtml += `<div>${rows}</div>`;
-                    } else if (state.type === 'DATASTORE_COPY') {
-                        const items = state.backupData || [];
-                        const rows = items.map((item, idx) => {
-                            const prevStr = item.prevEntity ? JSON.stringify(item.prevEntity.properties || item.prevEntity, null, 2) : '—';
-                            const actionColor = item.action === 'upsert' ? '#f59e0b' : '#10b981';
-                            const actionLabel = item.action === 'upsert' ? 'OVERWRITTEN (Restorable)' : 'NEW ENTITY (Deletable on Revert)';
+                    } else if (state.type === 'BQ_SCHEMA_SYNC') {
+                        const rows = (state.backupData || []).map(item => {
+                            const prevStr = item.prevSchema ? JSON.stringify(item.prevSchema, null, 2) : '—';
                             return `
-                                <div style="margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
-                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                                        <div style="font-weight: 600; color: var(--fg); font-size: 11px; font-family: var(--font-mono);">
-                                            #${idx + 1}. Entity Key: <span style="color: #60a5fa;">${escapeHtml(item.keyStr)}</span>
-                                        </div>
-                                        <span style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); color: ${actionColor}; font-weight: 600;">
-                                            ${actionLabel}
-                                        </span>
-                                    </div>
-                                    <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
-                                        <div>
-                                            <div style="font-size: 9px; color: var(--muted); margin-bottom: 2px;">ENTITY SNAPSHOT & PROPERTIES:</div>
-                                            <pre style="padding: 8px 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
-                                        </div>
+                                <div style="margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px;">
+                                    <div style="font-weight: 600; color: var(--fg); margin-bottom: 8px;">Table: ${escapeHtml(item.tablePath)} (${item.action})</div>
+                                    <div>
+                                        <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">PREVIOUS SCHEMA:</div>
+                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #10b981; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevStr)}</pre>
                                     </div>
                                 </div>
                             `;
                         }).join('');
-                        stateDetailsHtml += `
-                            <div style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
-                                ${items.length > 0 ? rows : '<div style="color:var(--muted); font-size:11px; padding:8px 0;">No entity changes recorded in this batch.</div>'}
-                            </div>
-                        `;
-                    } else if (state.type === 'UPDATE_QUESTION' || state.type === 'QUESTION_EDIT') {
-                        const prevSql = state.prevSql || '—';
-                        const newSql = state.newSql || '—';
-                        const modPropsStr = state.modifiedProperties && Object.keys(state.modifiedProperties).length > 0
-                            ? JSON.stringify(state.modifiedProperties, null, 2)
-                            : null;
-                        stateDetailsHtml += `
-                            <div style="margin-bottom: 15px; padding-bottom: 10px;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                                    <div style="font-weight: 600; color: var(--fg); font-size: 11px; font-family: var(--font-mono);">
-                                        Question: <span style="color: #60a5fa;">${escapeHtml(state.referenceName || state.keyStr)}</span> (${escapeHtml(state.keyStr || '')})
-                                    </div>
-                                    <div style="font-size: 10px; color: var(--muted);">
-                                        Changed By: <strong style="color: #f59e0b;">${escapeHtml(state.changedBy || log.user)}</strong> ${state.userEmail ? `(${escapeHtml(state.userEmail)})` : ''}
-                                    </div>
-                                </div>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
-                                    <div>
-                                        <div style="font-size: 9px; color: var(--muted); margin-bottom: 4px; font-weight:600;">PREVIOUS SQL QUERY:</div>
-                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #f87171; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(prevSql)}</pre>
-                                    </div>
-                                    <div>
-                                        <div style="font-size: 9px; color: var(--muted); margin-bottom: 4px; font-weight:600;">NEW SQL QUERY:</div>
-                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 160px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #34d399; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(newSql)}</pre>
-                                    </div>
-                                </div>
-                                ${modPropsStr ? `
-                                    <div style="margin-top: 10px;">
-                                        <div style="font-size: 9px; color: var(--muted); margin-bottom: 4px; font-weight:600;">MODIFIED ENTITY PROPERTIES:</div>
-                                        <pre style="padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 10px; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.3); color: #60a5fa; border: 1px solid var(--brd2); white-space: pre-wrap; margin:0">${escapeHtml(modPropsStr)}</pre>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
+                        stateDetailsHtml += `<div>${rows}</div>`;
                     }
                 }
             }
@@ -998,77 +1306,75 @@
             expTr.innerHTML = `
                 <td colspan="7" style="padding: 15px 20px; background: rgba(13, 20, 30, 0.4);">
                     <div style="padding: 20px; border-radius: 8px; border: 1px solid var(--brd2); background: rgba(13, 20, 30, 0.95); font-size: 12px; text-align: left; box-shadow: inset 0 2px 8px rgba(0,0,0,0.8)">
-                        <div style="font-weight: 600; font-size: 13px; margin-bottom: 15px; color: var(--accent); display: flex; align-items: center; gap: 8px;">
-                            <i class="bi bi-info-circle"></i> Detailed Operations Log Metadata
-                        </div>
-                        
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--brd2); padding-bottom: 15px;">
-                            <div>
-                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Log ID</div>
-                                <div class="mono" style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px; word-break: break-all;">${logId}</div>
+                        <!-- Top Telemetry Row -->
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:15px; padding-bottom:12px; border-bottom:1px solid var(--brd2);">
+                            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:15px;">
+                                <div>
+                                    <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 2px; text-transform: uppercase;">Log ID</div>
+                                    <div class="mono" style="color: var(--accent); font-weight:600; font-size: 12px;">${logId}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 2px; text-transform: uppercase;">Timestamp</div>
+                                    <div class="mono" style="color: var(--fg); font-size: 11px;">${new Date(log.timestamp).toISOString()}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 2px; text-transform: uppercase;">Operator</div>
+                                    <div style="color: var(--fg); font-size: 12px; font-weight:600;">${escapeHtml(log.user || '—')}</div>
+                                </div>
                             </div>
                             <div>
-                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Timestamp</div>
-                                <div style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px;">${new Date(log.timestamp).toLocaleString()}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Operator (User)</div>
-                                <div style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px; overflow-x: auto;">${escapeHtml(log.user || '—')}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
-                                <div style="padding-top: 2px;"><span class="badge" style="background:${statusBg}; color:${statusClass}; font-size: 10px; padding: 2px 6px; border-radius: 4px;">${log.status}</span></div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Operation Type</div>
-                                <div><span class="badge badge-op" style="padding: 2px 6px; border-radius: 4px;">${escapeHtml(log.operation)}</span></div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Source Project</div>
-                                <div class="mono" style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px;">${escapeHtml(log.srcProject || '—')}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Target Project</div>
-                                <div class="mono" style="color: var(--fg); background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--brd2); font-size: 11px;">${escapeHtml(log.tgtProject || '—')}</div>
-                            </div>
-                            <div>
-                                <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Revertibility</div>
-                                <div style="padding-top: 2px;">${log.prevState ? '<span style="color:#22c55e; font-weight:600; display:flex; align-items:center; gap:4px; font-size:11px;"><i class="bi bi-check-circle-fill"></i> Revertible</span>' : '<span style="color:var(--muted); display:flex; align-items:center; gap:4px; font-size:11px;"><i class="bi bi-x-circle-fill"></i> Not Revertible</span>'}</div>
+                                <button class="btn-sec admin-btn-copy-logid" style="padding:4px 10px; font-size:11px;" data-id="${log.id}">
+                                    <i class="bi bi-clipboard"></i> Copy Log ID
+                                </button>
                             </div>
                         </div>
-                        
-                        <div style="margin-bottom: 10px;">
-                            <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Description Details</div>
-                            <div style="padding: 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--fg); border: 1px solid var(--brd2); background: rgba(0,0,0,0.3); white-space: pre-wrap; line-height: 1.4;">${escapeHtml(log.details || '—')}</div>
+
+                        <!-- Details Box -->
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 9px; color: var(--muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase;">Executive Summary & Details</div>
+                            <div style="color: var(--fg); font-size: 12px; line-height:1.5; background: rgba(0,0,0,0.3); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--brd2); white-space: pre-wrap;">${escapeHtml(log.details)}</div>
                         </div>
-                        
+
                         ${stateDetailsHtml}
                     </div>
                 </td>
             `;
 
+            // Wire up event listeners
+            expTr.querySelectorAll('.admin-btn-copy-logid').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id || '';
+                    navigator.clipboard.writeText(id).then(() => {
+                        toast('Copied Log ID to clipboard!', 'ok');
+                    });
+                };
+            });
+
+            expTr.querySelectorAll('.admin-btn-view-snapshot').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const idx = btn.dataset.idx;
+                    const jsonRow = expTr.querySelector(`#admin-entity-json-${log.id}-${idx}`);
+                    if (jsonRow) {
+                        jsonRow.style.display = jsonRow.style.display === 'none' ? '' : 'none';
+                    }
+                };
+            });
+
+            expTr.querySelectorAll('.admin-btn-copy-json').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const jsonStr = decodeURIComponent(btn.dataset.json || '');
+                    navigator.clipboard.writeText(jsonStr).then(() => {
+                        toast('Entity snapshot JSON copied!', 'ok');
+                    });
+                };
+            });
+
             tr.after(expTr);
             const icon = tr.querySelector('.btn-toggle-log i');
             if (icon) icon.style.transform = 'rotate(90deg)';
-        }
-
-        function filterLogs() {
-            const query = document.getElementById("log-search").value.toLowerCase().trim();
-            if (!query) {
-                renderLogsTable(cachedLogs);
-                return;
-            }
-
-            const filtered = cachedLogs.filter(log => {
-                return (log.user || '').toLowerCase().includes(query) ||
-                       (log.operation || '').toLowerCase().includes(query) ||
-                       (log.srcProject || '').toLowerCase().includes(query) ||
-                       (log.tgtProject || '').toLowerCase().includes(query) ||
-                       (log.details || '').toLowerCase().includes(query) ||
-                       (log.status || '').toLowerCase().includes(query);
-            });
-
-            renderLogsTable(filtered);
         }
 
         // Export Consolidated logs as JSON

@@ -760,41 +760,142 @@ FROM `source-project-prod.analytics.orders`</code></pre>
             </div>
         </section>
 
-        <!-- LOCAL AUDIT LOGS -->
+        <!-- OPERATIONS AUDIT TRAIL -->
         <section id="sec-audit-logs" class="mt-8" style="display:none">
-            <div class="card" style="padding: 1.5rem;">
-                <div class="flex items-center justify-between border-b pb-3 mb-4" style="border-color:var(--brd2)">
-                    <div class="flex items-center gap-2">
-                        <h3 class="font-semibold text-base" style="color:var(--fg)"><i class="fa-solid fa-clock-rotate-left"></i> Local Operations Audit Logs</h3>
-                        <span class="badge" style="background:var(--brd2);color:var(--muted);font-size:10px"><i class="fa-solid fa-lock text-[9px] text-green-400"></i> Encrypted (AES-GCM)</span>
+            <div class="card p-6" style="border-color:var(--brd2)">
+                <!-- Header -->
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-4 mb-4" style="border-color:var(--brd2)">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:rgba(0, 212, 255, 0.12); color:var(--accent); border:1px solid rgba(0, 212, 255, 0.25)">
+                            <i class="fa-solid fa-clock-rotate-left text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-semibold text-base" style="color:var(--fg)">Operations Audit Trail</h3>
+                                <span class="badge" style="background:rgba(16,185,129,0.1); color:#34d399; font-size:10px; border:1px solid rgba(16,185,129,0.25);">
+                                    <i class="fa-solid fa-shield-halved text-[9px] mr-1"></i> Firestore Verified
+                                </span>
+                            </div>
+                            <p class="text-xs" style="color:var(--muted)">Tamper-proof chronological log of all compare, copy, edit, and rollback actions.</p>
+                        </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button id="btn-audit-export" class="btn btn-s text-xs" style="padding: 5px 10px"><i class="fa-solid fa-file-export"></i> Export JSON</button>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-audit-refresh" class="btn btn-s text-xs" style="padding: 6px 12px">
+                            <i class="fa-solid fa-rotate mr-1"></i> Refresh
+                        </button>
+                        <button id="btn-audit-export" class="btn btn-s text-xs" style="padding: 6px 12px">
+                            <i class="fa-solid fa-file-export mr-1"></i> Export JSON
+                        </button>
                     </div>
                 </div>
+
+                <!-- KPI Summary Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                    <div class="card p-3" style="background:var(--bg2); border-color:var(--brd2)">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1">TOTAL ACTIONS</div>
+                        <div class="text-xl font-bold mono" id="audit-stat-total">0</div>
+                    </div>
+                    <div class="card p-3" style="background:var(--bg2); border-color:var(--brd2)">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1">SUCCESS RATE</div>
+                        <div class="text-xl font-bold mono text-green-400" id="audit-stat-success">0%</div>
+                    </div>
+                    <div class="card p-3" style="background:var(--bg2); border-color:var(--brd2)">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1">FAILED / CANCELLED</div>
+                        <div class="text-xl font-bold mono text-rose-400" id="audit-stat-failed">0</div>
+                    </div>
+                    <div class="card p-3" style="background:var(--bg2); border-color:var(--brd2)">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] mb-1">1-CLICK ROLLBACKS</div>
+                        <div class="text-xl font-bold mono text-amber-400" id="audit-stat-revertible">0</div>
+                    </div>
+                </div>
+
+                <!-- Filter & Search Controls Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4 p-3 rounded-xl" style="background:var(--bg2); border:1px solid var(--brd2)">
+                    <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                        <!-- Search Box -->
+                        <div class="relative flex-1 min-w-[200px]">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs" style="color:var(--muted)"></i>
+                            <input id="audit-search-input" type="text" class="inp text-xs pl-8 w-full" placeholder="Search by operation, project, kind, or details...">
+                        </div>
+
+                        <!-- Operation Filter Dropdown -->
+                        <select id="audit-op-filter" class="inp text-xs" style="height:32px; padding: 2px 8px; width:auto;">
+                            <option value="ALL">All Operations</option>
+                            <option value="DATASTORE_COPY">Datastore Copy</option>
+                            <option value="DATASTORE_ANALYZE">Datastore Analyze</option>
+                            <option value="DATASTORE_EDIT">Datastore Edit</option>
+                            <option value="DATASTORE_REVERT">Datastore Revert</option>
+                            <option value="QUERY_SYNC">Scheduled Query Sync</option>
+                            <option value="BQ_SCHEMA_SYNC">BigQuery Schema Sync</option>
+                        </select>
+
+                        <!-- Date Range Dropdown -->
+                        <select id="audit-date-filter" class="inp text-xs" style="height:32px; padding: 2px 8px; width:auto;">
+                            <option value="ALL">All Time</option>
+                            <option value="TODAY">Today</option>
+                            <option value="24H">Last 24 Hours</option>
+                            <option value="7D">Last 7 Days</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Filter Pills -->
+                    <div id="audit-status-pills" class="flex flex-wrap items-center gap-1.5">
+                        <button type="button" class="audit-pill active" data-status="ALL">All</button>
+                        <button type="button" class="audit-pill" data-status="SUCCESS">🟢 Success</button>
+                        <button type="button" class="audit-pill" data-status="FAILED">🔴 Failed</button>
+                        <button type="button" class="audit-pill" data-status="PARTIAL_CANCEL">🟡 Other</button>
+                        <button type="button" class="audit-pill" data-status="REVERTIBLE">⏪ Reversible</button>
+                    </div>
+                </div>
+
+                <!-- Table Wrapper -->
                 <div style="width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--brd2); border-radius: 8px;">
                     <table class="w-full text-xs text-left" style="border-collapse:collapse; table-layout: fixed;">
                         <thead style="background:var(--bg2)">
                             <tr style="border-bottom: 1px solid var(--brd2)">
-                                <th class="px-4 py-3 text-center" style="width: 35px; color:var(--muted)"></th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 135px; color:var(--muted)">TIMESTAMP</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 220px; color:var(--muted)">USER</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 130px; color:var(--muted)">OPERATION</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 230px; color:var(--muted)">PROJECTS</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="width: 80px; color:var(--muted)">STATUS</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">DETAILS</th>
-                                <th class="px-6 py-3 font-semibold text-[10px] tracking-wider text-center" style="width: 90px; color:var(--muted)">ACTIONS</th>
+                                <th class="px-3 py-3 text-center" style="width: 38px; color:var(--muted)"></th>
+                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 135px; color:var(--muted)">TIMESTAMP</th>
+                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 180px; color:var(--muted)">USER</th>
+                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 140px; color:var(--muted)">OPERATION</th>
+                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 220px; color:var(--muted)">PROJECT ROUTE</th>
+                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="width: 90px; color:var(--muted)">STATUS</th>
+                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider" style="color:var(--muted)">SUMMARY &amp; DETAILS</th>
+                                <th class="px-4 py-3 font-semibold text-[10px] tracking-wider text-center" style="width: 95px; color:var(--muted)">ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody id="audit-table-body">
                             <tr>
                                 <td colspan="8" class="px-6 py-8 text-center text-xs" style="color:var(--muted)">
                                     <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
-                                    No local audit logs recorded yet.
+                                    No audit logs recorded yet.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Pagination Bar -->
+                <div id="audit-pagination-bar" class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t text-xs" style="border-color:var(--brd2); color:var(--muted)">
+                    <div id="audit-pagination-count">Showing 0–0 of 0 logs</div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1.5">
+                            <span>Per page:</span>
+                            <select id="audit-page-size" class="inp text-xs" style="height:28px; padding:2px 6px">
+                                <option value="10">10</option>
+                                <option value="25" selected>25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="audit-prev-page" class="btn btn-s text-xs" style="padding:4px 8px" disabled>
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <span id="audit-page-indicator" class="mono font-semibold px-2">Page 1 of 1</span>
+                            <button id="audit-next-page" class="btn btn-s text-xs" style="padding:4px 8px" disabled>
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
