@@ -123,3 +123,22 @@ test('Admin Revert: parseRevertUrlParams extracts deep-linked revert action from
     assert.equal(parseRevertUrlParams('?action=view'), null);
     assert.equal(parseRevertUrlParams(''), null);
 });
+
+test('Admin Console: toggleLogExpand in admin.html defines isReversible before template rendering', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const adminHtml = fs.readFileSync(path.join(__dirname, '../admin.html'), 'utf8');
+
+    // Extract toggleLogExpand function body
+    const fnMatch = adminHtml.match(/async function toggleLogExpand\(tr, logId\)\s*\{([\s\S]*?)\n\s*\}\n\s*\/\/\s*Export Consolidated logs/);
+    assert.ok(fnMatch, 'toggleLogExpand function must be found in admin.html');
+    const fnBody = fnMatch[1];
+
+    // Must define isReversible before using ${isReversible ? ...}
+    const defIndex = fnBody.indexOf('const isReversible =');
+    const useIndex = fnBody.indexOf('${isReversible ?');
+    assert.ok(defIndex !== -1, 'isReversible must be defined in toggleLogExpand');
+    assert.ok(useIndex !== -1, '${isReversible ? ...} template literal should be present');
+    assert.ok(defIndex < useIndex, 'isReversible must be defined before its usage in toggleLogExpand template literal');
+});
+

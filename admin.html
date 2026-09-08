@@ -1294,6 +1294,12 @@
             const log = cachedLogs.find(x => x.id === logId);
             if (!log) return;
 
+            const isReversible = (log.operation === 'DATASTORE_COPY' || log.operation === 'DATASTORE_EDIT' || log.operation === 'QUERY_SYNC')
+                && log.status !== 'FAILED'
+                && log.status !== 'CANCELLED'
+                && Boolean(log.tgtProject)
+                && log.tgtProject !== '—';
+
             const expTr = document.createElement('tr');
             expTr.className = 'expand-row';
             expTr.style.background = 'rgba(13, 20, 30, 0.4)';
