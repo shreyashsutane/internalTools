@@ -102,6 +102,8 @@ test('formatEmailHtml renders routing pipeline, itemized entities and rules', ()
     assert.match(html, /prod-source/);
     assert.match(html, /backup-target/);
     assert.match(html, /log-test-12345/);
+    assert.match(html, /action=revert/);
+    assert.match(html, /Revert Operation in Admin Portal/);
 });
 
 test('parseEntitiesFromDetails parses live screenshot details text into proper table items', () => {

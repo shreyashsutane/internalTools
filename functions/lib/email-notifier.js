@@ -466,8 +466,13 @@ const formatEmailHtml = log => {
                                 <div style="font-size: 11px; color: #94a3b8; margin-bottom: 14px; font-family: monospace;">
                                     Audit Record ID: <strong style="color: #38bdf8;">${logId}</strong>
                                 </div>
-                                <div>
-                                    <a href="${PORTAL_URL}/datastore-copier/index.html" target="_blank" style="display: inline-block; background-color: #00d4ff; color: #020617; padding: 10px 22px; font-size: 12px; font-weight: 700; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.03em;">
+                                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px;">
+                                    ${(log.operation === 'DATASTORE_COPY' || log.operation === 'DATASTORE_EDIT' || log.operation === 'QUERY_SYNC') && status !== 'FAILED' && status !== 'CANCELLED' && Boolean(log.id) ? `
+                                    <a href="${PORTAL_URL}/admin.html?action=revert&logId=${encodeURIComponent(log.id)}" target="_blank" style="display: inline-block; background-color: #dc2626; color: #ffffff; padding: 10px 20px; font-size: 12px; font-weight: 700; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.03em; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">
+                                        ⏪ Revert Operation in Admin Portal
+                                    </a>
+                                    ` : ''}
+                                    <a href="${PORTAL_URL}/datastore-copier/index.html" target="_blank" style="display: inline-block; background-color: #00d4ff; color: #020617; padding: 10px 20px; font-size: 12px; font-weight: 700; text-decoration: none; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.03em;">
                                         🚀 Open Portal &amp; Inspect Audit Trail
                                     </a>
                                 </div>

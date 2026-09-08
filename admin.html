@@ -673,10 +673,10 @@
                 </select>
 
                 <select id="admin-fetch-limit" class="inp" style="width:auto; padding:8px 12px;" onchange="refreshLogs()" title="Query depth limit">
-                    <option value="30" selected>⚡ Latest 30</option>
+                    <option value="15" selected>⚡ Latest 15 (~370ms)</option>
+                    <option value="30">Latest 30</option>
                     <option value="60">Latest 60</option>
-                    <option value="150">Latest 150</option>
-                    <option value="300">All (300)</option>
+                    <option value="150">All (150)</option>
                 </select>
 
                 <button id="btn-admin-refresh" class="btn-sec" onclick="refreshLogs()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
@@ -727,8 +727,8 @@
                     <div style="display:flex; align-items:center; gap:6px;">
                         <span>Per page:</span>
                         <select id="admin-page-size" class="inp" style="width:auto; padding:2px 8px; font-size:12px;" onchange="changeAdminPageSize()">
-                            <option value="15">15</option>
-                            <option value="25" selected>25</option>
+                            <option value="15" selected>15</option>
+                            <option value="25">25</option>
                             <option value="50">50</option>
                         </select>
                     </div>
@@ -831,6 +831,12 @@
             username: ''
         };
 
+        const adminFilterState = {
+            page: 1,
+            pageSize: 15,
+            status: 'ALL'
+        };
+
         // Login Handler
         async function handleLogin(event) {
             event.preventDefault();
@@ -889,13 +895,24 @@
                 State.email = email;
                 State.username = parsedAdmin ? parsedAdmin.username : user;
 
+                // Persist session to survive tab reloads
+                try {
+                    sessionStorage.setItem('admin_session', JSON.stringify({
+                        token: idToken,
+                        uid,
+                        email,
+                        username: State.username,
+                        savedAt: Date.now()
+                    }));
+                } catch(e) {}
+
                 toast(`Welcome back, ${State.username}!`, "ok");
                 document.getElementById("login-panel").style.display = "none";
                 document.getElementById("admin-panel").style.display = "flex";
 
                 // Instant cache restoration for 0ms initial table load
                 try {
-                    const saved = sessionStorage.getItem('admin_cached_logs');
+                    const saved = localStorage.getItem('admin_cached_logs') || sessionStorage.getItem('admin_cached_logs');
                     if (saved) {
                         const parsedSaved = JSON.parse(saved);
                         if (Array.isArray(parsedSaved) && parsedSaved.length > 0) {
@@ -905,7 +922,8 @@
                     }
                 } catch(e) {}
 
-                refreshLogs();
+                await refreshLogs();
+                checkPendingRevertFromUrl();
             } catch (e) {
                 console.error(e);
                 toast(e.message || "Failed to authenticate.", "err");
@@ -943,7 +961,7 @@
             }
 
             const limitSelect = document.getElementById("admin-fetch-limit");
-            const fetchLimit = limitSelect ? parseInt(limitSelect.value, 10) || 30 : 30;
+            const fetchLimit = limitSelect ? parseInt(limitSelect.value, 10) || 15 : 15;
 
             const allLogs = [];
             const usersSet = new Set();
@@ -1013,8 +1031,9 @@
             allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             cachedLogs = allLogs;
 
-            // Cache in sessionStorage for instant load next time
+            // Cache in localStorage and sessionStorage for instant load next time
             try {
+                localStorage.setItem('admin_cached_logs', JSON.stringify(allLogs));
                 sessionStorage.setItem('admin_cached_logs', JSON.stringify(allLogs));
             } catch(e) {}
 
@@ -1061,7 +1080,7 @@
         function changeAdminPageSize() {
             const sel = document.getElementById("admin-page-size");
             if (sel) {
-                adminFilterState.pageSize = parseInt(sel.value, 10) || 25;
+                adminFilterState.pageSize = parseInt(sel.value, 10) || 15;
                 adminFilterState.page = 1;
                 applyAdminFilters();
             }
@@ -1200,6 +1219,10 @@
                     : `<span class="mono" style="font-size:11px; color:var(--muted);">${escapeHtml(log.srcProject || log.tgtProject || '—')}</span>`;
 
                 const cleanSnippet = (log.details || '').split('\n')[0].slice(0, 110);
+                const isReversible = (log.operation === 'DATASTORE_COPY' || log.operation === 'DATASTORE_EDIT' || log.operation === 'QUERY_SYNC') && log.status !== 'FAILED' && log.status !== 'CANCELLED' && log.tgtProject && log.tgtProject !== '—';
+                const revertBadge = isReversible
+                    ? `<span class="badge" style="font-size:9px; padding:2px 6px; background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.3);"><i class="bi bi-arrow-counterclockwise"></i> Revertible</span>`
+                    : '';
                 
                 return `
                     <tr class="log-row" data-log-id="${log.id}" style="cursor:pointer">
@@ -1215,8 +1238,11 @@
                         <td>${statusBadge}</td>
                         <td style="color:var(--muted); line-height:1.4">
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:280px;">${escapeHtml(cleanSnippet)}</span>
-                                <span style="font-size:10px; color:var(--accent); white-space:nowrap;">Inspect <i class="bi bi-chevron-right" style="font-size:9px;"></i></span>
+                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:240px;">${escapeHtml(cleanSnippet)}</span>
+                                <div style="display:flex; align-items:center; gap:6px; white-space:nowrap;">
+                                    ${revertBadge}
+                                    <span style="font-size:10px; color:var(--accent);">Inspect <i class="bi bi-chevron-right" style="font-size:9px;"></i></span>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -1487,10 +1513,15 @@
                                     <div style="color: var(--fg); font-size: 12px; font-weight:600;">${escapeHtml(log.user || '—')}</div>
                                 </div>
                             </div>
-                            <div>
+                            <div style="display:flex; align-items:center; gap:8px;">
                                 <button class="btn-sec admin-btn-copy-logid" style="padding:4px 10px; font-size:11px;" data-id="${log.id}">
                                     <i class="bi bi-clipboard"></i> Copy Log ID
                                 </button>
+                                ${isReversible ? `
+                                <button class="btn-sec admin-btn-revert" style="padding:4px 12px; font-size:11px; color:#f87171; border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.08); font-weight:600;" data-id="${log.id}">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Revert Operation
+                                </button>
+                                ` : ''}
                             </div>
                         </div>
 
@@ -1513,6 +1544,14 @@
                     navigator.clipboard.writeText(id).then(() => {
                         toast('Copied Log ID to clipboard!', 'ok');
                     });
+                };
+            });
+
+            expTr.querySelectorAll('.admin-btn-revert').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id || '';
+                    openAdminRevertModal(id);
                 };
             });
 
@@ -1770,6 +1809,423 @@
             }
         }
 
+        // ==========================================
+        // Admin Revert & IAM Permission Verification
+        // ==========================================
+
+        let currentRevertLog = null;
+
+        function cleanDbId(dbId) {
+            return dbId === '(default)' || !dbId ? '' : dbId;
+        }
+
+        function targetPartition(projectId, databaseId) {
+            const partitionId = { projectId };
+            const cleanId = cleanDbId(databaseId);
+            if (cleanId) partitionId.databaseId = cleanId;
+            return partitionId;
+        }
+
+        function retargetKey(key, projectId, databaseId) {
+            if (!key) throw new Error('Revert backup contains an invalid Datastore key.');
+            const copy = JSON.parse(JSON.stringify(key));
+            copy.partitionId = targetPartition(projectId, databaseId);
+            return copy;
+        }
+
+        function retargetEntity(entity, projectId, databaseId) {
+            if (!entity || !entity.key) throw new Error('Revert backup contains an entity without a key.');
+            const copy = JSON.parse(JSON.stringify(entity));
+            copy.key = retargetKey(copy.key, projectId, databaseId);
+            return copy;
+        }
+
+        function openAdminRevertModal(logId) {
+            const log = cachedLogs.find(x => x.id === logId);
+            if (!log) {
+                toast(`Audit log ${logId} not found in loaded records.`, "err");
+                return;
+            }
+            currentRevertLog = log;
+
+            const modal = document.getElementById('admin-revert-modal');
+            const metaBox = document.getElementById('revert-meta-box');
+            const statusBox = document.getElementById('revert-status-box');
+            const tokenInp = document.getElementById('admin-revert-gauth-token');
+            const submitBtn = document.getElementById('btn-admin-revert-submit');
+
+            tokenInp.value = '';
+            statusBox.style.display = 'none';
+            statusBox.innerHTML = '';
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Permissions & Revert';
+
+            metaBox.innerHTML = `
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                    <div>
+                        <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Operation:</span>
+                        <div style="font-weight:700; color:var(--accent); font-size:12px;">${escapeHtml(log.operation)}</div>
+                    </div>
+                    <div>
+                        <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Target Project:</span>
+                        <div class="mono" style="font-weight:700; color:#34d399; font-size:12px;">${escapeHtml(log.tgtProject)}</div>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Original Operator:</span>
+                        <div style="color:var(--fg); font-size:11px;">${escapeHtml(log.user)}</div>
+                    </div>
+                    <div>
+                        <span style="color:var(--muted); font-size:10px; text-transform:uppercase;">Executed At:</span>
+                        <div class="mono" style="color:var(--muted); font-size:11px;">${new Date(log.timestamp).toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.add('open');
+            setTimeout(() => tokenInp.focus(), 120);
+        }
+
+        function hideAdminRevertModal() {
+            const modal = document.getElementById('admin-revert-modal');
+            if (modal) modal.classList.remove('open');
+            currentRevertLog = null;
+        }
+
+        function toggleRevertTokenVisibility() {
+            const inp = document.getElementById('admin-revert-gauth-token');
+            const icon = document.getElementById('revert-token-eye');
+            if (!inp || !icon) return;
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                inp.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        async function executeAdminRevert() {
+            if (!currentRevertLog) return;
+            const log = currentRevertLog;
+            const targetProject = log.tgtProject;
+
+            const tokenInp = document.getElementById('admin-revert-gauth-token');
+            const gauthToken = tokenInp ? tokenInp.value.trim() : '';
+            const statusBox = document.getElementById('revert-status-box');
+            const submitBtn = document.getElementById('btn-admin-revert-submit');
+
+            if (!gauthToken) {
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                statusBox.style.border = '1px solid #ef4444';
+                statusBox.style.color = '#fca5a5';
+                statusBox.innerHTML = '<strong>Token Required:</strong> Please provide a Google Cloud OAuth access token generated via <code>gcloud auth print-access-token</code>.';
+                tokenInp.focus();
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Verifying Permissions...';
+
+            statusBox.style.display = 'block';
+            statusBox.style.background = 'rgba(13, 20, 30, 0.8)';
+            statusBox.style.border = '1px solid var(--brd2)';
+            statusBox.style.color = 'var(--fg)';
+
+            try {
+                // Step 1: Validate Google OAuth Token Identity
+                statusBox.innerHTML = `<div style="color:var(--accent)"><span class="spinner"></span> <strong>Step 1/3:</strong> Validating Google Cloud token identity...</div>`;
+                
+                let gauthEmail = 'Authenticated Principal';
+                const idRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+                    headers: { 'Authorization': `Bearer ${gauthToken}` }
+                });
+                if (!idRes.ok) {
+                    throw new Error(`Invalid or expired Google OAuth access token (${idRes.status}). Please run 'gcloud auth print-access-token' and try again.`);
+                }
+                const idData = await idRes.json();
+                if (idData.email) gauthEmail = idData.email;
+
+                // Step 2: Check IAM permissions on target project
+                statusBox.innerHTML = `
+                    <div style="color:#34d399; margin-bottom:6px;"><i class="bi bi-check-circle-fill"></i> Token verified for <strong>${escapeHtml(gauthEmail)}</strong></div>
+                    <div style="color:var(--accent)"><span class="spinner"></span> <strong>Step 2/3:</strong> Testing IAM permissions on project <strong>${escapeHtml(targetProject)}</strong>...</div>
+                `;
+
+                const requiredPermissions = log.operation === 'QUERY_SYNC'
+                    ? ['bigquery.transfers.update', 'bigquery.transfers.get']
+                    : ['datastore.entities.create', 'datastore.entities.update', 'datastore.entities.delete', 'datastore.entities.get'];
+
+                const testRes = await fetch(`https://cloudresourcemanager.googleapis.com/v1/projects/${targetProject}:testIamPermissions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${gauthToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ permissions: requiredPermissions })
+                });
+
+                if (!testRes.ok) {
+                    throw new Error(`Insufficient permissions to test IAM on project '${targetProject}' (${testRes.statusText || testRes.status}). You don't have required permissions on this project.`);
+                }
+
+                const testData = await testRes.json();
+                const granted = Array.isArray(testData.permissions) ? testData.permissions : [];
+                const writePerms = log.operation === 'QUERY_SYNC'
+                    ? ['bigquery.transfers.update']
+                    : ['datastore.entities.create', 'datastore.entities.update', 'datastore.entities.delete'];
+                
+                const missing = writePerms.filter(p => !granted.includes(p));
+
+                if (missing.length > 0) {
+                    statusBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                    statusBox.style.border = '1px solid #ef4444';
+                    statusBox.style.color = '#fca5a5';
+                    statusBox.innerHTML = `
+                        <div style="font-weight:700; color:#fff; margin-bottom:4px;"><i class="bi bi-x-circle-fill" style="color:#f87171"></i> You don't have required permissions</div>
+                        <div>Your Google account <strong>${escapeHtml(gauthEmail)}</strong> lacks required mutation permissions on <strong>${escapeHtml(targetProject)}</strong>.</div>
+                        <div style="margin-top:8px; font-size:11px; background:rgba(0,0,0,0.3); padding:6px 10px; border-radius:6px; font-family:monospace; color:#f87171;">
+                            Missing: ${escapeHtml(missing.join(', '))}
+                        </div>
+                        <div style="margin-top:8px; font-size:11px; color:var(--muted);">
+                            Required IAM role: <strong>Cloud Datastore User</strong> or <strong>Owner</strong> on project <code>${escapeHtml(targetProject)}</code>.
+                        </div>
+                    `;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Permissions & Revert';
+                    return;
+                }
+
+                // Step 3: Permissions verified! Fetch full prevState and execute revert
+                statusBox.innerHTML = `
+                    <div style="color:#34d399; margin-bottom:4px;"><i class="bi bi-check-circle-fill"></i> Permissions verified on <strong>${escapeHtml(targetProject)}</strong></div>
+                    <div style="color:var(--accent)"><span class="spinner"></span> <strong>Step 3/3:</strong> Resolving pre-mutation snapshot and executing revert...</div>
+                `;
+
+                // Fetch full log prevState if not present or incomplete
+                let state = log.prevState;
+                if (!state || (!state.backupData && !state.prevEntity && !state.rawKey)) {
+                    const docRes = await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs/${log.id}`, {
+                        headers: { 'Authorization': `Bearer ${State.token}` }
+                    });
+                    if (!docRes.ok) throw new Error(`Failed to load audit backup record from Firestore (${docRes.status})`);
+                    const docJson = await docRes.json();
+                    const parsed = Crypto.parseFirestoreDoc(docJson);
+                    state = parsed ? parsed.prevState : null;
+                }
+
+                if (typeof state === 'string') {
+                    try { state = JSON.parse(state); } catch(e) {}
+                }
+                if (state && state.compressed && state.data) {
+                    state = await decompressJsonFromBase64(state.data);
+                }
+
+                if (!state || (!state.backupData && !state.prevEntity && !state.rawKey)) {
+                    throw new Error('No pre-mutation backup snapshot data found for this operation. Revert cannot proceed.');
+                }
+
+                // Execute Datastore or Query revert
+                let restoredCount = 0;
+                let deletedCount = 0;
+
+                if (state.type === 'DATASTORE_COPY' || log.operation === 'DATASTORE_COPY') {
+                    const targetDb = state.tgtDb || '';
+                    const items = state.backupData || [];
+                    const mutations = [];
+
+                    for (const item of items) {
+                        if (item.action === 'upsert' && item.prevEntity) {
+                            mutations.push({
+                                upsert: retargetEntity(item.prevEntity, targetProject, targetDb)
+                            });
+                        } else if (item.action === 'delete') {
+                            const key = item.prevEntity?.key || item.key;
+                            if (key) {
+                                mutations.push({
+                                    delete: retargetKey(key, targetProject, targetDb)
+                                });
+                            }
+                        }
+                    }
+
+                    if (mutations.length === 0) {
+                        throw new Error('Backup state contains 0 reversible mutations.');
+                    }
+
+                    // Commit in batches of 400
+                    const chunkSize = 400;
+                    for (let i = 0; i < mutations.length; i += chunkSize) {
+                        const chunk = mutations.slice(i, i + chunkSize);
+                        const commitUrl = `https://datastore.googleapis.com/v1/projects/${targetProject}:commit` + (targetDb && targetDb !== '(default)' ? `?databaseId=${targetDb}` : '');
+                        const commitRes = await fetch(commitUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${gauthToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                mode: 'NON_TRANSACTIONAL',
+                                mutations: chunk
+                            })
+                        });
+
+                        if (!commitRes.ok) {
+                            const errBody = await commitRes.json().catch(() => ({}));
+                            throw new Error(`Datastore commit failed (${commitRes.status}): ${errBody.error?.message || commitRes.statusText}`);
+                        }
+                    }
+
+                    restoredCount = items.filter(x => x.action === 'upsert').length;
+                    deletedCount = items.filter(x => x.action === 'delete').length;
+                } else if (state.type === 'DATASTORE_EDIT' || log.operation === 'DATASTORE_EDIT') {
+                    const targetDb = state.dbId || '';
+                    const mutations = [];
+                    if (state.prevEntity) {
+                        mutations.push({ upsert: retargetEntity(state.prevEntity, targetProject, targetDb) });
+                        restoredCount = 1;
+                    } else if (state.rawKey) {
+                        mutations.push({ delete: retargetKey(state.rawKey, targetProject, targetDb) });
+                        deletedCount = 1;
+                    }
+                    const commitUrl = `https://datastore.googleapis.com/v1/projects/${targetProject}:commit` + (targetDb && targetDb !== '(default)' ? `?databaseId=${targetDb}` : '');
+                    const commitRes = await fetch(commitUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${gauthToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ mode: 'NON_TRANSACTIONAL', mutations })
+                    });
+                    if (!commitRes.ok) {
+                        const errBody = await commitRes.json().catch(() => ({}));
+                        throw new Error(`Datastore commit failed (${commitRes.status}): ${errBody.error?.message || commitRes.statusText}`);
+                    }
+                } else {
+                    throw new Error(`Unsupported revert type: ${state.type || log.operation}`);
+                }
+
+                // Write revert audit log to Firestore
+                const revertDetails = `Admin reverted ${log.operation} from log ${log.id}. Restored: ${restoredCount}, Deleted: ${deletedCount}. Authorized by ${gauthEmail}.`;
+                try {
+                    await fetch(`https://firestore.googleapis.com/v1/projects/gcp-tools-portal/databases/(default)/documents/audit_logs`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${State.token}`
+                        },
+                        body: JSON.stringify({
+                            fields: {
+                                timestamp: { stringValue: new Date().toISOString() },
+                                timestampEpochMs: { integerValue: String(Date.now()) },
+                                operation: { stringValue: log.operation === 'DATASTORE_COPY' ? 'DATASTORE_REVERT' : 'DATASTORE_EDIT_REVERT' },
+                                user: { stringValue: gauthEmail },
+                                userSubject: { stringValue: State.uid || '' },
+                                srcProject: { stringValue: '—' },
+                                tgtProject: { stringValue: targetProject },
+                                status: { stringValue: 'SUCCESS' },
+                                details: { stringValue: revertDetails }
+                            }
+                        })
+                    });
+                } catch(e) {
+                    console.warn('Failed to record revert audit log:', e);
+                }
+
+                statusBox.style.background = 'rgba(16, 185, 129, 0.15)';
+                statusBox.style.border = '1px solid #10b981';
+                statusBox.style.color = '#6ee7b7';
+                statusBox.innerHTML = `
+                    <div style="font-weight:700; color:#fff; font-size:13px; margin-bottom:4px;">
+                        <i class="bi bi-check-circle-fill" style="color:#10b981"></i> Operation Reverted Successfully!
+                    </div>
+                    <div>Restored ${restoredCount} entity snapshots and cleaned up ${deletedCount} created entities in <strong>${escapeHtml(targetProject)}</strong>.</div>
+                `;
+
+                toast(`Successfully reverted operation on ${targetProject}!`, 'ok');
+                setTimeout(() => {
+                    hideAdminRevertModal();
+                    refreshLogs();
+                }, 1600);
+
+            } catch(err) {
+                console.error("Revert failure:", err);
+                statusBox.style.background = 'rgba(239, 68, 68, 0.15)';
+                statusBox.style.border = '1px solid #ef4444';
+                statusBox.style.color = '#fca5a5';
+                statusBox.innerHTML = `<strong>Revert Error:</strong> ${escapeHtml(err.message || 'Operation failed')}`;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Permissions & Revert';
+            }
+        }
+
+        function checkPendingRevertFromUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('action') === 'revert') {
+                    const logId = params.get('logId');
+                    if (logId) {
+                        setTimeout(() => {
+                            openAdminRevertModal(logId);
+                        }, 250);
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function initAdminPortal() {
+            // Restore active session if present (within 50 min)
+            try {
+                const sessionStr = sessionStorage.getItem('admin_session');
+                if (sessionStr) {
+                    const session = JSON.parse(sessionStr);
+                    if (session && session.token && (Date.now() - (session.savedAt || 0) < 50 * 60 * 1000)) {
+                        State.token = session.token;
+                        State.uid = session.uid;
+                        State.email = session.email;
+                        State.username = session.username;
+                        document.getElementById("login-panel").style.display = "none";
+                        document.getElementById("admin-panel").style.display = "flex";
+                    }
+                }
+            } catch(e) {}
+
+            // Instant cache restoration for 0ms initial table load
+            try {
+                const saved = localStorage.getItem('admin_cached_logs') || sessionStorage.getItem('admin_cached_logs');
+                if (saved) {
+                    const parsedSaved = JSON.parse(saved);
+                    if (Array.isArray(parsedSaved) && parsedSaved.length > 0) {
+                        cachedLogs = parsedSaved;
+                        applyAdminFilters();
+                    }
+                }
+            } catch(e) {}
+
+            // If session was restored, revalidate in background
+            if (State.token) {
+                await refreshLogs();
+                checkPendingRevertFromUrl();
+            }
+
+            // Bind Enter key in revert token input
+            const revertTokenInp = document.getElementById('admin-revert-gauth-token');
+            if (revertTokenInp) {
+                revertTokenInp.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        executeAdminRevert();
+                    }
+                };
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initAdminPortal();
+        });
+
         function escapeHtml(str) {
             if (!str) return '';
             return String(str)
@@ -1824,6 +2280,61 @@
                 </div>
                 <button type="submit" class="btn" style="padding: 10px;"><i class="bi bi-person-plus-fill"></i> Add Admin Account</button>
             </form>
+        </div>
+    </div>
+
+    <!-- Admin Revert Modal -->
+    <div id="admin-revert-modal" class="modal-overlay">
+        <div class="card" style="width:100%; max-width: 560px; padding:2rem; animation:fadeInScale 0.3s; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85); border: 1px solid var(--brd2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+                <h3 style="font-size: 18px; font-weight: 700; color: #f87171;">
+                    <i class="bi bi-arrow-counterclockwise" style="margin-right:8px;"></i>Revert Operation
+                </h3>
+                <button onclick="hideAdminRevertModal()" style="background:none; border:none; color:var(--fg); font-size:20px; cursor:pointer;"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <!-- Target operation metadata -->
+            <div id="revert-meta-box" style="background: rgba(0,0,0,0.3); border: 1px solid var(--brd2); border-radius: 8px; padding: 12px 16px; margin-bottom: 1.2rem; font-size: 12px;">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Destructive Warning Callout -->
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 1.2rem; font-size: 12px; color: #fca5a5; display:flex; gap: 10px; align-items:flex-start;">
+                <i class="bi bi-exclamation-triangle-fill" style="font-size: 16px; flex-shrink: 0; color: #f87171; margin-top: 1px;"></i>
+                <div>
+                    <strong style="color: #fff;">Destructive Action!</strong>
+                    This will restore destination entities to the pre-mutation state recorded before this operation, or delete entities created by it.
+                </div>
+            </div>
+
+            <!-- Google OAuth Token Input -->
+            <div style="margin-bottom: 1.2rem;">
+                <label class="form-label" style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Google Cloud Access Token (gauth token) <span style="color: #f87171;">*</span>
+                </label>
+                <div style="position:relative;">
+                    <input type="password" id="admin-revert-gauth-token" class="inp" placeholder="ya29.a0..." style="padding: 10px 40px 10px 12px; font-family: monospace; font-size: 12px;" autocomplete="off">
+                    <button type="button" onclick="toggleRevertTokenVisibility()" style="position:absolute; right: 10px; top: 50%; transform: translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer;">
+                        <i id="revert-token-eye" class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div style="font-size: 11px; color: var(--muted); margin-top: 6px; display:flex; justify-content:space-between; align-items:center;">
+                    <span>Run <code style="background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; color:var(--accent);">gcloud auth print-access-token</code> in terminal.</span>
+                </div>
+            </div>
+
+            <!-- Status / Progress / Error Container -->
+            <div id="revert-status-box" style="display:none; margin-bottom: 1.2rem; padding: 12px 16px; border-radius: 8px; font-size: 12px; line-height: 1.4;">
+                <!-- Populated during verification / execution -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display:flex; justify-content:flex-end; gap: 10px;">
+                <button type="button" class="btn-sec" onclick="hideAdminRevertModal()" style="padding: 9px 18px;">Cancel</button>
+                <button type="button" id="btn-admin-revert-submit" class="btn" style="padding: 9px 18px; background: #dc2626; border-color: #ef4444; color: #fff;" onclick="executeAdminRevert()">
+                    <i class="bi bi-shield-check"></i> Verify Permissions & Revert
+                </button>
+            </div>
         </div>
     </div>
 </body>
