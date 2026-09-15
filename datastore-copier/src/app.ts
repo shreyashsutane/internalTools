@@ -2504,51 +2504,125 @@ export const App = {
             }
         };
 
+        const targetKeyByString = new Map<string, any>();
+        for (const keyStr of keysToCopy) {
+            const result = resultByKey.get(keyStr);
+            if (!result) {
+                UI.closeModal();
+                Utils.hide('sec-loading');
+                Utils.hide('btn-cancel-ds');
+                Utils.toast(`Selected entity ${keyStr} is no longer in current analysis.`, 'err');
+                return;
+            }
+            const keyCopy = cloneDatastoreValue(result.rawKey);
+            const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
+            const tgtPartitionId: any = { projectId: State.ds.tgt };
+            if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
+            keyCopy.partitionId = tgtPartitionId;
+            targetKeyByString.set(keyStr, keyCopy);
+        }
+
+        // PHASE 1: Prepare & Download Backup File(s) to User's Machine FIRST
+        Utils.$('load-title')!.textContent = "Backing Up Existing Entities...";
+        Utils.$('load-msg')!.textContent = `Reading destination state for ${keysToCopy.length} entities and downloading backup...`;
+
+        const targetEntitiesByKey = new Map<string, any>();
+        const LOOKUP_CHUNK_SIZE = 100;
+        const lookupChunks: string[][] = [];
+        for (let i = 0; i < keysToCopy.length; i += LOOKUP_CHUNK_SIZE) {
+            lookupChunks.push(keysToCopy.slice(i, i + LOOKUP_CHUNK_SIZE));
+        }
+
+        try {
+            let lookupProcessed = 0;
+            await mapConcurrent(lookupChunks, 4, async (chunkKeys) => {
+                if (State.cancelDs || controller.signal.aborted) return;
+                const tgtKeys = chunkKeys.map(k => targetKeyByString.get(k)).filter(Boolean);
+                if (tgtKeys.length === 0) return;
+
+                const targetRes = await Api.lookupEntities(State.ds.tgt, tgtKeys, State.ds.tgtDb, controller.signal);
+                (targetRes.found || []).forEach((entry: any) => {
+                    const kStr = App.formatKey(entry.entity.key);
+                    if (kStr) {
+                        if (entry.entity?.properties) {
+                            Diff.minifyJsonProperties(entry.entity.properties);
+                        }
+                        targetEntitiesByKey.set(kStr, entry.entity);
+                    }
+                });
+                lookupProcessed += chunkKeys.length;
+                Utils.$('load-msg')!.textContent = `Inspecting existing destination entities (${Math.min(lookupProcessed, keysToCopy.length)} of ${keysToCopy.length})...`;
+            });
+
+            if (State.cancelDs || controller.signal.aborted) {
+                Utils.hide('sec-loading');
+                Utils.hide('btn-cancel-ds');
+                Utils.toast('Copy cancelled before mutations.', 'info');
+                if (dsAbortController === controller) dsAbortController = null;
+                return;
+            }
+
+            for (const keyStr of keysToCopy) {
+                const existingTarget = targetEntitiesByKey.get(keyStr);
+                const result = resultByKey.get(keyStr);
+                const keyKind = result?.kind || (keyStr.includes(':') ? keyStr.split(':')[0] : 'Unknown');
+                allKindsSet.add(keyKind);
+                activePartKindsSet.add(keyKind);
+
+                const disp = result?.displayName
+                    ? { fieldName: result.displayField || 'name', value: result.displayName }
+                    : (result?.srcEntity ? extractEntityDisplayName(result.srcEntity) : null);
+                if (disp) {
+                    activePartDisplayNames[keyStr] = disp;
+                }
+
+                activePartBackupData.push({
+                    keyStr,
+                    action: existingTarget ? 'upsert' : 'delete',
+                    prevEntity: existingTarget
+                        ? cloneDatastoreValue(existingTarget)
+                        : { key: cloneDatastoreValue(targetKeyByString.get(keyStr)) }
+                });
+
+                if (activePartBackupData.length >= MAX_BACKUP_PART_ENTITIES) {
+                    await flushBackupPart(false);
+                }
+            }
+
+            await flushBackupPart(true);
+        } catch (backupErr: any) {
+            if (isCancellationError(backupErr)) return;
+            Utils.hide('sec-loading');
+            Utils.hide('btn-cancel-ds');
+            Utils.toast(`Backup creation failed: ${backupErr.message}. No entities were changed.`, 'err');
+            if (dsAbortController === controller) dsAbortController = null;
+            return;
+        }
+
+        // PHASE 2: Perform Copy & Write Mutations to Destination Project
+        Utils.$('load-title')!.textContent = "Copying Entities...";
+        Utils.$('load-msg')!.textContent = `📥 Backup downloaded! Copying entities (0 of ${keysToCopy.length} completed)...`;
+
         await mapConcurrent(chunks, 3, async (chunkStrs, batchIdx) => {
             if (State.cancelDs || controller.signal.aborted) return;
             const batchNum = batchIdx + 1;
             let batchFailureCount = chunkStrs.length;
 
-            Utils.$('load-msg')!.textContent = `Copying entities (${ok} of ${keysToCopy.length} copied across parallel streams)...`;
+            Utils.$('load-msg')!.textContent = `📥 Backup downloaded! Copying entities (${ok} of ${keysToCopy.length} copied across parallel streams)...`;
 
             let batchAuditLogId: string | null = null;
             try {
-                const targetKeyByString = new Map<string, any>();
                 const rawKeys: any[] = [];
+                const chunkBackupData: any[] = [];
+                const entityDisplayNames: Record<string, { fieldName: string; value: string }> = {};
+                const batchKindsSet = new Set<string>();
 
                 for (const keyStr of chunkStrs) {
                     const result = resultByKey.get(keyStr);
-                    if (!result) throw new Error(`Selected entity ${keyStr} is no longer in current analysis.`);
-                    const keyCopy = cloneDatastoreValue(result.rawKey);
-                    const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
-                    const tgtPartitionId: any = { projectId: State.ds.tgt };
-                    if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
-                    keyCopy.partitionId = tgtPartitionId;
-                    targetKeyByString.set(keyStr, keyCopy);
-
-                    if (result.rawKey) {
+                    if (result?.rawKey) {
                         rawKeys.push(cloneDatastoreValue(result.rawKey));
                     }
-                }
-
-                const targetKeys = [...targetKeyByString.values()];
-                if (targetKeys.length === 0 || rawKeys.length === 0) return;
-
-                const [targetBackup, srcRes] = await Promise.all([
-                    Api.lookupEntities(State.ds.tgt, targetKeys, State.ds.tgtDb, controller.signal),
-                    Api.lookupEntities(State.ds.src, rawKeys, State.ds.srcDb, controller.signal)
-                ]);
-
-                const foundMap = new Map<string, any>(
-                    (targetBackup.found || []).map((entry: any) => [App.formatKey(entry.entity.key), entry.entity])
-                );
-
-                const chunkBackupData: any[] = [];
-                chunkStrs.forEach(keyStr => {
-                    const existingTarget = foundMap.get(keyStr);
-                    if (existingTarget?.properties) {
-                        Diff.minifyJsonProperties(existingTarget.properties);
-                    }
+                    const existingTarget = targetEntitiesByKey.get(keyStr);
                     chunkBackupData.push({
                         keyStr,
                         action: existingTarget ? 'upsert' : 'delete',
@@ -2556,10 +2630,16 @@ export const App = {
                             ? cloneDatastoreValue(existingTarget)
                             : { key: cloneDatastoreValue(targetKeyByString.get(keyStr)) }
                     });
-                });
+                    const disp = result?.displayName
+                        ? { fieldName: result.displayField || 'name', value: result.displayName }
+                        : (result?.srcEntity ? extractEntityDisplayName(result.srcEntity) : null);
+                    if (disp) entityDisplayNames[keyStr] = disp;
+                    if (result?.kind) batchKindsSet.add(result.kind);
+                }
 
-                const entityDisplayNames: Record<string, { fieldName: string; value: string }> = {};
-                const batchKindsSet = new Set<string>();
+                if (rawKeys.length === 0) return;
+
+                const srcRes = await Api.lookupEntities(State.ds.src, rawKeys, State.ds.srcDb, controller.signal);
                 (srcRes.found || []).forEach((entry: any) => {
                     const k = App.formatKey(entry.entity?.key);
                     const disp = extractEntityDisplayName(entry.entity);
@@ -2568,26 +2648,8 @@ export const App = {
                     if (entityKind) batchKindsSet.add(entityKind);
                 });
 
-                // Fallback to resultByKey kinds if not found in srcRes
-                if (batchKindsSet.size === 0) {
-                    chunkStrs.forEach(kStr => {
-                        const r = resultByKey.get(kStr);
-                        if (r?.kind) batchKindsSet.add(r.kind);
-                    });
-                }
-
                 const batchKinds = [...batchKindsSet];
                 const batchKindLabel = batchKinds.length > 0 ? batchKinds.join(', ') : (State.ds.kind || 'Unknown');
-                chunkBackupData.forEach(item => activePartBackupData.push(item));
-                Object.assign(activePartDisplayNames, entityDisplayNames);
-                batchKinds.forEach(k => {
-                    allKindsSet.add(k);
-                    activePartKindsSet.add(k);
-                });
-
-                if (activePartBackupData.length >= MAX_BACKUP_PART_ENTITIES) {
-                    await flushBackupPart(false);
-                }
 
                 const refNamesList = Object.values(entityDisplayNames).slice(0, 3).map(d => `${d.fieldName}: "${d.value}"`);
                 const refSummary = refNamesList.length > 0
@@ -2723,7 +2785,7 @@ export const App = {
                 if (mutations.length > 0) {
                     await Api.commitDatastore(State.ds.tgt, mutations, State.ds.tgtDb, controller.signal);
                     ok += mutations.length;
-                    Utils.$('load-msg')!.textContent = `Copying entities (${ok} of ${keysToCopy.length} completed across parallel streams)...`;
+                    Utils.$('load-msg')!.textContent = `📥 Backup downloaded! Copying entities (${ok} of ${keysToCopy.length} completed across parallel streams)...`;
                 }
 
                 if (batchAuditLogId) {

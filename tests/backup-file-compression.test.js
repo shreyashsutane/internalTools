@@ -246,3 +246,18 @@ test('app.ts handles local backup download and does not throw when centralized a
     assert.ok(appTs.includes('hasLocalBackup'), 'app.ts should check hasLocalBackup before throwing');
     assert.ok(appTs.includes('flushBackupPart'), 'app.ts should implement flushBackupPart for chunked backups');
 });
+
+test('app.ts downloads backup file in Phase 1 before committing mutations in Phase 2', () => {
+    const appTs = fs.readFileSync(path.join(__dirname, '..', 'datastore-copier', 'src', 'app.ts'), 'utf8');
+    const executeDsCopyStart = appTs.indexOf('executeDsCopy: async');
+    assert.ok(executeDsCopyStart > 0, 'executeDsCopy should exist in app.ts');
+
+    const phase1Backup = appTs.indexOf('PHASE 1: Prepare & Download Backup', executeDsCopyStart);
+    const flushBeforeCommit = appTs.indexOf('await flushBackupPart(true);', phase1Backup);
+    const phase2Commit = appTs.indexOf('await Api.commitDatastore(State.ds.tgt', flushBeforeCommit);
+
+    assert.ok(phase1Backup > executeDsCopyStart, 'Phase 1 backup should exist');
+    assert.ok(flushBeforeCommit > phase1Backup, 'Backup should be flushed in Phase 1');
+    assert.ok(phase2Commit > flushBeforeCommit, 'Target commit must occur after Phase 1 backup flush');
+});
+
