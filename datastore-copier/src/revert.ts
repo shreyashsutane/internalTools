@@ -69,6 +69,8 @@ export interface BackupFileSummary {
     totalEntities: number;
     upsertCount: number;
     deleteCount: number;
+    partNumber?: number;
+    isMultiPart?: boolean;
 }
 
 export const validateBackupPayload = (payload: any): { valid: boolean; summary?: BackupFileSummary; error?: string } => {
@@ -123,6 +125,8 @@ export const validateBackupPayload = (payload: any): { valid: boolean; summary?:
     const sourceProject = payload.sourceProject || payload.srcProject || '';
     const databaseId = payload.databaseId || payload.tgtDb || payload.targetDb || '(default)';
     const timestamp = payload.timestamp || payload.created || payload.date;
+    const partNumber = typeof payload.partNumber === 'number' ? payload.partNumber : undefined;
+    const isMultiPart = Boolean(payload.isMultiPart || payload.partNumber);
 
     return {
         valid: true,
@@ -135,9 +139,17 @@ export const validateBackupPayload = (payload: any): { valid: boolean; summary?:
             timestamp,
             totalEntities: backupData.length,
             upsertCount,
-            deleteCount
+            deleteCount,
+            partNumber,
+            isMultiPart
         }
     };
+};
+
+export const sortBackupFiles = <T extends { name: string }>(files: T[]): T[] => {
+    return [...files].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
 };
 
 export const buildDatastoreRevertPlan = (

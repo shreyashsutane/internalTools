@@ -2,7 +2,7 @@ import { State } from './state';
 import { Utils } from './utils';
 import { Api } from './api';
 import { CONFIG } from './config';
-import { executeDatastoreRevert, executeScheduledQueryRevert, validateBackupPayload } from './revert';
+import { executeDatastoreRevert, executeScheduledQueryRevert, validateBackupPayload, sortBackupFiles } from './revert';
 import { compressJsonToBase64, decompressJsonFromBase64, mapConcurrent, decompressFileToJson } from './datastore-utils';
 
 const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
@@ -447,60 +447,123 @@ export const AuditLog = {
         const countsEl = fragment.querySelector('#restore-counts') as HTMLElement;
         const timestampEl = fragment.querySelector('#restore-timestamp') as HTMLElement;
         const projectOverrideInp = fragment.querySelector('#restore-project-override') as HTMLInputElement;
+        const fileListEl = fragment.querySelector('#restore-file-list') as HTMLElement | null;
         const confirmBtn = fragment.querySelector('#btn-confirm-restore-file') as HTMLButtonElement;
         const cancelBtn = fragment.querySelector('.btn-restore-cancel') as HTMLButtonElement;
         const closeBtn = fragment.querySelector('.btn-restore-modal-close') as HTMLButtonElement;
 
-        let loadedPayload: any = null;
+        let selectedFiles: File[] = [];
 
-        const handleFile = async (file: File) => {
-            if (!file) return;
+        const handleFiles = async (fileList: FileList | File[]) => {
+            const rawFiles = Array.from(fileList);
+            if (rawFiles.length === 0) return;
+            const files = sortBackupFiles(rawFiles);
+            selectedFiles = files;
+
             try {
-                fileNameEl.textContent = `Reading ${file.name}...`;
-                fileNameEl.style.display = 'block';
+                if (files.length === 1) {
+                    const file = files[0];
+                    fileNameEl.textContent = `Reading ${file.name}...`;
+                    fileNameEl.style.display = 'block';
+                    if (fileListEl) fileListEl.style.display = 'none';
 
-                const parsed = await decompressFileToJson(file);
-                const validation = validateBackupPayload(parsed);
+                    const parsed = await decompressFileToJson(file);
+                    const validation = validateBackupPayload(parsed);
 
-                if (!validation.valid || !validation.summary) {
-                    fileNameEl.textContent = `Invalid file: ${validation.error || 'Failed to parse'}`;
-                    fileNameEl.className = 'text-xs font-mono font-bold text-rose-400 mt-2 truncate';
-                    summaryBox.style.display = 'none';
-                    confirmBtn.disabled = true;
-                    Utils.toast(validation.error || 'Invalid backup file', 'err');
-                    return;
+                    if (!validation.valid || !validation.summary) {
+                        fileNameEl.textContent = `Invalid file: ${validation.error || 'Failed to parse'}`;
+                        fileNameEl.className = 'text-xs font-mono font-bold text-rose-400 mt-2 truncate';
+                        summaryBox.style.display = 'none';
+                        confirmBtn.disabled = true;
+                        Utils.toast(validation.error || 'Invalid backup file', 'err');
+                        return;
+                    }
+
+                    const s = validation.summary;
+                    fileNameEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                    fileNameEl.className = 'text-xs font-mono font-bold text-emerald-400 mt-2 truncate';
+
+                    targetProjEl.textContent = s.targetProject || State.ds.tgt || '—';
+                    targetDbEl.textContent = s.databaseId || '(default)';
+                    kindsEl.textContent = s.kinds.length > 0 ? s.kinds.join(', ') : 'All Kinds';
+                    countsEl.textContent = `${s.totalEntities} entities (${s.upsertCount} restores, ${s.deleteCount} deletions)`;
+                    timestampEl.textContent = s.timestamp ? new Date(s.timestamp).toLocaleString() : 'Unknown';
+
+                    projectOverrideInp.value = s.targetProject || State.ds.tgt || '';
+                    summaryBox.style.display = 'block';
+                    confirmBtn.disabled = false;
+                } else {
+                    // Multi-file archive handling (supports 10 GB across parts)
+                    fileNameEl.textContent = `Analyzing ${files.length} backup parts...`;
+                    fileNameEl.className = 'text-xs font-mono font-bold text-amber-300 mt-2 truncate';
+                    fileNameEl.style.display = 'block';
+                    if (fileListEl) {
+                        fileListEl.replaceChildren();
+                        fileListEl.style.display = 'block';
+                    }
+
+                    let totalEntities = 0;
+                    let totalUpserts = 0;
+                    let totalDeletes = 0;
+                    const kindsSet = new Set<string>();
+                    let targetProject = '';
+                    let databaseId = '(default)';
+                    let timestamp = '';
+                    let totalBytes = 0;
+
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        totalBytes += file.size;
+                        const parsed = await decompressFileToJson(file);
+                        const validation = validateBackupPayload(parsed);
+                        if (!validation.valid || !validation.summary) {
+                            throw new Error(`Part ${i + 1} (${file.name}) is invalid: ${validation.error || 'Failed to parse'}`);
+                        }
+                        const s = validation.summary;
+                        totalEntities += s.totalEntities;
+                        totalUpserts += s.upsertCount;
+                        totalDeletes += s.deleteCount;
+                        s.kinds.forEach(k => kindsSet.add(k));
+                        if (!targetProject && s.targetProject) targetProject = s.targetProject;
+                        if (s.databaseId && s.databaseId !== '(default)') databaseId = s.databaseId;
+                        if (!timestamp && s.timestamp) timestamp = s.timestamp;
+
+                        if (fileListEl) {
+                            const partRow = document.createElement('div');
+                            partRow.className = 'flex items-center justify-between py-0.5 border-b border-white/5 text-zinc-300';
+                            partRow.innerHTML = `<span class="truncate text-cyan-400">#${i + 1} ${file.name}</span><span class="text-zinc-400 ml-2 font-mono">${s.totalEntities} entities (${(file.size / 1024).toFixed(0)} KB)</span>`;
+                            fileListEl.appendChild(partRow);
+                        }
+                    }
+
+                    fileNameEl.textContent = `Selected: ${files.length} archive parts (${(totalBytes / (1024 * 1024)).toFixed(1)} MB compressed)`;
+                    fileNameEl.className = 'text-xs font-mono font-bold text-emerald-400 mt-2 truncate';
+
+                    targetProjEl.textContent = targetProject || State.ds.tgt || '—';
+                    targetDbEl.textContent = databaseId;
+                    kindsEl.textContent = kindsSet.size > 0 ? [...kindsSet].join(', ') : 'All Kinds';
+                    countsEl.textContent = `${totalEntities} entities across ${files.length} parts (${totalUpserts} restores, ${totalDeletes} deletions)`;
+                    timestampEl.textContent = timestamp ? new Date(timestamp).toLocaleString() : 'Unknown';
+
+                    projectOverrideInp.value = targetProject || State.ds.tgt || '';
+                    summaryBox.style.display = 'block';
+                    confirmBtn.disabled = false;
                 }
-
-                loadedPayload = parsed;
-                const s = validation.summary;
-
-                fileNameEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-                fileNameEl.className = 'text-xs font-mono font-bold text-emerald-400 mt-2 truncate';
-
-                targetProjEl.textContent = s.targetProject || State.ds.tgt || '—';
-                targetDbEl.textContent = s.databaseId || '(default)';
-                kindsEl.textContent = s.kinds.length > 0 ? s.kinds.join(', ') : 'All Kinds';
-                countsEl.textContent = `${s.totalEntities} entities (${s.upsertCount} restores, ${s.deleteCount} deletions)`;
-                timestampEl.textContent = s.timestamp ? new Date(s.timestamp).toLocaleString() : 'Unknown';
-
-                projectOverrideInp.value = s.targetProject || State.ds.tgt || '';
-                summaryBox.style.display = 'block';
-                confirmBtn.disabled = false;
             } catch (err: any) {
-                console.error('Failed to parse backup file:', err);
-                fileNameEl.textContent = `Error reading file: ${err.message}`;
+                console.error('Failed to parse backup files:', err);
+                fileNameEl.textContent = `Error reading files: ${err.message}`;
                 fileNameEl.className = 'text-xs font-mono font-bold text-rose-400 mt-2 truncate';
                 summaryBox.style.display = 'none';
                 confirmBtn.disabled = true;
-                Utils.toast(`Failed to read backup file: ${err.message}`, 'err');
+                Utils.toast(`Failed to read backup files: ${err.message}`, 'err');
             }
         };
 
         if (dropZone && fileInput) {
             dropZone.onclick = () => fileInput.click();
             fileInput.onchange = () => {
-                if (fileInput.files && fileInput.files[0]) {
-                    handleFile(fileInput.files[0]);
+                if (fileInput.files && fileInput.files.length > 0) {
+                    void handleFiles(fileInput.files);
                 }
             };
 
@@ -514,8 +577,8 @@ export const AuditLog = {
             dropZone.ondrop = (e) => {
                 e.preventDefault();
                 dropZone.style.borderColor = 'rgba(255, 255, 255, 0.18)';
-                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    handleFile(e.dataTransfer.files[0]);
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    void handleFiles(e.dataTransfer.files);
                 }
             };
         }
@@ -526,7 +589,7 @@ export const AuditLog = {
 
         if (confirmBtn) {
             confirmBtn.onclick = async () => {
-                if (!loadedPayload) return;
+                if (selectedFiles.length === 0) return;
                 const targetProject = (projectOverrideInp.value || '').trim();
                 if (!targetProject) {
                     Utils.toast('Please enter or verify the Target Project ID.', 'err');
@@ -535,20 +598,33 @@ export const AuditLog = {
 
                 close();
                 Utils.show('sec-loading');
-                Utils.$('load-title')!.textContent = 'Restoring from Backup File...';
+                Utils.$('load-title')!.textContent = 'Restoring from Backup File(s)...';
                 Utils.$('load-msg')!.textContent = `Restoring entities to ${targetProject}...`;
 
+                let totalRestored = 0;
+                let totalDeleted = 0;
+                let totalSkipped = 0;
+
                 try {
-                    const result = await executeDatastoreRevert(Api, targetProject, loadedPayload, 250);
+                    for (let i = 0; i < selectedFiles.length; i++) {
+                        const file = selectedFiles[i];
+                        Utils.$('load-msg')!.textContent = `Restoring part ${i + 1} of ${selectedFiles.length} (${file.name})...`;
+                        const payload = await decompressFileToJson(file);
+                        const result = await executeDatastoreRevert(Api, targetProject, payload, 250);
+                        totalRestored += result.restored;
+                        totalDeleted += result.deleted;
+                        totalSkipped += (result.skippedDeletes || 0);
+                    }
+
                     Utils.toast(
-                        `Restore complete! Restored ${result.restored} entities, deleted ${result.deleted} entities${result.skippedDeletes > 0 ? ` (${result.skippedDeletes} deletes skipped)` : ''}.`,
+                        `Restore complete! Restored ${totalRestored} entities, deleted ${totalDeleted} entities${totalSkipped > 0 ? ` (${totalSkipped} deletes skipped)` : ''} across ${selectedFiles.length} file part(s).`,
                         'ok'
                     );
                     void AuditLog.addLog(
                         'DATASTORE_REVERT',
                         '—',
                         targetProject,
-                        `Restored from local backup file: ${result.restored} entities restored, ${result.deleted} entities deleted.`,
+                        `Restored from ${selectedFiles.length} local backup part(s): ${totalRestored} entities restored, ${totalDeleted} entities deleted.`,
                         'SUCCESS'
                     );
                 } catch (err: any) {

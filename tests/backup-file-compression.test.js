@@ -26,7 +26,7 @@ const utilsEntry = path.join(__dirname, '..', 'datastore-copier', 'src', 'datast
 const revertEntry = path.join(__dirname, '..', 'datastore-copier', 'src', 'revert.ts');
 
 const { compressJsonToGzipBlob, decompressFileToJson } = compileModule(utilsEntry);
-const { validateBackupPayload, buildDatastoreRevertPlan } = compileModule(revertEntry);
+const { validateBackupPayload, buildDatastoreRevertPlan, sortBackupFiles } = compileModule(revertEntry);
 
 test('compressJsonToGzipBlob compresses JSON and decompressFileToJson decompresses gzip blob', async () => {
     const originalData = {
@@ -189,11 +189,50 @@ test('buildDatastoreRevertPlan builds plan from DATASTORE_BACKUP with optional p
     assert.equal(plan.deletes[0].delete.partitionId.projectId, 'new-project');
 });
 
-test('index.html contains Restore Backup File button and template modal', () => {
+test('sortBackupFiles correctly sorts multi-part file names naturally', () => {
+    const files = [
+        { name: 'backup_part10.json.gz' },
+        { name: 'backup_part2.json.gz' },
+        { name: 'backup_part1.json.gz' },
+        { name: 'backup_part20.json.gz' }
+    ];
+    const sorted = sortBackupFiles(files);
+    assert.deepEqual(sorted.map(f => f.name), [
+        'backup_part1.json.gz',
+        'backup_part2.json.gz',
+        'backup_part10.json.gz',
+        'backup_part20.json.gz'
+    ]);
+});
+
+test('validateBackupPayload retains partNumber and isMultiPart metadata', () => {
+    const payload = {
+        type: 'DATASTORE_BACKUP',
+        targetProject: 'my-proj',
+        databaseId: 'test-db',
+        partNumber: 3,
+        isMultiPart: true,
+        backupData: [
+            {
+                action: 'upsert',
+                prevEntity: { key: { path: [{ kind: 'K', id: '1' }] } }
+            }
+        ]
+    };
+    const res = validateBackupPayload(payload);
+    assert.equal(res.valid, true);
+    assert.equal(res.summary.partNumber, 3);
+    assert.equal(res.summary.isMultiPart, true);
+});
+
+test('index.html contains Restore Backup File button and template modal with multi-file support', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'datastore-copier', 'index.html'), 'utf8');
     assert.ok(html.includes('id="btn-restore-backup-file"'), 'index.html must contain btn-restore-backup-file button');
     assert.ok(html.includes('id="template-restore-backup-modal"'), 'index.html must contain template-restore-backup-modal');
     assert.ok(html.includes('id="restore-file-input"'), 'template must include restore-file-input');
+    assert.ok(html.includes('multiple style="display:none"'), 'restore-file-input must have multiple attribute');
+    assert.ok(html.includes('id="restore-file-list"'), 'template must include restore-file-list container');
+    assert.ok(html.includes('up to 10 GB'), 'template must indicate 10 GB support');
     assert.ok(html.includes('id="restore-drop-zone"'), 'template must include restore-drop-zone');
     assert.ok(html.includes('id="restore-summary-box"'), 'template must include restore-summary-box');
     assert.ok(html.includes('id="btn-confirm-restore-file"'), 'template must include btn-confirm-restore-file');
@@ -205,4 +244,5 @@ test('app.ts handles local backup download and does not throw when centralized a
     assert.ok(appTs.includes('compressJsonToGzipBlob'), 'app.ts should call compressJsonToGzipBlob');
     assert.ok(appTs.includes('downloadBlobFile'), 'app.ts should call downloadBlobFile');
     assert.ok(appTs.includes('hasLocalBackup'), 'app.ts should check hasLocalBackup before throwing');
+    assert.ok(appTs.includes('flushBackupPart'), 'app.ts should implement flushBackupPart for chunked backups');
 });

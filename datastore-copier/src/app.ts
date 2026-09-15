@@ -2434,9 +2434,75 @@ export const App = {
             chunks.push(keysToCopy.slice(i, i + CHUNK_SIZE));
         }
         const totalBatches = chunks.length;
-        const allBackupData: any[] = [];
-        const allEntityDisplayNames: Record<string, { fieldName: string; value: string }> = {};
+        const MAX_BACKUP_PART_ENTITIES = 5000;
+        let backupPartNumber = 1;
+        let activePartBackupData: any[] = [];
+        let activePartDisplayNames: Record<string, { fieldName: string; value: string }> = {};
+        const activePartKindsSet = new Set<string>();
         const allKindsSet = new Set<string>();
+        let totalEntitiesFlushed = 0;
+        const copyTimestamp = new Date().toISOString();
+        const safeDate = copyTimestamp.slice(0, 19).replace(/[:T]/g, '-');
+        const safeKind = (State.ds.kind || 'entities').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        const flushBackupPart = async (isFinal = false) => {
+            if (activePartBackupData.length === 0) return;
+            const partEntities = activePartBackupData;
+            const partDisplayNames = activePartDisplayNames;
+            const partKinds = [...activePartKindsSet];
+            const currentPartNum = backupPartNumber;
+
+            activePartBackupData = [];
+            activePartDisplayNames = {};
+            activePartKindsSet.clear();
+            totalEntitiesFlushed += partEntities.length;
+
+            const isMultiPart = !isFinal || currentPartNum > 1;
+            if (isMultiPart) {
+                backupPartNumber++;
+            }
+
+            const safeKinds = partKinds.length > 0 ? partKinds : [...allKindsSet];
+            const backupPayload: any = {
+                backupVersion: '1.1',
+                type: 'DATASTORE_BACKUP',
+                timestamp: copyTimestamp,
+                sourceProject: State.ds.src,
+                targetProject: State.ds.tgt,
+                srcDb: State.ds.srcDb || '(default)',
+                tgtDb: State.ds.tgtDb || '(default)',
+                kinds: safeKinds,
+                totalEntities: partEntities.length,
+                backupData: partEntities,
+                entityDisplayNames: partDisplayNames
+            };
+
+            let filename = `backup_${State.ds.tgt}_${safeKind}_${safeDate}.json.gz`;
+            if (isMultiPart) {
+                backupPayload.partNumber = currentPartNum;
+                backupPayload.isMultiPart = true;
+                filename = `backup_${State.ds.tgt}_${safeKind}_${safeDate}_part${String(currentPartNum).padStart(2, '0')}.json.gz`;
+            }
+
+            try {
+                const gzipBlob = await compressJsonToGzipBlob(backupPayload);
+                downloadBlobFile(gzipBlob, filename);
+                Utils.toast(`📥 Compressed backup saved: ${filename}`, 'ok');
+
+                try {
+                    localStorage.setItem('latest_datastore_backup', JSON.stringify({
+                        timestamp: backupPayload.timestamp,
+                        targetProject: backupPayload.targetProject,
+                        kinds: backupPayload.kinds,
+                        totalEntities: backupPayload.totalEntities,
+                        partNumber: backupPayload.partNumber,
+                        isMultiPart: backupPayload.isMultiPart
+                    }));
+                } catch {}
+            } catch (downErr) {
+                console.warn('Auto-download backup error:', downErr);
+            }
+        };
 
         await mapConcurrent(chunks, 3, async (chunkStrs, batchIdx) => {
             if (State.cancelDs || controller.signal.aborted) return;
@@ -2512,9 +2578,16 @@ export const App = {
 
                 const batchKinds = [...batchKindsSet];
                 const batchKindLabel = batchKinds.length > 0 ? batchKinds.join(', ') : (State.ds.kind || 'Unknown');
-                chunkBackupData.forEach(item => allBackupData.push(item));
-                Object.assign(allEntityDisplayNames, entityDisplayNames);
-                batchKinds.forEach(k => allKindsSet.add(k));
+                chunkBackupData.forEach(item => activePartBackupData.push(item));
+                Object.assign(activePartDisplayNames, entityDisplayNames);
+                batchKinds.forEach(k => {
+                    allKindsSet.add(k);
+                    activePartKindsSet.add(k);
+                });
+
+                if (activePartBackupData.length >= MAX_BACKUP_PART_ENTITIES) {
+                    await flushBackupPart(false);
+                }
 
                 const refNamesList = Object.values(entityDisplayNames).slice(0, 3).map(d => `${d.fieldName}: "${d.value}"`);
                 const refSummary = refNamesList.length > 0
@@ -2701,42 +2774,7 @@ export const App = {
             }
         });
 
-        if (allBackupData.length > 0) {
-            try {
-                const safeKinds = [...allKindsSet];
-                const backupPayload = {
-                    backupVersion: '1.0',
-                    type: 'DATASTORE_BACKUP',
-                    timestamp: new Date().toISOString(),
-                    sourceProject: State.ds.src,
-                    targetProject: State.ds.tgt,
-                    srcDb: State.ds.srcDb || '(default)',
-                    tgtDb: State.ds.tgtDb || '(default)',
-                    kinds: safeKinds,
-                    totalEntities: allBackupData.length,
-                    backupData: allBackupData,
-                    entityDisplayNames: allEntityDisplayNames
-                };
-
-                const gzipBlob = await compressJsonToGzipBlob(backupPayload);
-                const safeKind = (safeKinds[0] || State.ds.kind || 'entities').replace(/[^a-zA-Z0-9_-]/g, '_');
-                const safeDate = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-                const filename = `backup_${State.ds.tgt}_${safeKind}_${safeDate}.json.gz`;
-                downloadBlobFile(gzipBlob, filename);
-                Utils.toast(`📥 Compressed backup saved: ${filename}`, 'ok');
-
-                try {
-                    localStorage.setItem('latest_datastore_backup', JSON.stringify({
-                        timestamp: backupPayload.timestamp,
-                        targetProject: backupPayload.targetProject,
-                        kinds: backupPayload.kinds,
-                        totalEntities: backupPayload.totalEntities
-                    }));
-                } catch {}
-            } catch (downErr) {
-                console.warn('Auto-download backup error:', downErr);
-            }
-        }
+        await flushBackupPart(true);
 
         const cancelled = State.cancelDs || controller.signal.aborted;
 
