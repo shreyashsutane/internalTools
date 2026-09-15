@@ -13,7 +13,9 @@ import {
     buildDatastoreFilterObject,
     cloneDatastoreValue,
     compressJsonToBase64,
+    compressJsonToGzipBlob,
     datastoreValueToEditorText,
+    downloadBlobFile,
     editorTextToDatastoreValue,
     extractEntityDisplayName,
     getDatastoreEditorType,
@@ -2432,6 +2434,9 @@ export const App = {
             chunks.push(keysToCopy.slice(i, i + CHUNK_SIZE));
         }
         const totalBatches = chunks.length;
+        const allBackupData: any[] = [];
+        const allEntityDisplayNames: Record<string, { fieldName: string; value: string }> = {};
+        const allKindsSet = new Set<string>();
 
         await mapConcurrent(chunks, 3, async (chunkStrs, batchIdx) => {
             if (State.cancelDs || controller.signal.aborted) return;
@@ -2507,6 +2512,9 @@ export const App = {
 
                 const batchKinds = [...batchKindsSet];
                 const batchKindLabel = batchKinds.length > 0 ? batchKinds.join(', ') : (State.ds.kind || 'Unknown');
+                chunkBackupData.forEach(item => allBackupData.push(item));
+                Object.assign(allEntityDisplayNames, entityDisplayNames);
+                batchKinds.forEach(k => allKindsSet.add(k));
 
                 const refNamesList = Object.values(entityDisplayNames).slice(0, 3).map(d => `${d.fieldName}: "${d.value}"`);
                 const refSummary = refNamesList.length > 0
@@ -2597,7 +2605,12 @@ export const App = {
                 );
 
                 if (!batchAuditLogId) {
-                    throw new Error('The centralized audit backup could not be persisted. No entities were changed.');
+                    const hasLocalBackup = chunkBackupData.length > 0;
+                    if (hasLocalBackup) {
+                        console.warn('Centralized audit logger unavailable (billing disabled). Local compressed backup (.json.gz) is active.');
+                    } else {
+                        throw new Error('The centralized audit backup could not be persisted. No entities were changed.');
+                    }
                 }
 
                 const mutations: any[] = [];
@@ -2687,6 +2700,43 @@ export const App = {
                 }
             }
         });
+
+        if (allBackupData.length > 0) {
+            try {
+                const safeKinds = [...allKindsSet];
+                const backupPayload = {
+                    backupVersion: '1.0',
+                    type: 'DATASTORE_BACKUP',
+                    timestamp: new Date().toISOString(),
+                    sourceProject: State.ds.src,
+                    targetProject: State.ds.tgt,
+                    srcDb: State.ds.srcDb || '(default)',
+                    tgtDb: State.ds.tgtDb || '(default)',
+                    kinds: safeKinds,
+                    totalEntities: allBackupData.length,
+                    backupData: allBackupData,
+                    entityDisplayNames: allEntityDisplayNames
+                };
+
+                const gzipBlob = await compressJsonToGzipBlob(backupPayload);
+                const safeKind = (safeKinds[0] || State.ds.kind || 'entities').replace(/[^a-zA-Z0-9_-]/g, '_');
+                const safeDate = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+                const filename = `backup_${State.ds.tgt}_${safeKind}_${safeDate}.json.gz`;
+                downloadBlobFile(gzipBlob, filename);
+                Utils.toast(`📥 Compressed backup saved: ${filename}`, 'ok');
+
+                try {
+                    localStorage.setItem('latest_datastore_backup', JSON.stringify({
+                        timestamp: backupPayload.timestamp,
+                        targetProject: backupPayload.targetProject,
+                        kinds: backupPayload.kinds,
+                        totalEntities: backupPayload.totalEntities
+                    }));
+                } catch {}
+            } catch (downErr) {
+                console.warn('Auto-download backup error:', downErr);
+            }
+        }
 
         const cancelled = State.cancelDs || controller.signal.aborted;
 

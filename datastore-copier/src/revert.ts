@@ -59,27 +59,115 @@ const retargetEntity = (entity: any, projectId: string, databaseId?: string): an
     return copy;
 };
 
+export interface BackupFileSummary {
+    type: string;
+    targetProject: string;
+    sourceProject?: string;
+    databaseId?: string;
+    kinds: string[];
+    timestamp?: string;
+    totalEntities: number;
+    upsertCount: number;
+    deleteCount: number;
+}
+
+export const validateBackupPayload = (payload: any): { valid: boolean; summary?: BackupFileSummary; error?: string } => {
+    if (!payload || typeof payload !== 'object') {
+        return { valid: false, error: 'Backup file does not contain a valid JSON object.' };
+    }
+
+    const backupData = Array.isArray(payload) ? payload : (payload.backupData || payload.data?.backupData);
+    if (!Array.isArray(backupData) || backupData.length === 0) {
+        return { valid: false, error: 'Backup file contains no backup entities or items.' };
+    }
+
+    let upsertCount = 0;
+    let deleteCount = 0;
+    const kindsSet = new Set<string>();
+
+    for (let i = 0; i < backupData.length; i++) {
+        const item = backupData[i];
+        if (!item || typeof item !== 'object') {
+            return { valid: false, error: `Invalid backup item at index ${i}.` };
+        }
+        const action = String(item.action || '').toLowerCase();
+        const isUpsert = action === 'upsert' || action === 'restore' || action === 'update';
+        const isDelete = action === 'delete' || action === 'create' || action === 'created';
+
+        if (isUpsert) {
+            upsertCount++;
+            const entity = item.prevEntity || item.entity;
+            if (!entity?.key) {
+                return { valid: false, error: `Backup item at index ${i} is missing an entity key for restore.` };
+            }
+            const kind = entity.key?.path?.[entity.key.path.length - 1]?.kind;
+            if (kind) kindsSet.add(kind);
+        } else if (isDelete) {
+            deleteCount++;
+            const key = item.prevEntity?.key || item.key;
+            if (!key) {
+                return { valid: false, error: `Backup item at index ${i} is missing an entity key for deletion.` };
+            }
+            const kind = key?.path?.[key.path.length - 1]?.kind;
+            if (kind) kindsSet.add(kind);
+        } else {
+            return { valid: false, error: `Unsupported backup action "${item.action}" at index ${i}.` };
+        }
+    }
+
+    const kinds = Array.isArray(payload.kinds) && payload.kinds.length > 0
+        ? payload.kinds
+        : (payload.kind ? [payload.kind] : [...kindsSet]);
+
+    const targetProject = payload.targetProject || payload.tgtProject || payload.projectId || '';
+    const sourceProject = payload.sourceProject || payload.srcProject || '';
+    const databaseId = payload.databaseId || payload.tgtDb || payload.targetDb || '(default)';
+    const timestamp = payload.timestamp || payload.created || payload.date;
+
+    return {
+        valid: true,
+        summary: {
+            type: payload.type || 'DATASTORE_COPY',
+            targetProject,
+            sourceProject,
+            databaseId,
+            kinds,
+            timestamp,
+            totalEntities: backupData.length,
+            upsertCount,
+            deleteCount
+        }
+    };
+};
+
 export const buildDatastoreRevertPlan = (
     state: any,
     targetProject: string
 ): DatastoreRevertPlan => {
-    if (state?.type === 'DATASTORE_COPY') {
+    if (state?.type === 'DATASTORE_COPY' || state?.type === 'DATASTORE_BACKUP') {
+        const targetDb = state.tgtDb || state.targetDb || state.databaseId;
         const upserts: any[] = [];
         const deletes: any[] = [];
         for (const item of state.backupData || []) {
-            if (item.action === 'upsert') {
+            const action = String(item.action || '').toLowerCase();
+            const isUpsert = action === 'upsert' || action === 'restore' || action === 'update';
+            const isDelete = action === 'delete' || action === 'create' || action === 'created';
+
+            if (isUpsert) {
+                const entity = item.prevEntity || item.entity;
                 upserts.push({
-                    upsert: retargetEntity(item.prevEntity, targetProject, state.tgtDb)
+                    upsert: retargetEntity(entity, targetProject, targetDb)
                 });
-            } else if (item.action === 'delete') {
+            } else if (isDelete) {
+                const key = item.prevEntity?.key || item.key;
                 deletes.push({
-                    delete: retargetKey(item.prevEntity?.key, targetProject, state.tgtDb)
+                    delete: retargetKey(key, targetProject, targetDb)
                 });
             } else {
                 throw new Error(`Unsupported Datastore revert action: ${item.action}`);
             }
         }
-        return { databaseId: state.tgtDb, upserts, deletes };
+        return { databaseId: targetDb, upserts, deletes };
     }
 
     if (state?.type === 'DATASTORE_EDIT') {

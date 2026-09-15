@@ -76,6 +76,58 @@ export const decompressJsonFromBase64 = async (base64Str: string): Promise<any> 
     return JSON.parse(text);
 };
 
+export const compressJsonToGzipBlob = async (data: any): Promise<Blob> => {
+    const jsonStr = JSON.stringify(data);
+    const bytes = new TextEncoder().encode(jsonStr);
+
+    if (typeof CompressionStream !== 'undefined') {
+        const stream = new Response(
+            new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))
+        );
+        const compressedBuffer = await stream.arrayBuffer();
+        return new Blob([compressedBuffer], { type: 'application/gzip' });
+    }
+    return new Blob([bytes], { type: 'application/json' });
+};
+
+export const decompressFileToJson = async (
+    file: { name?: string; type?: string; arrayBuffer: () => Promise<ArrayBuffer>; text: () => Promise<string> },
+    filename?: string
+): Promise<any> => {
+    const name = (filename || file.name || '').toLowerCase();
+    const isGzip = name.endsWith('.gz') || file.type === 'application/gzip' || file.type === 'application/x-gzip';
+
+    if (isGzip && typeof DecompressionStream !== 'undefined') {
+        try {
+            const buffer = await file.arrayBuffer();
+            const stream = new Response(
+                new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))
+            );
+            const text = await stream.text();
+            return JSON.parse(text);
+        } catch (err: any) {
+            console.warn('Gzip decompression stream failed, trying raw text fallback:', err);
+        }
+    }
+
+    const text = await file.text();
+    return JSON.parse(text);
+};
+
+export const downloadBlobFile = (blob: Blob, filename: string): void => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => {
+        try { URL.revokeObjectURL(url); } catch {}
+    }, 1500);
+};
+
 export const mapConcurrent = async <T, R>(
     items: T[],
     concurrency: number,

@@ -2,8 +2,8 @@ import { State } from './state';
 import { Utils } from './utils';
 import { Api } from './api';
 import { CONFIG } from './config';
-import { executeDatastoreRevert, executeScheduledQueryRevert } from './revert';
-import { compressJsonToBase64, decompressJsonFromBase64, mapConcurrent } from './datastore-utils';
+import { executeDatastoreRevert, executeScheduledQueryRevert, validateBackupPayload } from './revert';
+import { compressJsonToBase64, decompressJsonFromBase64, mapConcurrent, decompressFileToJson } from './datastore-utils';
 
 const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
 const MAX_AUDIT_CHUNK_DATA_BYTES = 650_000;
@@ -431,6 +431,138 @@ export const AuditLog = {
             }
         };
     },
+    openRestoreFileModal: async (): Promise<void> => {
+        const { UI } = await import('./ui');
+        const tmpl = Utils.$('template-restore-backup-modal') as HTMLTemplateElement | null;
+        if (!tmpl) return;
+
+        const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
+        const dropZone = fragment.querySelector('#restore-drop-zone') as HTMLElement;
+        const fileInput = fragment.querySelector('#restore-file-input') as HTMLInputElement;
+        const fileNameEl = fragment.querySelector('#restore-file-name') as HTMLElement;
+        const summaryBox = fragment.querySelector('#restore-summary-box') as HTMLElement;
+        const targetProjEl = fragment.querySelector('#restore-target-proj') as HTMLElement;
+        const targetDbEl = fragment.querySelector('#restore-target-db') as HTMLElement;
+        const kindsEl = fragment.querySelector('#restore-kinds') as HTMLElement;
+        const countsEl = fragment.querySelector('#restore-counts') as HTMLElement;
+        const timestampEl = fragment.querySelector('#restore-timestamp') as HTMLElement;
+        const projectOverrideInp = fragment.querySelector('#restore-project-override') as HTMLInputElement;
+        const confirmBtn = fragment.querySelector('#btn-confirm-restore-file') as HTMLButtonElement;
+        const cancelBtn = fragment.querySelector('.btn-restore-cancel') as HTMLButtonElement;
+        const closeBtn = fragment.querySelector('.btn-restore-modal-close') as HTMLButtonElement;
+
+        let loadedPayload: any = null;
+
+        const handleFile = async (file: File) => {
+            if (!file) return;
+            try {
+                fileNameEl.textContent = `Reading ${file.name}...`;
+                fileNameEl.style.display = 'block';
+
+                const parsed = await decompressFileToJson(file);
+                const validation = validateBackupPayload(parsed);
+
+                if (!validation.valid || !validation.summary) {
+                    fileNameEl.textContent = `Invalid file: ${validation.error || 'Failed to parse'}`;
+                    fileNameEl.className = 'text-xs font-mono font-bold text-rose-400 mt-2 truncate';
+                    summaryBox.style.display = 'none';
+                    confirmBtn.disabled = true;
+                    Utils.toast(validation.error || 'Invalid backup file', 'err');
+                    return;
+                }
+
+                loadedPayload = parsed;
+                const s = validation.summary;
+
+                fileNameEl.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                fileNameEl.className = 'text-xs font-mono font-bold text-emerald-400 mt-2 truncate';
+
+                targetProjEl.textContent = s.targetProject || State.ds.tgt || '—';
+                targetDbEl.textContent = s.databaseId || '(default)';
+                kindsEl.textContent = s.kinds.length > 0 ? s.kinds.join(', ') : 'All Kinds';
+                countsEl.textContent = `${s.totalEntities} entities (${s.upsertCount} restores, ${s.deleteCount} deletions)`;
+                timestampEl.textContent = s.timestamp ? new Date(s.timestamp).toLocaleString() : 'Unknown';
+
+                projectOverrideInp.value = s.targetProject || State.ds.tgt || '';
+                summaryBox.style.display = 'block';
+                confirmBtn.disabled = false;
+            } catch (err: any) {
+                console.error('Failed to parse backup file:', err);
+                fileNameEl.textContent = `Error reading file: ${err.message}`;
+                fileNameEl.className = 'text-xs font-mono font-bold text-rose-400 mt-2 truncate';
+                summaryBox.style.display = 'none';
+                confirmBtn.disabled = true;
+                Utils.toast(`Failed to read backup file: ${err.message}`, 'err');
+            }
+        };
+
+        if (dropZone && fileInput) {
+            dropZone.onclick = () => fileInput.click();
+            fileInput.onchange = () => {
+                if (fileInput.files && fileInput.files[0]) {
+                    handleFile(fileInput.files[0]);
+                }
+            };
+
+            dropZone.ondragover = (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = 'rgba(0, 212, 255, 0.6)';
+            };
+            dropZone.ondragleave = () => {
+                dropZone.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+            };
+            dropZone.ondrop = (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            };
+        }
+
+        const close = () => UI.closeModal();
+        if (cancelBtn) cancelBtn.onclick = close;
+        if (closeBtn) closeBtn.onclick = close;
+
+        if (confirmBtn) {
+            confirmBtn.onclick = async () => {
+                if (!loadedPayload) return;
+                const targetProject = (projectOverrideInp.value || '').trim();
+                if (!targetProject) {
+                    Utils.toast('Please enter or verify the Target Project ID.', 'err');
+                    return;
+                }
+
+                close();
+                Utils.show('sec-loading');
+                Utils.$('load-title')!.textContent = 'Restoring from Backup File...';
+                Utils.$('load-msg')!.textContent = `Restoring entities to ${targetProject}...`;
+
+                try {
+                    const result = await executeDatastoreRevert(Api, targetProject, loadedPayload, 250);
+                    Utils.toast(
+                        `Restore complete! Restored ${result.restored} entities, deleted ${result.deleted} entities${result.skippedDeletes > 0 ? ` (${result.skippedDeletes} deletes skipped)` : ''}.`,
+                        'ok'
+                    );
+                    void AuditLog.addLog(
+                        'DATASTORE_REVERT',
+                        '—',
+                        targetProject,
+                        `Restored from local backup file: ${result.restored} entities restored, ${result.deleted} entities deleted.`,
+                        'SUCCESS'
+                    );
+                } catch (err: any) {
+                    console.error('File restore failed:', err);
+                    Utils.toast(`Restore failed: ${err.message}`, 'err');
+                } finally {
+                    Utils.hide('sec-loading');
+                    await AuditLog.renderLogs();
+                }
+            };
+        }
+
+        UI.openModal(fragment);
+    },
     renderLogs: async (forceFetch = false): Promise<void> => {
         const container = Utils.$('audit-table-body');
         if (!container) return;
@@ -576,6 +708,13 @@ export const AuditLog = {
             nextBtn.onclick = () => {
                 auditFilterState.page++;
                 AuditLog.renderCurrentPage();
+            };
+        }
+
+        const restoreFileBtn = Utils.$('btn-restore-backup-file');
+        if (restoreFileBtn) {
+            restoreFileBtn.onclick = () => {
+                AuditLog.openRestoreFileModal();
             };
         }
 
