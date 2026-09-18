@@ -53,6 +53,24 @@ export const getCachedProjectName = (projectId?: string, logDetails?: string): s
     return '';
 };
 
+export const saveLogsToLocalStorage = (logs: any[]): void => {
+    try {
+        localStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
+        sessionStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
+    } catch (quotaErr) {
+        console.warn('localStorage quota exceeded, trimming older prevState data:', quotaErr);
+        try {
+            const trimmed = logs.map((log, idx) => {
+                if (idx < 5) return log;
+                const { prevState, ...shallow } = log;
+                return shallow;
+            });
+            localStorage.setItem('normal_portal_cached_logs', JSON.stringify(trimmed));
+            sessionStorage.setItem('normal_portal_cached_logs', JSON.stringify(trimmed));
+        } catch (e) {}
+    }
+};
+
 export interface PreparedPrevState {
     inline: any;
     chunks?: string[];
@@ -208,53 +226,68 @@ export const AuditLog = {
     },
     addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null, skipRender = false): Promise<string | null> => {
         try {
-            if (!State.token) return null;
-            const prepared = prevState ? await preparePrevState(prevState) : { inline: null };
-            const result = await AuditLog.request(CONFIG.FIRESTORE_AUDIT_LOG_URL, {
-                operation,
-                srcProject: srcProject || '—',
-                tgtProject: tgtProject || '—',
-                status: prepared.chunks ? 'IN_PROGRESS' : (status || 'SUCCESS'),
-                details: details || '',
-                prevState: prepared.inline
-            });
-            if (typeof result.id !== 'string') return null;
-            let finalManifest = prepared.inline;
-            if (prepared.chunks) {
-                finalManifest = await AuditLog.persistChunks(result.id, prepared);
-                await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, {
-                    id: result.id,
-                    status: status || 'SUCCESS',
-                    details: details || '',
-                    prevState: finalManifest
-                });
+            let logId: string | null = null;
+            let finalManifest = prevState;
+            let isLocalOnly = false;
+
+            if (State.token) {
+                try {
+                    const prepared = prevState ? await preparePrevState(prevState) : { inline: null };
+                    const result = await AuditLog.request(CONFIG.FIRESTORE_AUDIT_LOG_URL, {
+                        operation,
+                        srcProject: srcProject || '—',
+                        tgtProject: tgtProject || '—',
+                        status: prepared.chunks ? 'IN_PROGRESS' : (status || 'SUCCESS'),
+                        details: details || '',
+                        prevState: prepared.inline
+                    });
+                    if (typeof result?.id === 'string') {
+                        logId = result.id;
+                        finalManifest = prepared.inline;
+                        if (prepared.chunks) {
+                            finalManifest = await AuditLog.persistChunks(result.id, prepared);
+                            await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, {
+                                id: result.id,
+                                status: status || 'SUCCESS',
+                                details: details || '',
+                                prevState: finalManifest
+                            });
+                        }
+                    }
+                } catch (cloudErr) {
+                    console.warn("Centralized audit service unavailable; persisting audit log locally:", cloudErr);
+                    isLocalOnly = true;
+                }
             }
 
-            // Optimistic in-memory update: instant local addition without re-querying Firestore
+            if (!logId) {
+                logId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            }
+
+            const now = Date.now();
             const newLog = {
-                id: result.id,
+                id: logId,
                 operation,
                 srcProject: srcProject || '—',
                 tgtProject: tgtProject || '—',
                 status: status || 'SUCCESS',
                 details: details || '',
-                timestamp: new Date().toISOString(),
-                timestampEpochMs: Date.now(),
+                timestamp: new Date(now).toISOString(),
+                timestampEpochMs: now,
                 user: State.authEmail || 'User',
-                prevState: finalManifest
+                prevState: finalManifest,
+                localOnly: isLocalOnly
             };
-            cachedUserLogs = [newLog, ...cachedUserLogs.filter((l: any) => l.id !== result.id)];
-            try {
-                localStorage.setItem('normal_portal_cached_logs', JSON.stringify(cachedUserLogs));
-                sessionStorage.setItem('normal_portal_cached_logs', JSON.stringify(cachedUserLogs));
-            } catch(e) {}
+
+            cachedUserLogs = [newLog, ...cachedUserLogs.filter((l: any) => l.id !== logId)];
+            saveLogsToLocalStorage(cachedUserLogs);
             AuditLog.updateStats(cachedUserLogs);
 
             if (!skipRender) {
                 AuditLog.initControls();
                 AuditLog.renderCurrentPage();
             }
-            return typeof result.id === 'string' ? result.id : null;
+            return logId;
         } catch(e) {
             console.error("Failed to add audit log:", e);
             return null;
@@ -262,21 +295,28 @@ export const AuditLog = {
     },
     updateLog: async (id: string, status: string, details: string, prevState?: any, skipRender = false): Promise<boolean> => {
         try {
-            const body: Record<string, any> = { id, status, details };
-            let finalPrev = prevState;
-            if (prevState !== undefined) {
-                const prepared = prevState ? await preparePrevState(prevState) : { inline: null };
-                body.prevState = await AuditLog.persistChunks(id, prepared);
-                finalPrev = body.prevState;
+            if (State.token && !id.startsWith('local-')) {
+                try {
+                    const body: Record<string, any> = { id, status, details };
+                    let finalPrev = prevState;
+                    if (prevState !== undefined) {
+                        const prepared = prevState ? await preparePrevState(prevState) : { inline: null };
+                        body.prevState = await AuditLog.persistChunks(id, prepared);
+                        finalPrev = body.prevState;
+                    }
+                    await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, body);
+                } catch (cloudErr) {
+                    console.warn("Centralized audit update unavailable; updated locally:", cloudErr);
+                }
             }
-            await AuditLog.request(`${CONFIG.FIRESTORE_AUDIT_LOG_URL}/update`, body);
 
-            // Optimistic in-memory update for fast response
+            // Always update in-memory and local storage
             const existing = cachedUserLogs.find((l: any) => l.id === id);
             if (existing) {
                 existing.status = status;
                 existing.details = details;
-                if (prevState !== undefined) existing.prevState = finalPrev;
+                if (prevState !== undefined) existing.prevState = prevState;
+                saveLogsToLocalStorage(cachedUserLogs);
                 AuditLog.updateStats(cachedUserLogs);
                 if (!skipRender) {
                     AuditLog.initControls();
@@ -326,6 +366,11 @@ export const AuditLog = {
             return;
         }
         if (!log.prevState) {
+            if (log.operation === 'DATASTORE_COPY') {
+                Utils.toast("Opening Restore Backup File dialog for this copy operation...", "info");
+                AuditLog.openRestoreFileModal();
+                return;
+            }
             Utils.toast("No backup state available to revert this action.", "warn");
             return;
         }
@@ -644,13 +689,20 @@ export const AuditLog = {
         if (!container) return;
 
         // 1. Instant 0ms cache restore from localStorage
-        if (cachedUserLogs.length === 0 && !forceFetch) {
+        if (cachedUserLogs.length === 0 || forceFetch) {
             try {
                 const saved = localStorage.getItem('normal_portal_cached_logs') || sessionStorage.getItem('normal_portal_cached_logs');
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     if (Array.isArray(parsed) && parsed.length > 0) {
-                        cachedUserLogs = parsed;
+                        const map = new Map<string, any>();
+                        parsed.forEach(l => map.set(l.id, l));
+                        cachedUserLogs.forEach(l => map.set(l.id, l));
+                        cachedUserLogs = Array.from(map.values()).sort((a, b) => {
+                            const aTime = Number(a.timestampEpochMs) || new Date(a.timestamp).getTime() || 0;
+                            const bTime = Number(b.timestampEpochMs) || new Date(b.timestamp).getTime() || 0;
+                            return bTime - aTime;
+                        });
                         AuditLog.updateStats(cachedUserLogs);
                         AuditLog.initControls();
                         AuditLog.renderCurrentPage();
@@ -671,20 +723,40 @@ export const AuditLog = {
             `;
         }
 
-        // 3. Fast background or forced fetch (limit 100)
+        // 3. Fast background or forced fetch (limit 100) with intelligent merge
         if (State.token) {
-            const fetchPromise = AuditLog.readLogs(100).then(logs => {
-                if (Array.isArray(logs) && logs.length > 0) {
-                    cachedUserLogs = logs;
-                    try {
-                        localStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
-                        sessionStorage.setItem('normal_portal_cached_logs', JSON.stringify(logs));
-                    } catch (e) {}
+            const fetchPromise = AuditLog.readLogs(100).then(serverLogs => {
+                if (Array.isArray(serverLogs) && serverLogs.length > 0) {
+                    const mergedMap = new Map<string, any>();
+                    serverLogs.forEach(sl => mergedMap.set(sl.id, sl));
+                    cachedUserLogs.forEach(cl => {
+                        if (!mergedMap.has(cl.id)) {
+                            mergedMap.set(cl.id, cl);
+                        } else {
+                            const existing = mergedMap.get(cl.id);
+                            if (!existing.prevState && cl.prevState) {
+                                existing.prevState = cl.prevState;
+                            }
+                        }
+                    });
+                    cachedUserLogs = Array.from(mergedMap.values()).sort((a, b) => {
+                        const aTime = Number(a.timestampEpochMs) || new Date(a.timestamp).getTime() || 0;
+                        const bTime = Number(b.timestampEpochMs) || new Date(b.timestamp).getTime() || 0;
+                        return bTime - aTime;
+                    });
+                    saveLogsToLocalStorage(cachedUserLogs);
+                    AuditLog.updateStats(cachedUserLogs);
+                    AuditLog.renderCurrentPage();
+                } else if (cachedUserLogs.length > 0) {
                     AuditLog.updateStats(cachedUserLogs);
                     AuditLog.renderCurrentPage();
                 }
             }).catch(err => {
                 console.warn("Failed to background refresh audit logs:", err);
+                if (cachedUserLogs.length > 0) {
+                    AuditLog.updateStats(cachedUserLogs);
+                    AuditLog.renderCurrentPage();
+                }
             });
 
             AuditLog.initControls();
@@ -709,7 +781,7 @@ export const AuditLog = {
         const total = logs.length;
         const success = logs.filter(l => l.status === 'SUCCESS').length;
         const failed = logs.filter(l => l.status === 'FAILED' || l.status === 'CANCELLED').length;
-        const revertible = logs.filter(l => Boolean(l.prevState && l.prevState.type !== 'BQ_SCHEMA_SYNC')).length;
+        const revertible = logs.filter(l => Boolean(l.prevState && l.prevState.type !== 'BQ_SCHEMA_SYNC') || (l.operation === 'DATASTORE_COPY' && l.status === 'SUCCESS')).length;
 
         if (totalEl) totalEl.textContent = String(total);
         if (successEl) successEl.textContent = total > 0 ? `${Math.round((success / total) * 100)}%` : '0%';
@@ -815,7 +887,7 @@ export const AuditLog = {
             if (auditFilterState.status === 'FAILED' && log.status !== 'FAILED') return false;
             if (auditFilterState.status === 'PARTIAL_CANCEL' && log.status !== 'PARTIAL' && log.status !== 'CANCELLED') return false;
             if (auditFilterState.status === 'REVERTIBLE') {
-                const hasRev = Boolean(log.prevState && log.prevState.type !== 'BQ_SCHEMA_SYNC');
+                const hasRev = Boolean(log.prevState && log.prevState.type !== 'BQ_SCHEMA_SYNC') || (log.operation === 'DATASTORE_COPY' && log.status === 'SUCCESS');
                 if (!hasRev) return false;
             }
 
@@ -823,8 +895,12 @@ export const AuditLog = {
             if (auditFilterState.op !== 'ALL' && log.operation !== auditFilterState.op) return false;
 
             // 3. Date Range Filter
-            const logEpoch = new Date(log.timestamp).getTime();
-            if (auditFilterState.dateRange === 'TODAY' && logEpoch < startOfToday.getTime()) return false;
+            const logEpoch = Number(log.timestampEpochMs) || new Date(log.timestamp).getTime() || 0;
+            if (auditFilterState.dateRange === 'TODAY') {
+                const isToday = logEpoch >= startOfToday.getTime() ||
+                    (logEpoch > 0 && new Date(logEpoch).toDateString() === new Date().toDateString());
+                if (!isToday) return false;
+            }
             if (auditFilterState.dateRange === '24H' && logEpoch < now - 24 * 3600 * 1000) return false;
             if (auditFilterState.dateRange === '7D' && logEpoch < now - 7 * 24 * 3600 * 1000) return false;
 
@@ -1009,6 +1085,21 @@ export const AuditLog = {
                 btn.onclick = (e) => {
                     e.stopPropagation();
                     AuditLog.revertLog(log.id);
+                };
+                revertTd.appendChild(btn);
+            } else if (log.operation === 'DATASTORE_COPY' && log.tgtProject && log.tgtProject !== '—') {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-s text-[10px] font-semibold flex items-center gap-1.5 opacity-80 hover:opacity-100';
+                btn.style.padding = '3px 8px';
+                btn.style.background = 'rgba(6, 182, 212, 0.12)';
+                btn.style.borderColor = 'rgba(6, 182, 212, 0.3)';
+                btn.style.color = '#38bdf8';
+                btn.title = 'Restore using downloaded backup file (.json.gz)';
+                btn.innerHTML = `<i class="fa-solid fa-file-arrow-up"></i> Restore`;
+
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    AuditLog.openRestoreFileModal();
                 };
                 revertTd.appendChild(btn);
             } else {

@@ -2788,17 +2788,21 @@ export const App = {
                     console.warn('Gzip compression fallback:', compErr);
                 }
 
-                if (backupMethod === 'firestore' || backupMethod === 'both') {
-                    batchAuditLogId = await AuditLog.addLog(
-                        'DATASTORE_COPY',
-                        State.ds.src,
-                        State.ds.tgt,
-                        `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities of kind ${batchKindLabel})${refSummary}.`,
-                        'IN_PROGRESS',
-                        backupState,
-                        true
-                    );
-                }
+                const methodLabel = backupMethod === 'file'
+                    ? ' [Local File Backup]'
+                    : backupMethod === 'firestore'
+                        ? ' [Cloud Firestore]'
+                        : ' [Both: Cloud + Local]';
+
+                batchAuditLogId = await AuditLog.addLog(
+                    'DATASTORE_COPY',
+                    State.ds.src,
+                    State.ds.tgt,
+                    `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities of kind ${batchKindLabel})${refSummary}${methodLabel}.`,
+                    'IN_PROGRESS',
+                    backupState,
+                    true
+                );
 
                 if (!batchAuditLogId) {
                     const hasLocalBackup = chunkBackupData.length > 0;
@@ -2928,7 +2932,7 @@ export const App = {
         );
 
         if (dsAbortController === controller) dsAbortController = null;
-        await AuditLog.renderLogs();
+        await AuditLog.renderLogs(true);
 
         // If operation was cancelled or had 0 successful entities copied, navigate back without modal
         if (cancelled || ok === 0) {
