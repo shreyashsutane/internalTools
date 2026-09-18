@@ -2082,6 +2082,60 @@ headers.set(
                     </div>
                 </div>
 
+                <div class="flow-shell" style="margin-top:24px">
+                    <span class="flow-kicker"><i class="fa-solid fa-shield-halved"></i> Multi-Method Zero-Billing Backup &amp; Terms Consent Lifecycle</span>
+                    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User
+    participant Portal as GCP Tools Portal (UI)
+    participant Terms as Terms &amp; Privacy Modal
+    participant Disk as Browser Downloads
+    participant FS as Cloud Firestore (gcp-tools-portal)
+    participant Target as Destination Datastore Project
+    participant Email as Formspree (shreyashs14102002@gmail.com)
+
+    User->>Portal: Clicks "Copy Entities"
+    Portal->>User: Displays Copy Modal with Backup Strategy:
+    Note over User,Portal: Options: [Local File Only] | [Cloud Firestore] | [Both]
+
+    alt Option 1: User selects "Local File Only"
+        User->>Portal: Confirms Copy
+        Portal->>Disk: Downloads backup_*.json.gz first
+        Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+        Note over Portal,Email: (No Terms Modal shown, No Email sent)
+
+    else Option 2 or 3: User selects "Cloud Firestore" or "Both"
+        User->>Portal: Confirms Copy
+        Portal->>Terms: Opens Terms &amp; Conditions / Privacy Consent Modal
+        
+        alt User declines or clicks "Switch to Local File Only"
+            Terms->>Portal: Reverts to Local File Only
+            Portal->>Disk: Downloads backup_*.json.gz first
+            Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+            Note over Portal,Email: (No Email sent)
+        else User checks [x] "I Agree" and clicks "Agree &amp; Proceed"
+            Terms->>Portal: Stores consent session state
+            opt If "Both" selected
+                Portal->>Disk: Downloads backup_*.json.gz first
+            end
+            Portal->>FS: Persists pre-mutation snapshot to Cloud Firestore
+            Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+            
+            critical Operation Performed Successfully
+                Portal->>Email: Dispatches Email Alert to shreyashs14102002@gmail.com
+                Note over Portal,Email: Contains: 1) Terms Agreement Record + 2) Operation Execution Summary
+            end
+        end
+    end
+                    </div>
+                    <div class="flow-caption">
+                        <span><strong>Zero billing:</strong> uses Spark free-tier Firestore and client-side Formspree POST ($0.00 cost forever).</span>
+                        <span><strong>User consent:</strong> pre-mutation snapshots saved to external Firestore strictly with explicit user consent.</span>
+                        <span><strong>Audit tracking:</strong> createdAt / updatedAt / createdBy / updatedBy updated only if already present in source kind.</span>
+                    </div>
+                </div>
+
                 <h3 style="margin-top:40px; color:var(--accent-purple)">📊 E. Inline Editor &amp; Recursive JSON Minification</h3>
                 <div class="flow-shell">
                     <span class="flow-kicker"><i class="fa-solid fa-wave-square"></i> Value conversion rules</span>

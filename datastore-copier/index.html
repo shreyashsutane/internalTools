@@ -1142,6 +1142,48 @@ FROM `source-project-prod.analytics.orders`</code></pre>
                     <div class="font-semibold text-zinc-300"><span class="selected-cnt-span text-white font-bold"></span> entities selected to copy / overwrite</div>
                 </div>
 
+                <!-- Backup Strategy Selector -->
+                <div class="backup-strategy-box p-3.5 rounded-lg border border-[var(--brd2)] bg-[#080d1a] space-y-2">
+                    <div class="text-[11px] font-bold text-cyan-400 uppercase tracking-wider flex items-center justify-between">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-shield-halved"></i> Backup Strategy</span>
+                        <span class="text-[10px] text-zinc-400 lowercase font-normal">zero billing required</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <!-- Option 1: Local File Only -->
+                        <label class="backup-opt-card flex items-start gap-2 p-2.5 rounded-lg border border-[var(--brd)] hover:border-cyan-500/60 bg-zinc-900/40 cursor-pointer transition">
+                            <input type="radio" name="ds-backup-method" value="file" class="mt-0.5 inp-backup-method" />
+                            <div>
+                                <div class="text-xs font-bold text-zinc-100 flex items-center gap-1">
+                                    <i class="fa-solid fa-download text-cyan-400"></i> Local File
+                                </div>
+                                <div class="text-[10px] text-zinc-400 leading-tight mt-0.5">Downloads .json.gz to machine first. Zero cloud storage.</div>
+                            </div>
+                        </label>
+
+                        <!-- Option 2: Cloud Firestore -->
+                        <label class="backup-opt-card flex items-start gap-2 p-2.5 rounded-lg border border-[var(--brd)] hover:border-cyan-500/60 bg-zinc-900/40 cursor-pointer transition">
+                            <input type="radio" name="ds-backup-method" value="firestore" class="mt-0.5 inp-backup-method" />
+                            <div>
+                                <div class="text-xs font-bold text-zinc-100 flex items-center gap-1">
+                                    <i class="fa-solid fa-cloud text-amber-400"></i> Firestore
+                                </div>
+                                <div class="text-[10px] text-zinc-400 leading-tight mt-0.5">1-click revert from Audit table. Requires consent.</div>
+                            </div>
+                        </label>
+
+                        <!-- Option 3: Both (Recommended) -->
+                        <label class="backup-opt-card flex items-start gap-2 p-2.5 rounded-lg border border-cyan-500/60 bg-cyan-950/20 hover:border-cyan-400 cursor-pointer transition">
+                            <input type="radio" name="ds-backup-method" value="both" checked class="mt-0.5 inp-backup-method" />
+                            <div>
+                                <div class="text-xs font-bold text-white flex items-center gap-1">
+                                    <i class="fa-solid fa-layer-group text-emerald-400"></i> Both (Rec.)
+                                </div>
+                                <div class="text-[10px] text-zinc-400 leading-tight mt-0.5">Offline .gz file + 1-click Cloud Firestore revert.</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Selected Entities List -->
                 <div class="modal-ds-selected-entities max-h-52 overflow-y-auto rounded-lg p-2 space-y-1.5" style="background:rgba(0,0,0,0.3); border:1px solid var(--brd2)"></div>
 
@@ -1253,6 +1295,57 @@ FROM `source-project-prod.analytics.orders`</code></pre>
             <td class="log-details px-3 py-3 text-[11px] text-[var(--muted)] log-details-cell-wrap"></td>
             <td class="px-2 py-3 text-center log-revert-td" style="width: 95px;"></td>
         </tr>
+    </template>
+
+    <template id="template-terms-consent-modal">
+        <div class="modal-copy-container text-left flex flex-col max-h-[calc(100vh-48px)] h-full overflow-hidden max-w-xl mx-auto">
+            <div class="flex items-center justify-between p-5 pb-3 border-b border-[var(--brd2)] flex-none bg-[#0c101d]">
+                <h3 class="font-semibold text-base text-fg flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-amber-400"></i>
+                    <span>Cloud Backup Terms &amp; Privacy Notice</span>
+                </h3>
+                <button type="button" class="btn-consent-cancel text-zinc-400 hover:text-white p-1 rounded hover:bg-zinc-800 transition-colors" title="Close">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="modal-copy-body p-5 pt-4 space-y-3.5 overflow-y-auto flex-1 custom-scrollbar text-xs text-zinc-300">
+                <p class="leading-relaxed">
+                    You have selected the <strong>Cloud Firestore</strong> backup method. To enable <strong>1-Click Instant Revert</strong> directly from the Audit Logs table, a pre-mutation snapshot of your target entities will be securely stored on the administrator's Google Cloud project:
+                </p>
+
+                <div class="p-3 bg-zinc-950/80 border border-zinc-800 rounded-lg text-[11px] font-mono text-cyan-300 space-y-1">
+                    <div><span class="text-zinc-400">Host Project:</span> <strong>gcp-tools-portal</strong></div>
+                    <div><span class="text-zinc-400">Storage Service:</span> <strong>Cloud Firestore</strong> (audit_logs collection)</div>
+                    <div><span class="text-zinc-400">Payload:</span> Target entity keys &amp; pre-mutation properties</div>
+                    <div><span class="text-zinc-400">Purpose:</span> Solely for disaster recovery and 1-click restore</div>
+                </div>
+
+                <div class="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-200/90 text-xs leading-relaxed">
+                    <i class="fa-solid fa-circle-info mr-1 text-amber-400"></i>
+                    If your entities contain sensitive proprietary data that cannot be stored on an external GCP project, click <strong>Switch to Local File Only</strong> below to keep all backup data strictly on your machine.
+                </div>
+
+                <label class="flex items-start gap-2.5 mt-2 p-3 bg-zinc-900/80 border border-zinc-700 rounded-lg cursor-pointer hover:border-amber-500/60 transition">
+                    <input type="checkbox" id="chk-firestore-consent" class="mt-0.5 rounded text-amber-500 focus:ring-amber-400" />
+                    <span class="text-xs text-zinc-100 font-medium leading-relaxed">
+                        I understand and agree that my pre-mutation backup snapshot will be stored on the <code>gcp-tools-portal</code> GCP project for rollback purposes.
+                    </span>
+                </label>
+            </div>
+
+            <div class="modal-copy-footer p-3.5 px-5 border-t border-[var(--brd2)] bg-[#0c101d] flex items-center justify-between gap-2.5 flex-none sticky bottom-0 z-10 shadow-lg">
+                <button type="button" id="btn-consent-switch-local" class="btn btn-s text-xs text-zinc-400 hover:text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-download text-cyan-400"></i> Switch to Local File Only
+                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" class="btn btn-s btn-consent-cancel px-3 py-1.5 text-xs">Cancel</button>
+                    <button type="button" id="btn-consent-agree" class="btn btn-p px-4 py-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-black font-bold flex items-center gap-1.5 opacity-50 cursor-not-allowed" disabled>
+                        <i class="fa-solid fa-check"></i> Agree &amp; Proceed
+                    </button>
+                </div>
+            </div>
+        </div>
     </template>
 
 <script type="module" src="js/app.js"></script>

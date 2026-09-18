@@ -31,7 +31,9 @@ const {
     replaceDatastoreRules,
     parseDatastoreKeyFilter,
     parseTypedFilterVal,
-    buildDatastoreFilterObject
+    buildDatastoreFilterObject,
+    formatAuditUserName,
+    applyEntityAuditTracking
 } = compiled.exports;
 
 test('comparison ignores object property order but preserves array order', () => {
@@ -410,6 +412,119 @@ test('buildDatastoreFilterObject constructs valid Datastore keyValue filters wit
             value: { stringValue: 'ACTIVE' }
         }
     });
+});
+
+test('formatAuditUserName formats email and user names and appends CC', () => {
+    assert.equal(formatAuditUserName('yash.jadhav@dista.ai'), 'Yash Jadhav CC');
+    assert.equal(formatAuditUserName('shreyashs14102002@gmail.com'), 'Shreyashs14102002 CC');
+    assert.equal(formatAuditUserName('john.doe-smith@company.com'), 'John Doe Smith CC');
+    assert.equal(formatAuditUserName('alice_wonderland@corp.net'), 'Alice Wonderland CC');
+    assert.equal(formatAuditUserName('Yash Jadhav'), 'Yash Jadhav CC');
+    assert.equal(formatAuditUserName('Yash Jadhav CC'), 'Yash Jadhav CC');
+    assert.equal(formatAuditUserName(''), 'User CC');
+    assert.equal(formatAuditUserName(null), 'User CC');
+    assert.equal(formatAuditUserName(undefined), 'User CC');
+});
+
+test('applyEntityAuditTracking on UPDATE updates updateAt and updateBy ONLY if present in source', () => {
+    const srcEntityWithAudit = {
+        key: { path: [{ kind: 'Customer', id: '1' }] },
+        properties: {
+            name: { stringValue: 'Customer 1' },
+            updateAt: { timestampValue: '2026-01-01T00:00:00Z' },
+            updateBy: { stringValue: 'Old User' }
+        }
+    };
+    const targetEntity = JSON.parse(JSON.stringify(srcEntityWithAudit));
+
+    applyEntityAuditTracking(targetEntity, srcEntityWithAudit, true, 'Yash Jadhav CC', ['name', 'updateAt', 'updateBy']);
+
+    assert.equal(targetEntity.properties.updateBy.stringValue, 'Yash Jadhav CC');
+    assert.ok(targetEntity.properties.updateAt.timestampValue);
+    assert.notEqual(targetEntity.properties.updateAt.timestampValue, '2026-01-01T00:00:00Z');
+    // Ensure createdAt was NOT added
+    assert.equal(targetEntity.properties.createdAt, undefined);
+    assert.equal(targetEntity.properties.createdBy, undefined);
+});
+
+test('applyEntityAuditTracking on UPDATE supports updatedAt and updatedBy if present in source', () => {
+    const srcEntityWithUpdated = {
+        key: { path: [{ kind: 'Customer', id: '2' }] },
+        properties: {
+            name: { stringValue: 'Customer 2' },
+            updatedAt: { timestampValue: '2026-01-01T00:00:00Z' },
+            updatedBy: { stringValue: 'Previous Admin' }
+        }
+    };
+    const targetEntity = JSON.parse(JSON.stringify(srcEntityWithUpdated));
+
+    applyEntityAuditTracking(targetEntity, srcEntityWithUpdated, true, 'Yash Jadhav CC', ['name', 'updatedAt', 'updatedBy']);
+
+    assert.equal(targetEntity.properties.updatedBy.stringValue, 'Yash Jadhav CC');
+    assert.ok(targetEntity.properties.updatedAt.timestampValue);
+    assert.notEqual(targetEntity.properties.updatedAt.timestampValue, '2026-01-01T00:00:00Z');
+    assert.equal(targetEntity.properties.createdAt, undefined);
+});
+
+test('applyEntityAuditTracking does NOT add audit fields if not present in source kind or entity', () => {
+    const srcEntityNoAudit = {
+        key: { path: [{ kind: 'SystemConfig', id: 'cfg-1' }] },
+        properties: {
+            settingKey: { stringValue: 'MAX_RETRIES' },
+            settingValue: { integerValue: '5' }
+        }
+    };
+    const targetEntity = JSON.parse(JSON.stringify(srcEntityNoAudit));
+
+    // Case 1: isUpdate = true
+    applyEntityAuditTracking(targetEntity, srcEntityNoAudit, true, 'Yash Jadhav CC', ['settingKey', 'settingValue']);
+    assert.deepEqual(targetEntity.properties, srcEntityNoAudit.properties, 'Target entity properties must remain completely untouched on update when fields not in source');
+
+    // Case 2: isUpdate = false
+    const targetEntityCreate = JSON.parse(JSON.stringify(srcEntityNoAudit));
+    applyEntityAuditTracking(targetEntityCreate, srcEntityNoAudit, false, 'Yash Jadhav CC', ['settingKey', 'settingValue']);
+    assert.deepEqual(targetEntityCreate.properties, srcEntityNoAudit.properties, 'Target entity properties must remain completely untouched on create when fields not in source');
+});
+
+test('applyEntityAuditTracking on CREATE sets createdAt and createdBy ONLY if present in source', () => {
+    const srcEntity = {
+        key: { path: [{ kind: 'Order', id: '9001' }] },
+        properties: {
+            orderNumber: { stringValue: 'ORD-9001' },
+            createdAt: { timestampValue: '2026-02-01T10:00:00Z' },
+            createdBy: { stringValue: 'Source User' }
+        }
+    };
+    const targetEntity = JSON.parse(JSON.stringify(srcEntity));
+
+    applyEntityAuditTracking(targetEntity, srcEntity, false, 'Yash Jadhav CC', ['orderNumber', 'createdAt', 'createdBy']);
+
+    assert.equal(targetEntity.properties.createdBy.stringValue, 'Yash Jadhav CC');
+    assert.ok(targetEntity.properties.createdAt.timestampValue);
+    assert.notEqual(targetEntity.properties.createdAt.timestampValue, '2026-02-01T10:00:00Z');
+    // Ensure updateAt / updateBy was NOT added
+    assert.equal(targetEntity.properties.updateAt, undefined);
+    assert.equal(targetEntity.properties.updatedAt, undefined);
+    assert.equal(targetEntity.properties.updateBy, undefined);
+    assert.equal(targetEntity.properties.updatedBy, undefined);
+});
+
+test('applyEntityAuditTracking respects stringValue vs timestampValue types', () => {
+    const srcEntityStr = {
+        key: { path: [{ kind: 'Task', id: 't1' }] },
+        properties: {
+            title: { stringValue: 'Test' },
+            updateAt: { stringValue: '2026-01-01T00:00:00.000Z' },
+            updateBy: { stringValue: 'Old' }
+        }
+    };
+    const targetEntity = JSON.parse(JSON.stringify(srcEntityStr));
+
+    applyEntityAuditTracking(targetEntity, srcEntityStr, true, 'Yash Jadhav CC');
+
+    assert.ok(targetEntity.properties.updateAt.stringValue, 'Must preserve stringValue type if existing was stringValue');
+    assert.equal(targetEntity.properties.updateAt.timestampValue, undefined);
+    assert.equal(targetEntity.properties.updateBy.stringValue, 'Yash Jadhav CC');
 });
 
 

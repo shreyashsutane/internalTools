@@ -283,6 +283,61 @@
                         <li><strong>Safe Execution:</strong> If the network drops or the browser crashes mid-copy, the snapshot is already preserved in Firestore and can be reverted from the SuperAdmin console.</li>
                     </ol>
                 </div>
+
+                <!-- Multi-Method Zero-Billing Backup Sequence Diagram -->
+                <div class="glass-panel p-5 border-amber-500/30 mb-6">
+                    <div class="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase mb-3">
+                        <i class="fa-solid fa-shield-halved"></i> Multi-Method Backup &amp; Privacy Consent Lifecycle
+                    </div>
+                    <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+                        Operators can choose between <strong>Local File Only</strong>, <strong>Cloud Firestore</strong>, or <strong>Both</strong>. When Cloud Firestore is selected, explicit consent is gathered to store pre-mutation snapshots on <code>gcp-tools-portal</code>, and a Formspree alert is sent to <code>shreyashs14102002@gmail.com</code> strictly when the operation succeeds:
+                    </p>
+                    <div class="mermaid bg-black/50 p-4 rounded-xl border border-white/5 overflow-x-auto text-xs font-mono">
+sequenceDiagram
+    autonumber
+    actor User
+    participant Portal as GCP Tools Portal (UI)
+    participant Terms as Terms &amp; Privacy Modal
+    participant Disk as Browser Downloads
+    participant FS as Cloud Firestore (gcp-tools-portal)
+    participant Target as Destination Datastore Project
+    participant Email as Formspree (shreyashs14102002@gmail.com)
+
+    User->>Portal: Clicks "Copy Entities"
+    Portal->>User: Displays Copy Modal with Backup Strategy:
+    Note over User,Portal: Options: [Local File Only] | [Cloud Firestore] | [Both]
+
+    alt Option 1: User selects "Local File Only"
+        User->>Portal: Confirms Copy
+        Portal->>Disk: Downloads backup_*.json.gz first
+        Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+        Note over Portal,Email: (No Terms Modal shown, No Email sent)
+
+    else Option 2 or 3: User selects "Cloud Firestore" or "Both"
+        User->>Portal: Confirms Copy
+        Portal->>Terms: Opens Terms &amp; Conditions / Privacy Consent Modal
+        
+        alt User declines or clicks "Switch to Local File Only"
+            Terms->>Portal: Reverts to Local File Only
+            Portal->>Disk: Downloads backup_*.json.gz first
+            Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+            Note over Portal,Email: (No Email sent)
+        else User checks [x] "I Agree" and clicks "Agree &amp; Proceed"
+            Terms->>Portal: Stores consent session state
+            opt If "Both" selected
+                Portal->>Disk: Downloads backup_*.json.gz first
+            end
+            Portal->>FS: Persists pre-mutation snapshot to Cloud Firestore
+            Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+            
+            critical Operation Performed Successfully
+                Portal->>Email: Dispatches Email Alert to shreyashs14102002@gmail.com
+                Note over Portal,Email: Contains: 1) Terms Agreement Record + 2) Operation Execution Summary
+            end
+        end
+    end
+                    </div>
+                </div>
             </section>
 
             <!-- SECTION 2: NON-DESTRUCTIVE PARTIAL RESTORE FALLBACK -->
@@ -381,6 +436,10 @@
             box.classList.remove('anim-rewind');
             btnRollback.disabled = true;
             btnRollback.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        if (typeof mermaid !== 'undefined') {
+            mermaid.initialize({ startOnLoad: true, theme: 'dark' });
         }
     </script>
 </body>

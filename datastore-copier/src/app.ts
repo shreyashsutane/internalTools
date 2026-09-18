@@ -10,6 +10,7 @@ import { SoundFX } from './sound';
 import { D0198EasterEgg } from './easter-egg';
 import { QuotesManager } from './quotes';
 import {
+    applyEntityAuditTracking,
     buildDatastoreFilterObject,
     cloneDatastoreValue,
     compressJsonToBase64,
@@ -18,6 +19,7 @@ import {
     downloadBlobFile,
     editorTextToDatastoreValue,
     extractEntityDisplayName,
+    formatAuditUserName,
     getDatastoreEditorType,
     mapConcurrent,
     replaceDatastoreField,
@@ -2393,11 +2395,61 @@ export const App = {
         const confirmBtn = Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement | null;
         if (confirmBtn) {
             confirmBtn.onclick = () => {
-                App.executeDsCopy();
+                const selectedMethod = ((Utils.$('modal-root')!.querySelector('input[name="ds-backup-method"]:checked') as HTMLInputElement)?.value || 'both') as 'file' | 'firestore' | 'both';
+                if (selectedMethod === 'firestore' || selectedMethod === 'both') {
+                    App.openFirestoreTermsModal(selectedMethod);
+                } else {
+                    App.executeDsCopy('file', false);
+                }
             };
         }
     },
-    executeDsCopy: async (): Promise<void> => {
+    openFirestoreTermsModal: (backupMethod: 'firestore' | 'both' = 'both'): void => {
+        const tmpl = Utils.$('template-terms-consent-modal') as HTMLTemplateElement;
+        if (!tmpl) {
+            App.executeDsCopy(backupMethod, true);
+            return;
+        }
+        const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
+        UI.openModal(fragment, 'modal-medium');
+
+        const modalRoot = Utils.$('modal-root')!;
+        const chkConsent = modalRoot.querySelector('#chk-firestore-consent') as HTMLInputElement | null;
+        const btnAgree = modalRoot.querySelector('#btn-consent-agree') as HTMLButtonElement | null;
+        const btnSwitchLocal = modalRoot.querySelector('#btn-consent-switch-local') as HTMLButtonElement | null;
+
+        if (chkConsent && btnAgree) {
+            chkConsent.onchange = () => {
+                if (chkConsent.checked) {
+                    btnAgree.disabled = false;
+                    btnAgree.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    btnAgree.disabled = true;
+                    btnAgree.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            };
+        }
+
+        if (btnAgree) {
+            btnAgree.onclick = () => {
+                UI.closeModal();
+                App.executeDsCopy(backupMethod, true);
+            };
+        }
+
+        if (btnSwitchLocal) {
+            btnSwitchLocal.onclick = () => {
+                UI.closeModal();
+                Utils.toast('Switched to Local File Only backup.', 'info');
+                App.executeDsCopy('file', false);
+            };
+        }
+
+        modalRoot.querySelectorAll('.btn-consent-cancel').forEach(btn => {
+            (btn as HTMLElement).onclick = () => UI.closeModal();
+        });
+    },
+    executeDsCopy: async (backupMethod: 'file' | 'firestore' | 'both' = 'both', termsConsented = false): Promise<void> => {
         const modalRoot = Utils.$('modal-root');
         const applyMod = modalRoot?.querySelector('.chk-apply-replace')?.classList.contains('on');
         const activeRules = (State.ds.modRules || []).filter(r => r && r.target);
@@ -2584,12 +2636,17 @@ export const App = {
                         : { key: cloneDatastoreValue(targetKeyByString.get(keyStr)) }
                 });
 
-                if (activePartBackupData.length >= MAX_BACKUP_PART_ENTITIES) {
+                if ((backupMethod === 'file' || backupMethod === 'both') && activePartBackupData.length >= MAX_BACKUP_PART_ENTITIES) {
                     await flushBackupPart(false);
                 }
             }
 
-            await flushBackupPart(true);
+            if (backupMethod === 'file' || backupMethod === 'both') {
+                await flushBackupPart(true);
+            } else {
+                activePartBackupData = [];
+                Utils.toast('☁️ Snapshot captured for Cloud Firestore rollback.', 'ok');
+            }
         } catch (backupErr: any) {
             if (isCancellationError(backupErr)) return;
             Utils.hide('sec-loading');
@@ -2601,7 +2658,9 @@ export const App = {
 
         // PHASE 2: Perform Copy & Write Mutations to Destination Project
         Utils.$('load-title')!.textContent = "Copying Entities...";
-        Utils.$('load-msg')!.textContent = `📥 Backup downloaded! Copying entities (0 of ${keysToCopy.length} completed)...`;
+        Utils.$('load-msg')!.textContent = backupMethod === 'firestore'
+            ? `Copying entities (0 of ${keysToCopy.length} completed)...`
+            : `📥 Backup downloaded! Copying entities (0 of ${keysToCopy.length} completed)...`;
 
         await mapConcurrent(chunks, 3, async (chunkStrs, batchIdx) => {
             if (State.cancelDs || controller.signal.aborted) return;
@@ -2729,19 +2788,21 @@ export const App = {
                     console.warn('Gzip compression fallback:', compErr);
                 }
 
-                batchAuditLogId = await AuditLog.addLog(
-                    'DATASTORE_COPY',
-                    State.ds.src,
-                    State.ds.tgt,
-                    `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities of kind ${batchKindLabel})${refSummary}.`,
-                    'IN_PROGRESS',
-                    backupState,
-                    true
-                );
+                if (backupMethod === 'firestore' || backupMethod === 'both') {
+                    batchAuditLogId = await AuditLog.addLog(
+                        'DATASTORE_COPY',
+                        State.ds.src,
+                        State.ds.tgt,
+                        `Started copying batch ${batchNum}/${totalBatches} (${chunkStrs.length} entities of kind ${batchKindLabel})${refSummary}.`,
+                        'IN_PROGRESS',
+                        backupState,
+                        true
+                    );
+                }
 
                 if (!batchAuditLogId) {
                     const hasLocalBackup = chunkBackupData.length > 0;
-                    if (hasLocalBackup) {
+                    if (hasLocalBackup || backupMethod === 'file') {
                         console.warn('Centralized audit logger unavailable (billing disabled). Local compressed backup (.json.gz) is active.');
                     } else {
                         throw new Error('The centralized audit backup could not be persisted. No entities were changed.');
@@ -2749,6 +2810,8 @@ export const App = {
                 }
 
                 const mutations: any[] = [];
+                const userAuditName = formatAuditUserName(State.authEmail);
+
                 for (const e of srcRes.found || []) {
                     let entity = cloneDatastoreValue(e.entity);
                     const targetKey = cloneDatastoreValue(targetKeyByString.get(App.formatKey(e.entity.key)));
@@ -2763,6 +2826,16 @@ export const App = {
                             replacementCount++;
                         }
                     }
+
+                    // Apply schema-aware automated audit tracking:
+                    // Update: updateAt / updateBy (and updatedAt / updatedBy if present)
+                    // Create: createdAt / createdBy (and createAt / createBy if present)
+                    // Only if already present in the source kind or source entity
+                    const existingTarget = targetEntitiesByKey.get(App.formatKey(e.entity.key));
+                    const isUpdate = Boolean(existingTarget);
+                    const entityKind = e.entity?.key?.path?.[e.entity.key.path.length - 1]?.kind || State.ds.kind || '';
+                    const kindProps = State.ds.kindProperties?.[entityKind] || [];
+                    applyEntityAuditTracking(entity, e.entity, isUpdate, userAuditName, kindProps);
 
                     if (entity.properties) {
                         Diff.minifyJsonProperties(entity.properties);
@@ -2866,6 +2939,12 @@ export const App = {
 
         // Show comprehensive Copy Completion Popup
         const uniqueKinds = [...new Set(keysToCopy.map(k => resultByKey.get(k)?.kind).filter(Boolean))];
+
+        // Trigger email notification strictly when operation was performed AND user agreed to terms
+        if (!cancelled && ok > 0 && (backupMethod === 'firestore' || backupMethod === 'both') && termsConsented) {
+            void App.sendTermsAndOperationEmail(backupMethod, ok, fail, uniqueKinds as string[], activeRules);
+        }
+
         const kindsHtml = uniqueKinds.length > 0
             ? uniqueKinds.map(k => `<span class="badge" style="background:var(--accent-dim); color:var(--accent); font-size:11px; padding:2px 8px; border:1px solid var(--accent); margin-right:4px;"><i class="fa-solid fa-folder-tree mr-1"></i>${Utils.escapeHtml(k!)}</span>`).join('')
             : `<span class="badge" style="background:var(--brd2); color:var(--fg); font-size:11px;">${Utils.escapeHtml(State.ds.kind || 'Datastore')}</span>`;
@@ -2988,6 +3067,78 @@ export const App = {
                 UI.closeModal();
                 await App.runDsAnalyze();
             };
+        }
+    },
+
+    sendTermsAndOperationEmail: async (
+        backupMethod: 'firestore' | 'both',
+        okCount: number,
+        failCount: number,
+        kinds: string[],
+        activeRules: any[]
+    ): Promise<void> => {
+        const operatorEmail = State.authEmail || 'shreyashs14102002@gmail.com';
+        const operatorName = formatAuditUserName(operatorEmail);
+        const consentTime = new Date().toISOString();
+        const srcName = State.projects?.find((p: any) => p.id === State.ds.src)?.name || State.ds.src;
+        const tgtName = State.projects?.find((p: any) => p.id === State.ds.tgt)?.name || State.ds.tgt;
+        const methodLabel = backupMethod === 'both' ? 'Both (Cloud Firestore + Local File .json.gz)' : 'Cloud Firestore';
+
+        let rulesText = 'None (Entities copied verbatim)';
+        if (activeRules && activeRules.length > 0) {
+            rulesText = activeRules.map((r, i) => `Rule #${i + 1} [field '${r.field || '*'}']: "${r.target}" -> "${r.replacement}"`).join('; ');
+        }
+
+        const summaryText = `-------------------------------------------------------------\n` +
+            `📜 TERMS & CONDITIONS CONSENT RECORD\n` +
+            `-------------------------------------------------------------\n` +
+            `Operator: ${operatorEmail} (${operatorName})\n` +
+            `Consent Status: AGREED & ACCEPTED\n` +
+            `Consent Timestamp: ${consentTime}\n` +
+            `Terms Notice: User explicitly agreed to store pre-mutation entity snapshots on gcp-tools-portal for disaster recovery rollback.\n\n` +
+            `-------------------------------------------------------------\n` +
+            `🚀 OPERATION EXECUTION SUMMARY\n` +
+            `-------------------------------------------------------------\n` +
+            `Operation: Datastore Copy & Mutation\n` +
+            `Backup Strategy: ${methodLabel}\n` +
+            `Source Project: ${State.ds.src} (${srcName}) [Database: ${State.ds.srcDb || '(default)'}]\n` +
+            `Target Project: ${State.ds.tgt} (${tgtName}) [Database: ${State.ds.tgtDb || '(default)'}]\n` +
+            `Kinds: ${kinds.join(', ') || State.ds.kind || 'Unknown'}\n` +
+            `Entities Written: ${okCount} successful${failCount > 0 ? `, ${failCount} failed` : ''}\n` +
+            `Find & Replace Rules: ${rulesText}\n` +
+            `Execution Completed At: ${new Date().toISOString()}`;
+
+        const payload: any = {
+            email: operatorEmail,
+            _subject: `[GCP Portal Alert] Operation Performed & Terms Accepted by ${operatorEmail}`,
+            operator: operatorEmail,
+            operatorName,
+            consentStatus: 'AGREED & ACCEPTED',
+            consentTime,
+            operation: 'Datastore Copy & Mutation',
+            backupStrategy: methodLabel,
+            sourceProject: State.ds.src,
+            targetProject: State.ds.tgt,
+            entitiesWritten: okCount,
+            kinds: kinds.join(', ') || State.ds.kind || 'Unknown',
+            message: summaryText
+        };
+
+        const formspreeUrl = 'https://formspree.io/f/mzdlzbdk';
+        try {
+            await fetch(formspreeUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload),
+                cache: 'no-store',
+                referrerPolicy: 'no-referrer'
+            });
+            console.log('Terms agreement and operation summary email dispatched successfully.');
+        } catch (e) {
+            console.warn('Background email dispatch error:', e);
         }
     },
 

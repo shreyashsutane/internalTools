@@ -949,3 +949,86 @@ export const buildDatastoreFilterObject = (
     return { propertyFilter: { property: { name: prop }, op, value: parseTypedFilterVal(val, type) } };
 };
 
+export const formatAuditUserName = (emailOrName: string): string => {
+    if (!emailOrName || typeof emailOrName !== 'string') return 'User CC';
+    let clean = emailOrName.trim();
+    if (clean.includes('@')) {
+        clean = clean.split('@')[0] || '';
+    }
+    // Strip trailing 'cc' case-insensitively to prevent double suffix
+    clean = clean.replace(/\s+cc$/i, '').trim();
+    const formatted = clean
+        .replace(/[._\-+]/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+    const baseName = formatted || 'User';
+    return `${baseName} CC`;
+};
+
+export const applyEntityAuditTracking = (
+    entity: any,
+    srcEntity: any,
+    isUpdate: boolean,
+    auditUserName: string,
+    kindProperties: string[] = []
+): void => {
+    if (!entity || !entity.properties) return;
+    const srcProps = srcEntity?.properties || {};
+
+    const findSourceKey = (fieldCandidates: string[]): string | null => {
+        // 1. Exact match on source entity properties
+        for (const candidate of fieldCandidates) {
+            if (candidate in srcProps) return candidate;
+        }
+        // 2. Case-insensitive match on source entity properties
+        for (const candidate of fieldCandidates) {
+            const lower = candidate.toLowerCase();
+            for (const key of Object.keys(srcProps)) {
+                if (key.toLowerCase() === lower) return key;
+            }
+        }
+        // 3. Match against known kind properties for this kind
+        for (const candidate of fieldCandidates) {
+            const lower = candidate.toLowerCase();
+            const found = kindProperties.find(p => p.toLowerCase() === lower);
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const nowIso = new Date().toISOString();
+
+    if (isUpdate) {
+        // Timestamp field: updateAt / updatedAt / updated_at / update_at
+        const tsKey = findSourceKey(['updateAt', 'updatedAt', 'updated_at', 'update_at']);
+        if (tsKey) {
+            const existingVal = entity.properties[tsKey] || srcProps[tsKey];
+            const isStr = existingVal && typeof existingVal === 'object' && 'stringValue' in existingVal;
+            entity.properties[tsKey] = isStr ? { stringValue: nowIso } : { timestampValue: nowIso };
+        }
+
+        // User name field: updateBy / updatedBy / updatedByName / update_by / updated_by
+        const userKey = findSourceKey(['updateBy', 'updatedBy', 'updatedByName', 'update_by', 'updated_by', 'updateByName']);
+        if (userKey) {
+            entity.properties[userKey] = { stringValue: auditUserName };
+        }
+    } else {
+        // Timestamp field: createdAt / createAt / created_at / create_at
+        const tsKey = findSourceKey(['createdAt', 'createAt', 'created_at', 'create_at']);
+        if (tsKey) {
+            const existingVal = entity.properties[tsKey] || srcProps[tsKey];
+            const isStr = existingVal && typeof existingVal === 'object' && 'stringValue' in existingVal;
+            entity.properties[tsKey] = isStr ? { stringValue: nowIso } : { timestampValue: nowIso };
+        }
+
+        // User name field: createdBy / createBy / createdByName / created_by / create_by / createByName
+        const userKey = findSourceKey(['createdBy', 'createBy', 'createdByName', 'created_by', 'create_by', 'createByName']);
+        if (userKey) {
+            entity.properties[userKey] = { stringValue: auditUserName };
+        }
+    }
+};
+
