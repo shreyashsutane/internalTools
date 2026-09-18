@@ -1010,8 +1010,8 @@ export const applyEntityAuditTracking = (
             entity.properties[tsKey] = isStr ? { stringValue: nowIso } : { timestampValue: nowIso };
         }
 
-        // User name field: updateBy / updatedBy / updatedByName / update_by / updated_by
-        const userKey = findSourceKey(['updateBy', 'updatedBy', 'updatedByName', 'update_by', 'updated_by', 'updateByName']);
+        // User name field: change updatedByName ONLY (do NOT change createdBy or updatedBy)
+        const userKey = findSourceKey(['updatedByName', 'updateByName']);
         if (userKey) {
             entity.properties[userKey] = { stringValue: auditUserName };
         }
@@ -1024,8 +1024,8 @@ export const applyEntityAuditTracking = (
             entity.properties[tsKey] = isStr ? { stringValue: nowIso } : { timestampValue: nowIso };
         }
 
-        // User name field: createdBy / createBy / createdByName / created_by / create_by / createByName
-        const userKey = findSourceKey(['createdBy', 'createBy', 'createdByName', 'created_by', 'create_by', 'createByName']);
+        // User name field: change createdByName ONLY (do NOT change createdBy or updatedBy)
+        const userKey = findSourceKey(['createdByName', 'createByName']);
         if (userKey) {
             entity.properties[userKey] = { stringValue: auditUserName };
         }
