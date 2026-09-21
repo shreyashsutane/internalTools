@@ -310,7 +310,10 @@ sequenceDiagram
     alt Option 1: User selects "Local File Only"
         User->>Portal: Confirms Copy
         Portal->>Disk: Downloads backup_*.json.gz first
-        Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+        opt If Audit Checkbox Selected
+            Portal->>Portal: Applies updatedByName / createdByName & timestamps (if present in schema)
+        end
+        Portal->>Target: Commits mutations to destination Datastore
         Note over Portal,Email: (No Terms Modal shown, No Email sent)
 
     else Option 2 or 3: User selects "Cloud Firestore" or "Both"
@@ -320,7 +323,10 @@ sequenceDiagram
         alt User declines or clicks "Switch to Local File Only"
             Terms->>Portal: Reverts to Local File Only
             Portal->>Disk: Downloads backup_*.json.gz first
-            Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+            opt If Audit Checkbox Selected
+                Portal->>Portal: Applies updatedByName / createdByName & timestamps (if present in schema)
+            end
+            Portal->>Target: Commits mutations to destination Datastore
             Note over Portal,Email: (No Email sent)
         else User checks [x] "I Agree" and clicks "Agree &amp; Proceed"
             Terms->>Portal: Stores consent session state
@@ -328,7 +334,10 @@ sequenceDiagram
                 Portal->>Disk: Downloads backup_*.json.gz first
             end
             Portal->>FS: Persists pre-mutation snapshot to Cloud Firestore
-            Portal->>Target: Injects audit fields (if in source kind) &amp; commits mutations
+            opt If Audit Checkbox Selected
+                Portal->>Portal: Applies updatedByName / createdByName & timestamps (if present in schema)
+            end
+            Portal->>Target: Commits mutations to destination Datastore
             
             critical Operation Performed Successfully
                 Portal->>Email: Dispatches Email Alert to shreyashs14102002@gmail.com

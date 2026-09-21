@@ -94,6 +94,11 @@ export interface StateType {
         kindProperties: Record<string, string[]>;
         databasesSrc: string[];
         databasesTgt: string[];
+        copyOptions?: {
+            backupMethod?: 'file' | 'firestore' | 'both';
+            applyMod?: boolean;
+            applyAuditTracking?: boolean;
+        };
     };
     subscribe: (event: string, cb: () => void) => void;
     notify: (event: string) => void;
@@ -154,7 +159,12 @@ export const State: StateType = {
         properties: [],
         kindProperties: {},
         databasesSrc: [],
-        databasesTgt: []
+        databasesTgt: [],
+        copyOptions: {
+            backupMethod: 'both',
+            applyMod: true,
+            applyAuditTracking: false
+        }
     },
     subscribe: (event: string, cb: () => void): void => {
         if (!observers.has(event)) {

@@ -1184,6 +1184,22 @@ FROM `source-project-prod.analytics.orders`</code></pre>
                     </div>
                 </div>
 
+                <!-- Schema-Aware Entity Audit Tracking Option -->
+                <div class="audit-tracking-box p-3 rounded-lg border border-[var(--brd2)] bg-[#080d1a] space-y-1.5 hover:border-indigo-500/40 transition">
+                    <label class="flex items-start gap-2.5 cursor-pointer select-none" for="chk-apply-audit-tracking">
+                        <input type="checkbox" id="chk-apply-audit-tracking" class="mt-0.5 rounded text-indigo-500 focus:ring-indigo-400 cursor-pointer chk-apply-audit-tracking" />
+                        <div class="flex-1">
+                            <div class="text-xs font-semibold text-zinc-100 flex items-center gap-1.5">
+                                <i class="fa-solid fa-user-pen text-indigo-400"></i>
+                                <span>Apply Operator &amp; Timestamp Audit Tracking</span>
+                            </div>
+                            <p class="text-[11px] text-zinc-400 mt-0.5 leading-normal">
+                                When selected, updates <code class="text-indigo-300 font-mono">updatedByName</code> &amp; <code class="text-indigo-300 font-mono">updateAt</code>/<code class="text-indigo-300 font-mono">updatedAt</code> on updates, or sets <code class="text-indigo-300 font-mono">createdByName</code> &amp; <code class="text-indigo-300 font-mono">createdAt</code>/<code class="text-indigo-300 font-mono">createAt</code> on creates (formatted with your name, e.g. <span class="text-zinc-200 font-medium">Yash Jadhav CC</span>). <strong>Strictly only applied if fields already exist in the source schema</strong>. <code class="text-zinc-300 font-mono">createdBy</code> &amp; <code class="text-zinc-300 font-mono">updatedBy</code> are preserved untouched.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
                 <!-- Selected Entities List -->
                 <div class="modal-ds-selected-entities max-h-52 overflow-y-auto rounded-lg p-2 space-y-1.5" style="background:rgba(0,0,0,0.3); border:1px solid var(--brd2)"></div>
 

@@ -2396,18 +2396,32 @@ export const App = {
         if (confirmBtn) {
             confirmBtn.onclick = () => {
                 const selectedMethod = ((Utils.$('modal-root')!.querySelector('input[name="ds-backup-method"]:checked') as HTMLInputElement)?.value || 'both') as 'file' | 'firestore' | 'both';
+                const chkAuditTrackingEl = Utils.$('modal-root')!.querySelector('#chk-apply-audit-tracking') as HTMLInputElement | null;
+                const isAuditSelected = Boolean(chkAuditTrackingEl?.checked);
+                const isApplyMod = Boolean(chkReplace?.classList.contains('on'));
+
+                State.ds.copyOptions = {
+                    backupMethod: selectedMethod,
+                    applyMod: isApplyMod,
+                    applyAuditTracking: isAuditSelected
+                };
+
                 if (selectedMethod === 'firestore' || selectedMethod === 'both') {
-                    App.openFirestoreTermsModal(selectedMethod);
+                    App.openFirestoreTermsModal(selectedMethod, isAuditSelected, isApplyMod);
                 } else {
-                    App.executeDsCopy('file', false);
+                    App.executeDsCopy('file', false, isAuditSelected, isApplyMod);
                 }
             };
         }
     },
-    openFirestoreTermsModal: (backupMethod: 'firestore' | 'both' = 'both'): void => {
+    openFirestoreTermsModal: (
+        backupMethod: 'firestore' | 'both' = 'both',
+        applyAuditTracking = false,
+        applyMod = false
+    ): void => {
         const tmpl = Utils.$('template-terms-consent-modal') as HTMLTemplateElement;
         if (!tmpl) {
-            App.executeDsCopy(backupMethod, true);
+            App.executeDsCopy(backupMethod, true, applyAuditTracking, applyMod);
             return;
         }
         const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
@@ -2433,7 +2447,7 @@ export const App = {
         if (btnAgree) {
             btnAgree.onclick = () => {
                 UI.closeModal();
-                App.executeDsCopy(backupMethod, true);
+                App.executeDsCopy(backupMethod, true, applyAuditTracking, applyMod);
             };
         }
 
@@ -2441,7 +2455,7 @@ export const App = {
             btnSwitchLocal.onclick = () => {
                 UI.closeModal();
                 Utils.toast('Switched to Local File Only backup.', 'info');
-                App.executeDsCopy('file', false);
+                App.executeDsCopy('file', false, applyAuditTracking, applyMod);
             };
         }
 
@@ -2449,9 +2463,25 @@ export const App = {
             (btn as HTMLElement).onclick = () => UI.closeModal();
         });
     },
-    executeDsCopy: async (backupMethod: 'file' | 'firestore' | 'both' = 'both', termsConsented = false): Promise<void> => {
+    executeDsCopy: async (
+        backupMethod: 'file' | 'firestore' | 'both' = 'both',
+        termsConsented = false,
+        applyAuditTrackingParam?: boolean,
+        applyModParam?: boolean
+    ): Promise<void> => {
         const modalRoot = Utils.$('modal-root');
-        const applyMod = modalRoot?.querySelector('.chk-apply-replace')?.classList.contains('on');
+        const applyMod = applyModParam !== undefined
+            ? applyModParam
+            : (State.ds.copyOptions?.applyMod !== undefined
+                ? State.ds.copyOptions.applyMod
+                : modalRoot?.querySelector('.chk-apply-replace')?.classList.contains('on'));
+
+        const applyAuditTracking = applyAuditTrackingParam !== undefined
+            ? applyAuditTrackingParam
+            : (State.ds.copyOptions?.applyAuditTracking !== undefined
+                ? State.ds.copyOptions.applyAuditTracking
+                : Boolean((modalRoot?.querySelector('#chk-apply-audit-tracking') as HTMLInputElement)?.checked));
+
         const activeRules = (State.ds.modRules || []).filter(r => r && r.target);
         const modalFieldEl = modalRoot?.querySelector('.inp-field-val') as HTMLInputElement | null;
         const modalTargetEl = modalRoot?.querySelector('.inp-find-val') as HTMLInputElement | null;
@@ -2788,11 +2818,11 @@ export const App = {
                     console.warn('Gzip compression fallback:', compErr);
                 }
 
-                const methodLabel = backupMethod === 'file'
+                const methodLabel = (backupMethod === 'file'
                     ? ' [Local File Backup]'
                     : backupMethod === 'firestore'
                         ? ' [Cloud Firestore]'
-                        : ' [Both: Cloud + Local]';
+                        : ' [Both: Cloud + Local]') + (applyAuditTracking ? ' [Audit Tracking: ON]' : '');
 
                 batchAuditLogId = await AuditLog.addLog(
                     'DATASTORE_COPY',
@@ -2832,14 +2862,17 @@ export const App = {
                     }
 
                     // Apply schema-aware automated audit tracking:
-                    // Update: updateAt / updateBy (and updatedAt / updatedBy if present)
-                    // Create: createdAt / createdBy (and createAt / createBy if present)
-                    // Only if already present in the source kind or source entity
-                    const existingTarget = targetEntitiesByKey.get(App.formatKey(e.entity.key));
-                    const isUpdate = Boolean(existingTarget);
-                    const entityKind = e.entity?.key?.path?.[e.entity.key.path.length - 1]?.kind || State.ds.kind || '';
-                    const kindProps = State.ds.kindProperties?.[entityKind] || [];
-                    applyEntityAuditTracking(entity, e.entity, isUpdate, userAuditName, kindProps);
+                    // Update: updateAt / updatedAt & updatedByName (strictly only if present in source schema)
+                    // Create: createdAt / createAt & createdByName (strictly only if present in source schema)
+                    // createdBy & updatedBy: preserved untouched
+                    // Applied strictly only if the user checked the Audit Tracking checkbox in the copy modal
+                    if (applyAuditTracking) {
+                        const existingTarget = targetEntitiesByKey.get(App.formatKey(e.entity.key));
+                        const isUpdate = Boolean(existingTarget);
+                        const entityKind = e.entity?.key?.path?.[e.entity.key.path.length - 1]?.kind || State.ds.kind || '';
+                        const kindProps = State.ds.kindProperties?.[entityKind] || [];
+                        applyEntityAuditTracking(entity, e.entity, isUpdate, userAuditName, kindProps);
+                    }
 
                     if (entity.properties) {
                         Diff.minifyJsonProperties(entity.properties);
@@ -2946,12 +2979,25 @@ export const App = {
 
         // Trigger email notification strictly when operation was performed AND user agreed to terms
         if (!cancelled && ok > 0 && (backupMethod === 'firestore' || backupMethod === 'both') && termsConsented) {
-            void App.sendTermsAndOperationEmail(backupMethod, ok, fail, uniqueKinds as string[], activeRules);
+            void App.sendTermsAndOperationEmail(backupMethod, ok, fail, uniqueKinds as string[], activeRules, applyAuditTracking);
         }
 
         const kindsHtml = uniqueKinds.length > 0
             ? uniqueKinds.map(k => `<span class="badge" style="background:var(--accent-dim); color:var(--accent); font-size:11px; padding:2px 8px; border:1px solid var(--accent); margin-right:4px;"><i class="fa-solid fa-folder-tree mr-1"></i>${Utils.escapeHtml(k!)}</span>`).join('')
             : `<span class="badge" style="background:var(--brd2); color:var(--fg); font-size:11px;">${Utils.escapeHtml(State.ds.kind || 'Datastore')}</span>`;
+
+        const userAuditName = formatAuditUserName(State.authEmail);
+        const auditBadgeHtml = applyAuditTracking
+            ? `
+                <div style="margin-top:12px; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); border-radius:6px; padding:8px 12px; font-size:11px; color:#c7d2fe;">
+                    <i class="fa-solid fa-user-pen mr-1.5 text-indigo-400"></i><strong>Audit Tracking Rules Applied:</strong> Updated <code class="mono text-indigo-300">updatedByName</code> / <code class="mono text-indigo-300">createdByName</code> (${Utils.escapeHtml(userAuditName)}) and timestamps on matching entities.
+                </div>
+            `
+            : `
+                <div style="margin-top:12px; background:var(--bg); border:1px dashed var(--brd); border-radius:6px; padding:8px 12px; font-size:11px; color:var(--muted);">
+                    <i class="fa-solid fa-circle-minus mr-1.5"></i>Audit Tracking rules were not applied (checkbox was unchecked).
+                </div>
+            `;
 
         let replacedRulesHtml = '';
         if (applyMod) {
@@ -3038,6 +3084,7 @@ export const App = {
                     </div>
                 </div>
 
+                ${auditBadgeHtml}
                 ${replacedRulesHtml}
 
                 <div class="mt-6 flex items-center justify-end gap-2.5">
@@ -3051,11 +3098,11 @@ export const App = {
             </div>
         `;
 
-        UI.openModal(modalHtml);
+        UI.openModal(modalHtml, 'modal-medium');
 
-        const returnBtn = Utils.$('btn-copy-done-main-menu');
-        if (returnBtn) {
-            returnBtn.onclick = () => {
+        const mainMenuBtn = Utils.$('btn-copy-done-main-menu');
+        if (mainMenuBtn) {
+            mainMenuBtn.onclick = () => {
                 UI.closeModal();
                 Utils.hide('sec-loading');
                 Utils.hide('sec-results');
@@ -3079,7 +3126,8 @@ export const App = {
         okCount: number,
         failCount: number,
         kinds: string[],
-        activeRules: any[]
+        activeRules: any[],
+        applyAuditTracking = false
     ): Promise<void> => {
         const operatorEmail = State.authEmail || 'shreyashs14102002@gmail.com';
         const operatorName = formatAuditUserName(operatorEmail);
@@ -3109,6 +3157,7 @@ export const App = {
             `Target Project: ${State.ds.tgt} (${tgtName}) [Database: ${State.ds.tgtDb || '(default)'}]\n` +
             `Kinds: ${kinds.join(', ') || State.ds.kind || 'Unknown'}\n` +
             `Entities Written: ${okCount} successful${failCount > 0 ? `, ${failCount} failed` : ''}\n` +
+            `Audit Tracking Rules: ${applyAuditTracking ? 'ENABLED (updatedByName/createdByName & timestamps applied if in schema)' : 'DISABLED (entities preserved verbatim)'}\n` +
             `Find & Replace Rules: ${rulesText}\n` +
             `Execution Completed At: ${new Date().toISOString()}`;
 
@@ -3125,6 +3174,7 @@ export const App = {
             targetProject: State.ds.tgt,
             entitiesWritten: okCount,
             kinds: kinds.join(', ') || State.ds.kind || 'Unknown',
+            auditTracking: applyAuditTracking ? 'ENABLED' : 'DISABLED',
             message: summaryText
         };
 
