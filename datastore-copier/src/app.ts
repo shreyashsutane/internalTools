@@ -78,15 +78,23 @@ export const App = {
         }
         const verifyInp = Utils.$('inp-token') as HTMLInputElement | null;
         if (verifyInp) {
-            verifyInp.oninput = () => {
+            const updateBtn = () => {
                 const btn = Utils.$('btn-verify') as HTMLButtonElement | null;
                 if (btn) btn.disabled = !verifyInp.value.trim();
             };
+            verifyInp.oninput = updateBtn;
+            verifyInp.addEventListener('change', updateBtn);
+            verifyInp.addEventListener('paste', () => setTimeout(updateBtn, 0));
+            verifyInp.addEventListener('keyup', updateBtn);
+            updateBtn();
+
             verifyInp.addEventListener('keydown', (e: KeyboardEvent) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     if (verifyInp.value.trim()) {
                         void App.verify();
+                    } else {
+                        Utils.toast('Please enter or paste your access token.', 'warn');
                     }
                 }
             });
@@ -277,8 +285,16 @@ export const App = {
     },
     verify: async (): Promise<void> => {
         const tokenInp = Utils.$('inp-token') as HTMLInputElement | null;
-        const token = tokenInp ? tokenInp.value.trim() : '';
-        if (!token) return;
+        let token = tokenInp ? tokenInp.value.trim() : '';
+        if ((token.startsWith('"') && token.endsWith('"')) || (token.startsWith("'") && token.endsWith("'"))) {
+            token = token.slice(1, -1).trim();
+            if (tokenInp) tokenInp.value = token;
+        }
+        if (!token) {
+            Utils.toast('Please enter or paste your access token.', 'warn');
+            tokenInp?.focus();
+            return;
+        }
 
         const verifyBtn = Utils.$('btn-verify') as HTMLButtonElement | null;
         if (verifyBtn) {

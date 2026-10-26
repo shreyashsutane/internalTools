@@ -157,6 +157,7 @@ export const UI = {
                         item.onmousedown = (e) => {
                             e.preventDefault();
                             UI.toggleKind(kind);
+                            kInp.value = '';
                             renderKinds();
                         };
                         kMenu.appendChild(item);
@@ -168,6 +169,21 @@ export const UI = {
             kInp.onblur = () => setTimeout(() => kMenu.classList.remove('open'), 180);
             kInp.oninput = () => {
                 renderKinds();
+            };
+            kInp.onkeydown = (e: KeyboardEvent) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const f = kInp.value.trim().toLowerCase();
+                    if (!f) return;
+                    const match = State.ds.kinds.find(k => k.toLowerCase() === f) || State.ds.kinds.find(k => k.toLowerCase().includes(f));
+                    if (match) {
+                        if (!State.ds.selectedKinds.has(match)) {
+                            UI.toggleKind(match);
+                        }
+                        kInp.value = '';
+                        renderKinds();
+                    }
+                }
             };
         }
 
@@ -189,13 +205,32 @@ export const UI = {
         if (State.ds.databasesTgt) setupSimpleDD('ds-tgt-db', 'dd-ds-tgt-db', State.ds.databasesTgt, 'tgtDb', null);
     },
     toggleKind: (kind: string) => {
+        const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
+        if (kInp) kInp.value = '';
         if (State.ds.selectedKinds.has(kind)) {
             State.ds.selectedKinds.delete(kind);
+            const rows = document.querySelectorAll('#ds-filters-container .filter-row');
+            rows.forEach(r => {
+                const kScope = (r.querySelector('.filter-kind') as HTMLSelectElement)?.value;
+                if (kScope === kind) {
+                    r.remove();
+                }
+            });
         } else {
             State.ds.selectedKinds.add(kind);
+            const rows = document.querySelectorAll('#ds-filters-container .filter-row');
+            let hasFilter = false;
+            rows.forEach(r => {
+                const kScope = (r.querySelector('.filter-kind') as HTMLSelectElement)?.value;
+                if (kScope === kind) hasFilter = true;
+            });
+            if (!hasFilter) {
+                UI.addDsFilter(undefined, undefined, undefined, undefined, kind);
+            }
         }
         State.ds.kind = [...State.ds.selectedKinds].join(',');
         UI.renderKindChips();
+        UI.refreshAllFilterPropertyDropdowns();
         UI.updateGqlPreview();
         UI.loadProperties();
     },
@@ -223,14 +258,36 @@ export const UI = {
     selectAllKinds: () => {
         State.ds.kinds.forEach(k => State.ds.selectedKinds.add(k));
         State.ds.kind = [...State.ds.selectedKinds].join(',');
+        const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
+        if (kInp) kInp.value = '';
+
+        const kindsToFilter = State.ds.kinds.slice(0, 10);
+        kindsToFilter.forEach(k => {
+            const rows = document.querySelectorAll('#ds-filters-container .filter-row');
+            let hasFilter = false;
+            rows.forEach(r => {
+                const kScope = (r.querySelector('.filter-kind') as HTMLSelectElement)?.value;
+                if (kScope === k) hasFilter = true;
+            });
+            if (!hasFilter) {
+                UI.addDsFilter(undefined, undefined, undefined, undefined, k);
+            }
+        });
+
         UI.renderKindChips();
+        UI.refreshAllFilterPropertyDropdowns();
         UI.updateGqlPreview();
         UI.loadProperties();
     },
     clearAllKinds: () => {
         State.ds.selectedKinds.clear();
         State.ds.kind = '';
+        const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
+        if (kInp) kInp.value = '';
+        const c = Utils.$('ds-filters-container');
+        if (c) c.replaceChildren();
         UI.renderKindChips();
+        UI.refreshAllFilterPropertyDropdowns();
         UI.updateGqlPreview();
         UI.loadProperties();
     },
