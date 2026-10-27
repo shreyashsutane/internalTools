@@ -231,6 +231,71 @@ export const App = {
         const dsCopyBtn = Utils.$('btn-ds-copy');
         if (dsCopyBtn) dsCopyBtn.onclick = App.openDsCopyModal;
 
+        // Subtabs: Compare vs Clone
+        const tabCompare = Utils.$('tab-ds-sub-compare');
+        const tabClone = Utils.$('tab-ds-sub-clone');
+        const viewCompare = Utils.$('ds-subview-compare');
+        const viewClone = Utils.$('ds-subview-clone');
+        if (tabCompare && tabClone && viewCompare && viewClone) {
+            tabCompare.onclick = () => {
+                tabCompare.classList.add('on');
+                tabClone.classList.remove('on');
+                viewCompare.style.display = 'block';
+                viewClone.style.display = 'none';
+            };
+            tabClone.onclick = () => {
+                tabClone.classList.add('on');
+                tabCompare.classList.remove('on');
+                viewClone.style.display = 'block';
+                viewCompare.style.display = 'none';
+
+                const cloneSrc = Utils.$('ds-clone-src') as HTMLInputElement | null;
+                const cloneTgt = Utils.$('ds-clone-tgt') as HTMLInputElement | null;
+                const cloneSrcDb = Utils.$('ds-clone-src-db') as HTMLInputElement | null;
+                const cloneTgtDb = Utils.$('ds-clone-tgt-db') as HTMLInputElement | null;
+                if (cloneSrc && !cloneSrc.value && State.ds.src) cloneSrc.value = State.ds.src;
+                if (cloneTgt && !cloneTgt.value && State.ds.tgt) cloneTgt.value = State.ds.tgt;
+                if (cloneSrcDb && !cloneSrcDb.value && State.ds.srcDb) cloneSrcDb.value = State.ds.srcDb;
+                if (cloneTgtDb && !cloneTgtDb.value && State.ds.tgtDb) cloneTgtDb.value = State.ds.tgtDb;
+                UI.renderDsRules('ds-clone-rules-container', false);
+            };
+        }
+
+        // Clone presets
+        document.querySelectorAll('.btn-clone-preset').forEach((btn: any) => {
+            btn.onclick = () => {
+                const suffix = btn.dataset.suffix || '';
+                const srcKindInp = Utils.$('ds-clone-src-kind') as HTMLInputElement | null;
+                const tgtKindInp = Utils.$('ds-clone-tgt-kind') as HTMLInputElement | null;
+                const base = (tgtKindInp?.value.trim() || srcKindInp?.value.trim() || 'Kind');
+                const cleanBase = base.replace(/_(?:backup|v2|copy)$/i, '');
+                if (tgtKindInp) {
+                    tgtKindInp.value = cleanBase + suffix;
+                    tgtKindInp.focus();
+                }
+            };
+        });
+
+        // Add Rule in Clone view
+        const addCloneRuleBtn = Utils.$('btn-add-ds-clone-rule');
+        if (addCloneRuleBtn) {
+            addCloneRuleBtn.onclick = () => {
+                if (!State.ds.modRules) State.ds.modRules = [];
+                State.ds.modRules.push({
+                    id: 'rule-' + Date.now(),
+                    field: '*',
+                    target: '',
+                    replacement: ''
+                });
+                UI.renderDsRules('ds-clone-rules-container', false);
+                UI.renderDsRules('ds-rules-container', false);
+                SoundFX.playChime();
+            };
+        }
+
+        const startCloneBtn = Utils.$('btn-ds-start-clone');
+        if (startCloneBtn) startCloneBtn.onclick = App.startKindClone;
+
         const toggleAssistBtn = Utils.$('btn-toggle-assist');
         if (toggleAssistBtn) toggleAssistBtn.onclick = () => AssistUI.toggle();
 
@@ -3209,6 +3274,259 @@ export const App = {
             console.log('Terms agreement and operation summary email dispatched successfully.');
         } catch (e) {
             console.warn('Background email dispatch error:', e);
+        }
+    },
+
+    startKindClone: async (): Promise<void> => {
+        const srcInp = Utils.$('ds-clone-src') as HTMLInputElement | null;
+        const tgtInp = Utils.$('ds-clone-tgt') as HTMLInputElement | null;
+        const srcDbInp = Utils.$('ds-clone-src-db') as HTMLInputElement | null;
+        const tgtDbInp = Utils.$('ds-clone-tgt-db') as HTMLInputElement | null;
+        const srcKindInp = Utils.$('ds-clone-src-kind') as HTMLInputElement | null;
+        const tgtKindInp = Utils.$('ds-clone-tgt-kind') as HTMLInputElement | null;
+
+        const src = srcInp?.value.trim() || State.ds.src;
+        const tgt = tgtInp?.value.trim() || State.ds.tgt;
+        const srcDb = srcDbInp?.value.trim() || State.ds.srcDb || '(default)';
+        const tgtDb = tgtDbInp?.value.trim() || State.ds.tgtDb || '(default)';
+        const srcKind = srcKindInp?.value.trim() || '';
+        const tgtKind = tgtKindInp?.value.trim() || '';
+
+        if (!src || !tgt) {
+            Utils.toast('Please select both Source and Target projects.', 'err');
+            return;
+        }
+        if (!srcKind) {
+            Utils.toast('Please select or enter a Source Kind to clone.', 'err');
+            srcKindInp?.focus();
+            return;
+        }
+        if (!tgtKind) {
+            Utils.toast('Please enter a Target Kind name for the destination project.', 'err');
+            tgtKindInp?.focus();
+            return;
+        }
+        if (src === tgt && srcDb === tgtDb && srcKind === tgtKind) {
+            Utils.toast('Target Kind name must be different when cloning within the same project & database.', 'err');
+            tgtKindInp?.focus();
+            return;
+        }
+
+        const backupMethod = ((Utils.$('ds-clone-backup-method') as HTMLSelectElement)?.value || 'both') as 'file' | 'firestore' | 'both';
+        const applyAuditTracking = Boolean((Utils.$('chk-clone-audit-tracking') as HTMLInputElement)?.checked);
+        const activeRules = (State.ds.modRules || []).filter(r => r && r.target);
+
+        UI.openCloneConfirmModal({
+            src,
+            tgt,
+            srcDb,
+            tgtDb,
+            srcKind,
+            tgtKind,
+            backupMethod,
+            applyAuditTracking,
+            rules: activeRules
+        }, () => {
+            void App.executeKindClone({
+                src,
+                tgt,
+                srcDb,
+                tgtDb,
+                srcKind,
+                tgtKind,
+                backupMethod,
+                applyAuditTracking,
+                rules: activeRules
+            });
+        });
+    },
+
+    executeKindClone: async (config: {
+        src: string;
+        tgt: string;
+        srcDb: string;
+        tgtDb: string;
+        srcKind: string;
+        tgtKind: string;
+        backupMethod: 'file' | 'firestore' | 'both';
+        applyAuditTracking: boolean;
+        rules: any[];
+    }): Promise<void> => {
+        UI.closeModal();
+        Utils.show('sec-loading');
+        Utils.hide('load-ds-stats');
+        Utils.show('btn-cancel-ds');
+        Utils.$('load-title')!.textContent = `Cloning Kind: ${config.srcKind} ➔ ${config.tgtKind}`;
+        Utils.$('load-msg')!.textContent = 'Initializing stream from source project...';
+        State.cancelDs = false;
+
+        const controller = beginDsOperation();
+        const userAuditName = formatAuditUserName(State.authEmail);
+        let totalCopied = 0;
+        let totalReplacements = 0;
+        const BATCH_SIZE = 250;
+        let cursor: string | undefined = undefined;
+        let batchIndex = 0;
+        const backupData: any[] = [];
+
+        try {
+            const srcDbClean = (config.srcDb === '(default)' || !config.srcDb) ? '' : config.srcDb;
+            const tgtDbClean = (config.tgtDb === '(default)' || !config.tgtDb) ? '' : config.tgtDb;
+            const srcPartitionId: any = { projectId: config.src };
+            if (srcDbClean) srcPartitionId.databaseId = srcDbClean;
+            const tgtPartitionId: any = { projectId: config.tgt };
+            if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
+
+            await AuditLog.addLog(
+                'DATASTORE_KIND_CLONE',
+                config.src,
+                config.tgt,
+                `Initiated fast kind clone: ${config.srcKind} (${config.src}) ➔ ${config.tgtKind} (${config.tgt}).`,
+                'IN_PROGRESS'
+            );
+
+            do {
+                if (State.cancelDs || controller.signal.aborted) {
+                    Utils.toast('Kind cloning cancelled.', 'info');
+                    break;
+                }
+
+                batchIndex++;
+                Utils.$('load-msg')!.textContent = `Streaming entities from ${config.srcKind} (Batch ${batchIndex}, ${totalCopied} copied)...`;
+
+                const queryBody: any = {
+                    partitionId: srcPartitionId,
+                    query: {
+                        kind: [{ name: config.srcKind }],
+                        limit: BATCH_SIZE
+                    }
+                };
+                if (cursor) {
+                    queryBody.query.startCursor = cursor;
+                }
+
+                const queryRes = await Api.runDatastoreQuery(config.src, queryBody, config.srcDb, controller.signal);
+                const entityResults = queryRes.batch?.entityResults || [];
+                if (entityResults.length === 0) {
+                    break;
+                }
+
+                const mutations: any[] = [];
+                for (const item of entityResults) {
+                    if (!item.entity) continue;
+                    const entity = cloneDatastoreValue(item.entity);
+                    if (!entity.key || !Array.isArray(entity.key.path) || entity.key.path.length === 0) continue;
+
+                    // Rewrite partitionId and kind name
+                    entity.key.partitionId = cloneDatastoreValue(tgtPartitionId);
+                    const leafPath = entity.key.path[entity.key.path.length - 1];
+                    leafPath.kind = config.tgtKind;
+
+                    const formattedTargetKeyStr = App.formatKey(entity.key);
+
+                    // Apply Find & Replace string transformations
+                    if (config.rules && config.rules.length > 0) {
+                        const replaced = replaceDatastoreRules(entity.properties || {}, config.rules);
+                        if (replaced > 0) totalReplacements += replaced;
+                    }
+
+                    // Apply audit tracking if enabled
+                    if (config.applyAuditTracking) {
+                        applyEntityAuditTracking(entity, item.entity, false, userAuditName, []);
+                    }
+
+                    // Minify JSON strings
+                    if (entity.properties) {
+                        Diff.minifyJsonProperties(entity.properties);
+                    }
+
+                    mutations.push({ upsert: entity });
+
+                    // Rollback delete entry
+                    backupData.push({
+                        keyStr: formattedTargetKeyStr,
+                        action: 'delete',
+                        prevEntity: { key: cloneDatastoreValue(entity.key) }
+                    });
+                }
+
+                if (mutations.length > 0) {
+                    await Api.commitDatastore(config.tgt, mutations, config.tgtDb, controller.signal);
+                    totalCopied += mutations.length;
+                    Utils.$('load-msg')!.textContent = `Copied ${totalCopied} entities into ${config.tgtKind}...`;
+                }
+
+                const moreResults = queryRes.batch?.moreResults;
+                if (moreResults === 'NO_MORE_RESULTS' || !queryRes.batch?.endCursor || entityResults.length < BATCH_SIZE) {
+                    cursor = undefined;
+                } else {
+                    cursor = queryRes.batch.endCursor;
+                }
+
+            } while (cursor);
+
+            if ((config.backupMethod === 'file' || config.backupMethod === 'both') && backupData.length > 0) {
+                try {
+                    const backupPayload = {
+                        type: "DATASTORE_KIND_CLONE_BACKUP",
+                        targetProject: config.tgt,
+                        sourceProject: config.src,
+                        databaseId: config.tgtDb,
+                        sourceKind: config.srcKind,
+                        targetKind: config.tgtKind,
+                        timestamp: new Date().toISOString(),
+                        totalEntities: backupData.length,
+                        upsertCount: 0,
+                        deleteCount: backupData.length,
+                        kinds: [config.tgtKind],
+                        backupData
+                    };
+                    const gzipBlob = await compressJsonToGzipBlob(backupPayload);
+                    const safeDate = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+                    const filename = `datastore-backup-${config.tgt}-${config.tgtKind}-${safeDate}.json.gz`;
+                    downloadBlobFile(gzipBlob, filename);
+                } catch (e) {
+                    console.warn('Backup download failed:', e);
+                }
+            }
+
+            const finalStatus = State.cancelDs ? 'CANCELLED' : 'SUCCESS';
+            const logMsg = `Cloned ${totalCopied} entities of kind '${config.srcKind}' from '${config.src}' to '${config.tgtKind}' in '${config.tgt}'` +
+                (totalReplacements > 0 ? ` with ${totalReplacements} string replacements.` : '.');
+            
+            await AuditLog.addLog(
+                'DATASTORE_KIND_CLONE',
+                config.src,
+                config.tgt,
+                logMsg,
+                finalStatus,
+                {
+                    type: "DATASTORE_KIND_CLONE",
+                    sourceKind: config.srcKind,
+                    targetKind: config.tgtKind,
+                    totalCopied,
+                    totalReplacements,
+                    backupData: backupData.slice(0, 500)
+                }
+            );
+
+            Utils.hide('sec-loading');
+            Utils.hide('btn-cancel-ds');
+            try { App.playNetflixTudum(); } catch {}
+            Utils.toast(`🎉 Cloned ${totalCopied} entities to ${config.tgtKind} successfully!`, 'ok');
+            await AuditLog.renderLogs(true);
+
+        } catch (err: any) {
+            Utils.hide('sec-loading');
+            Utils.hide('btn-cancel-ds');
+            if (isCancellationError(err)) {
+                Utils.toast('Clone operation cancelled.', 'info');
+                return;
+            }
+            const { ErrorBoundary } = await import('./utils');
+            await ErrorBoundary.handle(err, 'App.executeKindClone');
+        } finally {
+            if (dsAbortController === controller) dsAbortController = null;
         }
     },
 

@@ -133,6 +133,59 @@ export const UI = {
             UI.renderDsRules();
         });
 
+        // Fast Kind Cloner Project & Kind Dropdowns
+        setupDD('ds-clone-src', 'dd-ds-clone-src', id => {
+            State.ds.src = id;
+            const dsSrc = Utils.$('ds-src') as HTMLInputElement | null;
+            if (dsSrc) dsSrc.value = id;
+            UI.loadDatabases(id, 'src');
+            UI.loadKinds(id, State.ds.srcDb);
+            const cloneSrcDb = Utils.$('ds-clone-src-db') as HTMLInputElement | null;
+            if (cloneSrcDb) cloneSrcDb.value = '(default)';
+        });
+        setupDD('ds-clone-tgt', 'dd-ds-clone-tgt', id => {
+            State.ds.tgt = id;
+            const dsTgt = Utils.$('ds-tgt') as HTMLInputElement | null;
+            if (dsTgt) dsTgt.value = id;
+            UI.loadDatabases(id, 'tgt');
+            const cloneTgtDb = Utils.$('ds-clone-tgt-db') as HTMLInputElement | null;
+            if (cloneTgtDb) cloneTgtDb.value = '(default)';
+        });
+
+        const cloneSrcKindInp = Utils.$('ds-clone-src-kind') as HTMLInputElement | null;
+        const cloneSrcKindMenu = Utils.$('dd-ds-clone-src-kind');
+        if (cloneSrcKindInp && cloneSrcKindMenu) {
+            const renderCloneKinds = () => {
+                const f = cloneSrcKindInp.value.toLowerCase();
+                const ft = State.ds.kinds.filter(kind => kind.toLowerCase().includes(f));
+                if (ft.length === 0) {
+                    renderEmptyMenu(cloneSrcKindMenu, 'No matching kinds');
+                } else {
+                    cloneSrcKindMenu.replaceChildren();
+                    ft.forEach(kind => {
+                        const item = document.createElement('div');
+                        item.className = 'dropdown-item';
+                        item.dataset.id = kind;
+                        item.innerHTML = `<span class="id">${Utils.escapeHtml(kind)}</span>`;
+                        item.onmousedown = (e) => {
+                            e.preventDefault();
+                            cloneSrcKindInp.value = kind;
+                            cloneSrcKindMenu.classList.remove('open');
+                            const tgtKindInp = Utils.$('ds-clone-tgt-kind') as HTMLInputElement | null;
+                            if (tgtKindInp && !tgtKindInp.value) {
+                                tgtKindInp.value = kind + '_backup';
+                            }
+                        };
+                        cloneSrcKindMenu.appendChild(item);
+                    });
+                }
+                cloneSrcKindMenu.classList.add('open');
+            };
+            cloneSrcKindInp.onfocus = renderCloneKinds;
+            cloneSrcKindInp.oninput = renderCloneKinds;
+            cloneSrcKindInp.onblur = () => setTimeout(() => cloneSrcKindMenu.classList.remove('open'), 150);
+        }
+
         const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
         const kMenu = Utils.$('dd-ds-kind');
         if (kInp && kMenu) {
@@ -203,6 +256,10 @@ export const UI = {
             await UI.loadKinds(State.ds.src, dbId);
         });
         if (State.ds.databasesTgt) setupSimpleDD('ds-tgt-db', 'dd-ds-tgt-db', State.ds.databasesTgt, 'tgtDb', null);
+        if (State.ds.databasesSrc) setupSimpleDD('ds-clone-src-db', 'dd-ds-clone-src-db', State.ds.databasesSrc, 'srcDb', null, async (dbId) => {
+            await UI.loadKinds(State.ds.src, dbId);
+        });
+        if (State.ds.databasesTgt) setupSimpleDD('ds-clone-tgt-db', 'dd-ds-clone-tgt-db', State.ds.databasesTgt, 'tgtDb', null);
     },
     toggleKind: (kind: string) => {
         const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
@@ -741,6 +798,94 @@ export const UI = {
         root.style.display = 'none';
         root.innerHTML = '';
     },
+    openCloneConfirmModal: (config: {
+        src: string;
+        tgt: string;
+        srcDb: string;
+        tgtDb: string;
+        srcKind: string;
+        tgtKind: string;
+        backupMethod: 'file' | 'firestore' | 'both';
+        applyAuditTracking: boolean;
+        rules: any[];
+    }, onConfirm: () => void) => {
+        const rulesListHtml = config.rules.length > 0
+            ? config.rules.map(r => `
+                <div class="flex items-center gap-2 p-2 rounded bg-black/40 border border-white/5 text-xs font-mono">
+                    <span class="text-zinc-400">Field: <strong class="text-cyan-400">${Utils.escapeHtml(r.field || '*')}</strong></span>
+                    <span class="text-zinc-500">|</span>
+                    <span class="text-rose-400">"${Utils.escapeHtml(r.target)}"</span>
+                    <i class="fa-solid fa-arrow-right text-[10px] text-zinc-500"></i>
+                    <span class="text-emerald-400">"${Utils.escapeHtml(r.replacement)}"</span>
+                </div>
+            `).join('')
+            : `<div class="text-xs text-zinc-500 italic p-2">No Find &amp; Replace rules configured (raw copy).</div>`;
+
+        const modalHtml = `
+            <div class="p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-[var(--brd2)] pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                            <i class="fa-solid fa-clone"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-base text-zinc-100">Confirm Fast Kind Clone</h3>
+                            <p class="text-xs text-zinc-400">Stream-copy all entities to a new Target Kind</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-clone-modal-close text-zinc-400 hover:text-white text-base">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="p-4 rounded-xl bg-black/60 border border-[var(--brd2)] space-y-3">
+                    <div class="text-xs uppercase tracking-wider font-semibold text-zinc-400">Pipeline Route</div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1 p-3 rounded-lg bg-zinc-900 border border-white/10">
+                            <div class="text-[10px] uppercase text-zinc-500 font-bold">SOURCE</div>
+                            <div class="font-mono text-sm text-cyan-300 font-bold truncate">${Utils.escapeHtml(config.src)}</div>
+                            <div class="text-xs text-zinc-400 mt-1">Kind: <strong class="text-white">${Utils.escapeHtml(config.srcKind)}</strong></div>
+                            <div class="text-[11px] text-zinc-500">DB: ${Utils.escapeHtml(config.srcDb)}</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-amber-400 text-lg"></i>
+                        <div class="flex-1 p-3 rounded-lg bg-zinc-900 border border-amber-500/30">
+                            <div class="text-[10px] uppercase text-amber-500 font-bold">DESTINATION</div>
+                            <div class="font-mono text-sm text-amber-300 font-bold truncate">${Utils.escapeHtml(config.tgt)}</div>
+                            <div class="text-xs text-zinc-400 mt-1">New Kind: <strong class="text-amber-400">${Utils.escapeHtml(config.tgtKind)}</strong></div>
+                            <div class="text-[11px] text-zinc-500">DB: ${Utils.escapeHtml(config.tgtDb)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-wider font-semibold text-zinc-400">Find &amp; Replace Rules (${config.rules.length})</div>
+                    <div class="space-y-1.5 max-h-36 overflow-y-auto">${rulesListHtml}</div>
+                </div>
+
+                <div class="p-3 rounded-lg bg-zinc-900 border border-white/5 text-xs text-zinc-300 flex items-center justify-between">
+                    <span><i class="fa-solid fa-shield-halved text-emerald-400 mr-1.5"></i> Backup: <strong>${config.backupMethod === 'both' ? 'Local File + Cloud Snapshot' : config.backupMethod === 'file' ? 'Local File (.json.gz)' : 'Cloud Snapshot'}</strong></span>
+                    <span><i class="fa-solid fa-user-tag text-purple-400 mr-1.5"></i> Audit Tracking: <strong>${config.applyAuditTracking ? 'Enabled' : 'Disabled'}</strong></span>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-3 border-t border-[var(--brd2)]">
+                    <button type="button" class="btn btn-s btn-clone-modal-close px-4 py-2 text-xs">Cancel</button>
+                    <button type="button" id="btn-clone-confirm-execute" class="btn btn-p px-5 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black flex items-center gap-1.5">
+                        <i class="fa-solid fa-bolt"></i> Confirm &amp; Start Cloning
+                    </button>
+                </div>
+            </div>
+        `;
+
+        UI.openModal(modalHtml, true);
+
+        const closeBtns = document.querySelectorAll('.btn-clone-modal-close');
+        closeBtns.forEach((b: any) => b.onclick = UI.closeModal);
+
+        const confirmBtn = Utils.$('btn-clone-confirm-execute');
+        if (confirmBtn) {
+            confirmBtn.onclick = onConfirm;
+        }
+    },
     showTokenRenewalModal: (): Promise<string> => {
         return new Promise((resolve, reject) => {
             const tmpl = Utils.$('template-renew-token-modal') as HTMLTemplateElement;
@@ -868,6 +1013,10 @@ export const UI = {
         if (badge && !isModal) {
             badge.textContent = `${State.ds.modRules.length} ${State.ds.modRules.length === 1 ? 'rule' : 'rules'}`;
         }
+        const cloneBadge = Utils.$('ds-clone-rules-count-badge');
+        if (cloneBadge && !isModal) {
+            cloneBadge.textContent = `${State.ds.modRules.length} ${State.ds.modRules.length === 1 ? 'rule' : 'rules'}`;
+        }
 
         container.replaceChildren();
 
@@ -899,6 +1048,7 @@ export const UI = {
                         State.ds.modReplace = State.ds.modRules[0].replacement;
                     }
                     UI.renderDsRules('ds-rules-container', false);
+                    UI.renderDsRules('ds-clone-rules-container', false);
                     const modalList = document.querySelector('.modal-ds-rules-list') as HTMLElement | null;
                     if (modalList) UI.renderDsRules('modal-ds-rules-list', true);
                 };

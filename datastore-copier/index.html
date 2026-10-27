@@ -358,73 +358,184 @@ FROM `source-project-prod.analytics.orders`</code></pre>
             </div>
             <!-- DATASTORE FORM -->
             <div id="form-ds" class="card" style="display:none; overflow: visible !important;">
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="ds-src" class="inp" placeholder="Search..."><div id="dd-ds-src" class="dropdown-menu"></div></div>
-                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="ds-tgt" class="inp" placeholder="Search..."><div id="dd-ds-tgt" class="dropdown-menu"></div></div>
+                <!-- DATASTORE SUB-TABS -->
+                <div class="flex items-center gap-2 mb-5 p-1 rounded-xl bg-black/40 border border-[var(--brd2)]">
+                    <button id="tab-ds-sub-compare" type="button" class="tab-btn on flex-1 text-center py-2 px-3 text-xs flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-code-compare"></i> Compare &amp; Sync Entities
+                    </button>
+                    <button id="tab-ds-sub-clone" type="button" class="tab-btn flex-1 text-center py-2 px-3 text-xs flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-clone text-amber-400"></i> Fast Kind Cloner (Replicate to New Kind)
+                    </button>
                 </div>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE DATABASE</label><input id="ds-src-db" class="inp" placeholder="Select project first..."><div id="dd-ds-src-db" class="dropdown-menu"></div></div>
-                    <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET DATABASE</label><input id="ds-tgt-db" class="inp" placeholder="Select project first..."><div id="dd-ds-tgt-db" class="dropdown-menu"></div></div>
-                </div>
-                <div class="mb-4 dropdown-wrapper">
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="block text-xs font-semibold" style="color:var(--muted)">ENTITY KINDS (MULTI-SELECT)</label>
-                        <div class="flex gap-2">
-                            <button id="btn-ds-select-all-kinds" type="button" class="text-xs text-emerald-400 hover:underline" style="font-size:11px">Select All</button>
-                            <span style="color:var(--muted)">|</span>
-                            <button id="btn-ds-clear-kinds" type="button" class="text-xs text-rose-400 hover:underline" style="font-size:11px">Clear</button>
+
+                <!-- SUBVIEW 1: COMPARE & SYNC -->
+                <div id="ds-subview-compare">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label><input id="ds-src" class="inp" placeholder="Search..."><div id="dd-ds-src" class="dropdown-menu"></div></div>
+                        <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label><input id="ds-tgt" class="inp" placeholder="Search..."><div id="dd-ds-tgt" class="dropdown-menu"></div></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE DATABASE</label><input id="ds-src-db" class="inp" placeholder="Select project first..."><div id="dd-ds-src-db" class="dropdown-menu"></div></div>
+                        <div class="dropdown-wrapper"><label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET DATABASE</label><input id="ds-tgt-db" class="inp" placeholder="Select project first..."><div id="dd-ds-tgt-db" class="dropdown-menu"></div></div>
+                    </div>
+                    <div class="mb-4 dropdown-wrapper">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-semibold" style="color:var(--muted)">ENTITY KINDS (MULTI-SELECT)</label>
+                            <div class="flex gap-2">
+                                <button id="btn-ds-select-all-kinds" type="button" class="text-xs text-emerald-400 hover:underline" style="font-size:11px">Select All</button>
+                                <span style="color:var(--muted)">|</span>
+                                <button id="btn-ds-clear-kinds" type="button" class="text-xs text-rose-400 hover:underline" style="font-size:11px">Clear</button>
+                            </div>
+                        </div>
+                        <div id="ds-kind-chips" class="flex flex-wrap gap-1.5 mb-2" style="min-height:24px"></div>
+                        <input id="ds-kind" class="inp" placeholder="Search and select kinds..."><div id="dd-ds-kind" class="dropdown-menu"></div>
+                    </div>
+                    <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-semibold" style="color:var(--muted)">WHERE FILTERS</label>
+                            <span class="text-[10px]" style="color:var(--accent-teal, #00d4ff)"><i class="fa-solid fa-bolt"></i> Auto-Synced</span>
+                        </div>
+                        <div id="ds-filters-container"></div>
+                        <div class="flex flex-wrap items-center gap-2 mt-2">
+                            <button id="btn-ds-add-filter" class="btn btn-s text-xs" style="padding:5px 10px"><i class="fa-solid fa-plus"></i> Add Filter</button>
+                            <span class="text-[11px] text-zinc-500 font-medium ml-1">Presets:</span>
+                            <button type="button" class="btn btn-s text-[11px] py-1 px-2 btn-preset-filter" data-prop="status" data-op="=" data-type="string" data-val="ACTIVE"><i class="fa-solid fa-bolt text-cyan-400 mr-1"></i>Status = ACTIVE</button>
+                            <button type="button" class="btn btn-s text-[11px] py-1 px-2 btn-preset-filter" data-prop="updatedAt" data-op=">" data-type="string" data-val="2026-08-01T00:00:00Z"><i class="fa-regular fa-clock text-amber-400 mr-1"></i>Recent 24h</button>
+                            <button type="button" class="btn btn-s text-[11px] py-1 px-2 btn-preset-filter" data-prop="__key__" data-op="=" data-type="auto" data-val="1001"><i class="fa-solid fa-key text-purple-400 mr-1"></i>Key ID</button>
+                        </div>
+                        
+                        <!-- LIVE GQL QUERY PREVIEW -->
+                        <div id="gql-preview-container" class="gql-preview-box">
+                            <div class="gql-preview-header">
+                                <span><i class="fa-solid fa-terminal"></i> Live Datastore GQL Query</span>
+                                <span class="gql-preview-badge">AUTO-GENERATED</span>
+                            </div>
+                            <div id="gql-preview-content" class="gql-code-line">SELECT * FROM {Kind} ORDER BY __key__ ASC</div>
                         </div>
                     </div>
-                    <div id="ds-kind-chips" class="flex flex-wrap gap-1.5 mb-2" style="min-height:24px"></div>
-                    <input id="ds-kind" class="inp" placeholder="Search and select kinds..."><div id="dd-ds-kind" class="dropdown-menu"></div>
-                </div>
-                <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-xs font-semibold" style="color:var(--muted)">WHERE FILTERS</label>
-                        <span class="text-[10px]" style="color:var(--accent-teal, #00d4ff)"><i class="fa-solid fa-bolt"></i> Auto-Synced</span>
-                    </div>
-                    <div id="ds-filters-container"></div>
-                    <div class="flex flex-wrap items-center gap-2 mt-2">
-                        <button id="btn-ds-add-filter" class="btn btn-s text-xs" style="padding:5px 10px"><i class="fa-solid fa-plus"></i> Add Filter</button>
-                        <span class="text-[11px] text-zinc-500 font-medium ml-1">Presets:</span>
-                        <button type="button" class="btn btn-s text-[11px] py-1 px-2 btn-preset-filter" data-prop="status" data-op="=" data-type="string" data-val="ACTIVE"><i class="fa-solid fa-bolt text-cyan-400 mr-1"></i>Status = ACTIVE</button>
-                        <button type="button" class="btn btn-s text-[11px] py-1 px-2 btn-preset-filter" data-prop="updatedAt" data-op=">" data-type="string" data-val="2026-08-01T00:00:00Z"><i class="fa-regular fa-clock text-amber-400 mr-1"></i>Recent 24h</button>
-                        <button type="button" class="btn btn-s text-[11px] py-1 px-2 btn-preset-filter" data-prop="__key__" data-op="=" data-type="auto" data-val="1001"><i class="fa-solid fa-key text-purple-400 mr-1"></i>Key ID</button>
-                    </div>
-                    
-                    <!-- LIVE GQL QUERY PREVIEW -->
-                    <div id="gql-preview-container" class="gql-preview-box">
-                        <div class="gql-preview-header">
-                            <span><i class="fa-solid fa-terminal"></i> Live Datastore GQL Query</span>
-                            <span class="gql-preview-badge">AUTO-GENERATED</span>
+                    <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)" id="ds-sidebar-replace-fields">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-xs font-semibold" style="color:var(--muted)">MODIFICATIONS (FIND &amp; REPLACE)</label>
+                                <span id="ds-rules-count-badge" class="badge-pill" style="font-size:10px;padding:1px 6px;background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">1 rule</span>
+                            </div>
+                            <button id="btn-add-ds-rule" type="button" class="btn btn-xs py-1 px-2 text-[11px] font-semibold flex items-center gap-1" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Add Rule
+                            </button>
                         </div>
-                        <div id="gql-preview-content" class="gql-code-line">SELECT * FROM {Kind} ORDER BY __key__ ASC</div>
+                        
+                        <!-- Dynamic Rules Container -->
+                        <div id="ds-rules-container" class="space-y-2.5 mb-2">
+                            <!-- Rendered by UI.renderDsRules() -->
+                        </div>
+
+                        <div class="text-[11px] text-zinc-400 mt-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-cyan-400 text-[10px]"></i>
+                            <span>Supports multiple rules, long values, multiline text &amp; 64-bit integers.</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="btn-ds-dry-run" class="btn btn-s w-full" style="border-color: rgba(0, 212, 255, 0.35);"><i class="fa-solid fa-flask text-cyan-400"></i> Dry Run (Simulate)</button>
+                        <button id="btn-ds-analyze" class="btn btn-p w-full"><i class="fa-solid fa-magnifying-glass-chart"></i> Analyze &amp; Compare Entities</button>
                     </div>
                 </div>
-                <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)" id="ds-sidebar-replace-fields">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-1.5">
-                            <label class="text-xs font-semibold" style="color:var(--muted)">MODIFICATIONS (FIND &amp; REPLACE)</label>
-                            <span id="ds-rules-count-badge" class="badge-pill" style="font-size:10px;padding:1px 6px;background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">1 rule</span>
+
+                <!-- SUBVIEW 2: FAST KIND CLONER -->
+                <div id="ds-subview-clone" style="display:none">
+                    <div class="warning-box mb-4">
+                        <i class="fa-solid fa-bolt text-amber-400 text-base"></i>
+                        <div>
+                            <strong>Fast Kind Cloner.</strong> Stream-copy all entities of an entire Kind directly from one GCP project to another under a custom Target Kind name. Find &amp; Replace string rules and automated safety rollback backups are included.
                         </div>
-                        <button id="btn-add-ds-rule" type="button" class="btn btn-xs py-1 px-2 text-[11px] font-semibold flex items-center gap-1" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981">
-                            <i class="fa-solid fa-plus text-[10px]"></i> Add Rule
-                        </button>
-                    </div>
-                    
-                    <!-- Dynamic Rules Container -->
-                    <div id="ds-rules-container" class="space-y-2.5 mb-2">
-                        <!-- Rendered by UI.renderDsRules() -->
                     </div>
 
-                    <div class="text-[11px] text-zinc-400 mt-1 flex items-center gap-1.5">
-                        <i class="fa-solid fa-circle-info text-cyan-400 text-[10px]"></i>
-                        <span>Supports multiple rules, long values, multiline text &amp; 64-bit integers.</span>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label>
+                            <input id="ds-clone-src" class="inp" placeholder="Search...">
+                            <div id="dd-ds-clone-src" class="dropdown-menu"></div>
+                        </div>
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label>
+                            <input id="ds-clone-tgt" class="inp" placeholder="Search...">
+                            <div id="dd-ds-clone-tgt" class="dropdown-menu"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <button id="btn-ds-dry-run" class="btn btn-s w-full" style="border-color: rgba(0, 212, 255, 0.35);"><i class="fa-solid fa-flask text-cyan-400"></i> Dry Run (Simulate)</button>
-                    <button id="btn-ds-analyze" class="btn btn-p w-full"><i class="fa-solid fa-magnifying-glass-chart"></i> Analyze &amp; Compare Entities</button>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE DATABASE</label>
+                            <input id="ds-clone-src-db" class="inp" placeholder="Select project first...">
+                            <div id="dd-ds-clone-src-db" class="dropdown-menu"></div>
+                        </div>
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET DATABASE</label>
+                            <input id="ds-clone-tgt-db" class="inp" placeholder="Select project first...">
+                            <div id="dd-ds-clone-tgt-db" class="dropdown-menu"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE KIND (TO COPY)</label>
+                            <input id="ds-clone-src-kind" class="inp" placeholder="Search and select kind...">
+                            <div id="dd-ds-clone-src-kind" class="dropdown-menu"></div>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-semibold" style="color:var(--muted)">TARGET KIND NAME (IN DESTINATION)</label>
+                                <div class="flex items-center gap-1.5" id="ds-clone-target-pills">
+                                    <button type="button" class="btn btn-s text-[10px] py-0.5 px-2 btn-clone-preset" data-suffix="_backup">+ _backup</button>
+                                    <button type="button" class="btn btn-s text-[10px] py-0.5 px-2 btn-clone-preset" data-suffix="_v2">+ _v2</button>
+                                    <button type="button" class="btn btn-s text-[10px] py-0.5 px-2 btn-clone-preset" data-suffix="_copy">+ _copy</button>
+                                </div>
+                            </div>
+                            <input id="ds-clone-tgt-kind" class="inp" placeholder="Enter destination kind name (e.g. UserMaster_v2)...">
+                        </div>
+                    </div>
+
+                    <!-- FIND & REPLACE STRING RULES -->
+                    <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)" id="ds-clone-replace-fields">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-xs font-semibold" style="color:var(--muted)">FIND &amp; REPLACE STRING RULES (OPTIONAL)</label>
+                                <span id="ds-clone-rules-count-badge" class="badge-pill" style="font-size:10px;padding:1px 6px;background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">1 rule</span>
+                            </div>
+                            <button id="btn-add-ds-clone-rule" type="button" class="btn btn-xs py-1 px-2 text-[11px] font-semibold flex items-center gap-1" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Add Rule
+                            </button>
+                        </div>
+                        <div id="ds-clone-rules-container" class="space-y-2.5 mb-2"></div>
+                        <div class="text-[11px] text-zinc-400 mt-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-cyan-400 text-[10px]"></i>
+                            <span>Replaces text values losslessly. Use * for property field to replace across all string properties.</span>
+                        </div>
+                    </div>
+
+                    <!-- BACKUP & AUDIT OPTIONS -->
+                    <div class="mb-5 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                        <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">ROLLBACK &amp; TRACKING OPTIONS</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[11px] text-zinc-400 mb-1">Safety Rollback Snapshot</label>
+                                <select id="ds-clone-backup-method" class="inp text-xs">
+                                    <option value="both" selected>Both: Local File (.json.gz) + Cloud Snapshot (Recommended)</option>
+                                    <option value="file">Local File Only (.json.gz)</option>
+                                    <option value="firestore">Cloud Snapshot Only (1-Click Revert)</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col justify-center">
+                                <label class="flex items-center gap-2 cursor-pointer mt-3">
+                                    <input type="checkbox" id="chk-clone-audit-tracking" class="rounded text-amber-500 focus:ring-amber-400" />
+                                    <span class="text-xs text-zinc-200">Schema Audit Tracking (updatedAt / updatedByName)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-ds-start-clone" class="btn btn-p w-full py-3 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-black flex items-center justify-center gap-2 shadow-lg">
+                        <i class="fa-solid fa-clone"></i> Clone Whole Kind to Destination
+                    </button>
                 </div>
             </div>
         </section>
