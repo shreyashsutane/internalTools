@@ -231,23 +231,29 @@ export const App = {
         const dsCopyBtn = Utils.$('btn-ds-copy');
         if (dsCopyBtn) dsCopyBtn.onclick = App.openDsCopyModal;
 
-        // Subtabs: Compare vs Clone
+        // Subtabs: Compare vs Clone vs Dista
         const tabCompare = Utils.$('tab-ds-sub-compare');
         const tabClone = Utils.$('tab-ds-sub-clone');
+        const tabDista = Utils.$('tab-ds-sub-dista');
         const viewCompare = Utils.$('ds-subview-compare');
         const viewClone = Utils.$('ds-subview-clone');
+        const viewDista = Utils.$('ds-subview-dista');
         if (tabCompare && tabClone && viewCompare && viewClone) {
             tabCompare.onclick = () => {
                 tabCompare.classList.add('on');
                 tabClone.classList.remove('on');
+                if (tabDista) tabDista.classList.remove('on');
                 viewCompare.style.display = 'block';
                 viewClone.style.display = 'none';
+                if (viewDista) viewDista.style.display = 'none';
             };
             tabClone.onclick = () => {
                 tabClone.classList.add('on');
                 tabCompare.classList.remove('on');
+                if (tabDista) tabDista.classList.remove('on');
                 viewClone.style.display = 'block';
                 viewCompare.style.display = 'none';
+                if (viewDista) viewDista.style.display = 'none';
 
                 const cloneSrc = Utils.$('ds-clone-src') as HTMLInputElement | null;
                 const cloneTgt = Utils.$('ds-clone-tgt') as HTMLInputElement | null;
@@ -259,7 +265,97 @@ export const App = {
                 if (cloneTgtDb && !cloneTgtDb.value && State.ds.tgtDb) cloneTgtDb.value = State.ds.tgtDb;
                 UI.renderDsRules('ds-clone-rules-container', false);
             };
+            if (tabDista && viewDista) {
+                tabDista.onclick = () => {
+                    tabDista.classList.add('on');
+                    tabCompare.classList.remove('on');
+                    tabClone.classList.remove('on');
+                    viewDista.style.display = 'block';
+                    viewCompare.style.display = 'none';
+                    viewClone.style.display = 'none';
+
+                    const distaSrc = Utils.$('ds-dista-src') as HTMLInputElement | null;
+                    const distaTgt = Utils.$('ds-dista-tgt') as HTMLInputElement | null;
+                    const distaSrcDb = Utils.$('ds-dista-src-db') as HTMLInputElement | null;
+                    const distaTgtDb = Utils.$('ds-dista-tgt-db') as HTMLInputElement | null;
+                    if (distaSrc && !distaSrc.value && State.ds.src) distaSrc.value = State.ds.src;
+                    if (distaTgt && !distaTgt.value && State.ds.tgt) distaTgt.value = State.ds.tgt;
+                    if (distaSrcDb && !distaSrcDb.value && State.ds.srcDb) distaSrcDb.value = State.ds.srcDb;
+                    if (distaTgtDb && !distaTgtDb.value && State.ds.tgtDb) distaTgtDb.value = State.ds.tgtDb;
+                    UI.renderDsRules('ds-dista-rules-container', false);
+                    App.updateDistaLiveFilters();
+                };
+            }
         }
+
+        // Dista workflow selection cards (Task Master Template vs Dista Entities)
+        const cardTaskMaster = Utils.$('card-dista-wf-taskmaster');
+        const cardEntities = Utils.$('card-dista-wf-entities');
+        const secTmInputs = Utils.$('section-dista-tm-inputs');
+        const secEntInputs = Utils.$('section-dista-ent-inputs');
+
+        if (cardTaskMaster && cardEntities && secTmInputs && secEntInputs) {
+            cardTaskMaster.onclick = () => {
+                State.ds.distaWorkflow = 'taskmaster';
+                cardTaskMaster.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                cardTaskMaster.style.background = 'rgba(0, 0, 0, 0.6)';
+                cardTaskMaster.style.boxShadow = '0 0 0 1px rgba(245, 158, 11, 0.4)';
+                cardEntities.style.borderColor = 'rgb(51, 65, 85)';
+                cardEntities.style.background = 'rgba(0, 0, 0, 0.4)';
+                cardEntities.style.boxShadow = 'none';
+                secTmInputs.style.display = 'block';
+                secEntInputs.style.display = 'none';
+                Utils.hide('ds-dista-analysis-results');
+                App.updateDistaLiveFilters();
+            };
+            cardEntities.onclick = () => {
+                State.ds.distaWorkflow = 'entities';
+                cardEntities.style.borderColor = 'rgba(168, 85, 247, 0.5)';
+                cardEntities.style.background = 'rgba(0, 0, 0, 0.6)';
+                cardEntities.style.boxShadow = '0 0 0 1px rgba(168, 85, 247, 0.4)';
+                cardTaskMaster.style.borderColor = 'rgb(51, 65, 85)';
+                cardTaskMaster.style.background = 'rgba(0, 0, 0, 0.4)';
+                cardTaskMaster.style.boxShadow = 'none';
+                secEntInputs.style.display = 'block';
+                secTmInputs.style.display = 'none';
+                Utils.hide('ds-dista-analysis-results');
+                App.updateDistaLiveFilters();
+            };
+        }
+
+        // Live input updates for Dista IDs
+        ['ds-dista-tm-id', 'ds-dista-ent-id', 'ds-dista-tmpl-id'].forEach(id => {
+            const el = Utils.$(id);
+            if (el) el.addEventListener('input', () => App.updateDistaLiveFilters());
+        });
+
+        // Add Rule in Dista view
+        const addDistaRuleBtn = Utils.$('btn-add-ds-dista-rule');
+        if (addDistaRuleBtn) {
+            addDistaRuleBtn.onclick = () => {
+                if (!State.ds.modRules) State.ds.modRules = [];
+                State.ds.modRules.push({
+                    id: 'rule-' + Date.now(),
+                    field: '*',
+                    target: '',
+                    replacement: ''
+                });
+                UI.renderDsRules('ds-dista-rules-container', false);
+                UI.renderDsRules('ds-clone-rules-container', false);
+                UI.renderDsRules('ds-rules-container', false);
+                SoundFX.playChime();
+            };
+        }
+
+        // Action buttons in Dista view
+        const distaDryRunBtn = Utils.$('btn-dista-dry-run');
+        if (distaDryRunBtn) distaDryRunBtn.onclick = () => App.analyzeDistaRelational(true);
+
+        const distaAnalyzeBtn = Utils.$('btn-dista-analyze');
+        if (distaAnalyzeBtn) distaAnalyzeBtn.onclick = () => App.analyzeDistaRelational(false);
+
+        const distaStartCopyBtn = Utils.$('btn-dista-start-copy');
+        if (distaStartCopyBtn) distaStartCopyBtn.onclick = App.startDistaRelationalCopy;
 
         // Clone presets
         document.querySelectorAll('.btn-clone-preset').forEach((btn: any) => {
@@ -3539,6 +3635,516 @@ export const App = {
         tgtProject?: string | null
     ): void => {
         Diff.openJsonEditorModal(row, propKey, srcInput, tgtInput, srcProject || State.ds.src, tgtProject || State.ds.tgt);
+    },
+
+    updateDistaLiveFilters: (): void => {
+        const liveFiltersBox = Utils.$('ds-dista-live-filters');
+        const badge = Utils.$('ds-dista-kinds-count-badge');
+        if (!liveFiltersBox) return;
+
+        const wf = State.ds.distaWorkflow || 'taskmaster';
+        if (wf === 'taskmaster') {
+            const tmId = (Utils.$('ds-dista-tm-id') as HTMLInputElement)?.value.trim() || 'TM-ONBOARDING-V1';
+            if (badge) badge.textContent = '3 Kinds Configured';
+            liveFiltersBox.innerHTML = `
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/5">
+                    <span class="text-zinc-200 font-bold">1. TaskMasterTemplate</span>
+                    <span class="text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/30">__key__ = Key('TaskMasterTemplate', '${Utils.escapeHtml(tmId)}')</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/5">
+                    <span class="text-zinc-200 font-bold">2. TaskMasterEntitySections</span>
+                    <span class="text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/30">WHERE templateId = '${Utils.escapeHtml(tmId)}'</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/5">
+                    <span class="text-zinc-200 font-bold">3. TaskMasterEntityFields</span>
+                    <span class="text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/30">WHERE templateId = '${Utils.escapeHtml(tmId)}'</span>
+                </div>
+            `;
+        } else {
+            const entId = (Utils.$('ds-dista-ent-id') as HTMLInputElement)?.value.trim() || 'ENT-RECORD-9901';
+            const tmplId = (Utils.$('ds-dista-tmpl-id') as HTMLInputElement)?.value.trim() || 'TMPL-DYNAMIC-22';
+            if (badge) badge.textContent = '5 Kinds Configured';
+            liveFiltersBox.innerHTML = `
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/5">
+                    <span class="text-zinc-200 font-bold">1. DistaEntities</span>
+                    <span class="text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/30">__key__ = Key('DistaEntities', '${Utils.escapeHtml(entId)}')</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/5">
+                    <span class="text-zinc-200 font-bold">2. DistaEntityFields</span>
+                    <span class="text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">WHERE distaEntitiesId = '${Utils.escapeHtml(entId)}'</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/5">
+                    <span class="text-zinc-200 font-bold">3. DistaEntitySections</span>
+                    <span class="text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">WHERE distaEntitiesId = '${Utils.escapeHtml(entId)}'</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/5">
+                    <span class="text-zinc-200 font-bold">4. DistaEntityTemplate</span>
+                    <span class="text-purple-300 bg-purple-950/40 px-2 py-0.5 rounded border border-purple-800/30">WHERE distaEntitiesId = '${Utils.escapeHtml(entId)}'</span>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded bg-black/40 border border-white/5">
+                    <span class="text-zinc-200 font-bold">5. DistaEntityDynamicSelectBox</span>
+                    <span class="text-emerald-300 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/30">WHERE templateId = '${Utils.escapeHtml(tmplId)}'</span>
+                </div>
+            `;
+        }
+    },
+
+    analyzeDistaRelational: async (isDryRun = false): Promise<void> => {
+        const srcInp = Utils.$('ds-dista-src') as HTMLInputElement | null;
+        const tgtInp = Utils.$('ds-dista-tgt') as HTMLInputElement | null;
+        const srcDbInp = Utils.$('ds-dista-src-db') as HTMLInputElement | null;
+        const tgtDbInp = Utils.$('ds-dista-tgt-db') as HTMLInputElement | null;
+
+        const src = srcInp?.value.trim() || State.ds.src;
+        const tgt = tgtInp?.value.trim() || State.ds.tgt;
+        const srcDb = srcDbInp?.value.trim() || State.ds.srcDb || '(default)';
+        const tgtDb = tgtDbInp?.value.trim() || State.ds.tgtDb || '(default)';
+
+        if (!src || !tgt) {
+            Utils.toast('Please select both Source and Target projects.', 'err');
+            return;
+        }
+
+        const srcDbClean = (srcDb === '(default)' || !srcDb) ? '' : srcDb;
+        const tgtDbClean = (tgtDb === '(default)' || !tgtDb) ? '' : tgtDb;
+
+        const wf = State.ds.distaWorkflow || 'taskmaster';
+        interface PlannedItem {
+            kind: string;
+            type: 'key' | 'property';
+            prop?: string;
+            val: string;
+            filterDesc: string;
+            entities: any[];
+            targetMatchCount: number;
+        }
+
+        const plan: PlannedItem[] = [];
+
+        if (wf === 'taskmaster') {
+            const tmIdInp = Utils.$('ds-dista-tm-id') as HTMLInputElement | null;
+            const tmId = tmIdInp?.value.trim() || 'TM-ONBOARDING-V1';
+            if (!tmId) {
+                Utils.toast('Please enter a Task Master Template ID (templateId).', 'err');
+                tmIdInp?.focus();
+                return;
+            }
+            plan.push({
+                kind: 'TaskMasterTemplate',
+                type: 'key',
+                val: tmId,
+                filterDesc: `__key__ == '${tmId}'`,
+                entities: [],
+                targetMatchCount: 0
+            });
+            plan.push({
+                kind: 'TaskMasterEntitySections',
+                type: 'property',
+                prop: 'templateId',
+                val: tmId,
+                filterDesc: `templateId == '${tmId}'`,
+                entities: [],
+                targetMatchCount: 0
+            });
+            plan.push({
+                kind: 'TaskMasterEntityFields',
+                type: 'property',
+                prop: 'templateId',
+                val: tmId,
+                filterDesc: `templateId == '${tmId}'`,
+                entities: [],
+                targetMatchCount: 0
+            });
+        } else {
+            const entIdInp = Utils.$('ds-dista-ent-id') as HTMLInputElement | null;
+            const tmplIdInp = Utils.$('ds-dista-tmpl-id') as HTMLInputElement | null;
+            const entId = entIdInp?.value.trim() || 'ENT-RECORD-9901';
+            const tmplId = tmplIdInp?.value.trim() || 'TMPL-DYNAMIC-22';
+
+            if (!entId) {
+                Utils.toast('Please enter a Dista Entities ID (distaEntitiesId).', 'err');
+                entIdInp?.focus();
+                return;
+            }
+            if (!tmplId) {
+                Utils.toast('Please enter a Template ID (templateId) for DynamicSelectBox.', 'err');
+                tmplIdInp?.focus();
+                return;
+            }
+
+            plan.push({
+                kind: 'DistaEntities',
+                type: 'key',
+                val: entId,
+                filterDesc: `__key__ == '${entId}'`,
+                entities: [],
+                targetMatchCount: 0
+            });
+            plan.push({
+                kind: 'DistaEntityFields',
+                type: 'property',
+                prop: 'distaEntitiesId',
+                val: entId,
+                filterDesc: `distaEntitiesId == '${entId}'`,
+                entities: [],
+                targetMatchCount: 0
+            });
+            plan.push({
+                kind: 'DistaEntitySections',
+                type: 'property',
+                prop: 'distaEntitiesId',
+                val: entId,
+                filterDesc: `distaEntitiesId == '${entId}'`,
+                entities: [],
+                targetMatchCount: 0
+            });
+            plan.push({
+                kind: 'DistaEntityTemplate',
+                type: 'property',
+                prop: 'distaEntitiesId',
+                val: entId,
+                filterDesc: `distaEntitiesId == '${entId}'`,
+                entities: [],
+                targetMatchCount: 0
+            });
+            plan.push({
+                kind: 'DistaEntityDynamicSelectBox',
+                type: 'property',
+                prop: 'templateId',
+                val: tmplId,
+                filterDesc: `templateId == '${tmplId}'`,
+                entities: [],
+                targetMatchCount: 0
+            });
+        }
+
+        Utils.toast(isDryRun ? 'Simulating relational queries...' : 'Analyzing and comparing entities across kinds...', 'info');
+
+        const controller = beginDsOperation();
+        let totalSrcEntities = 0;
+        let totalNewInTgt = 0;
+
+        try {
+            const srcPartition: any = { projectId: src };
+            if (srcDbClean) srcPartition.databaseId = srcDbClean;
+            const tgtPartition: any = { projectId: tgt };
+            if (tgtDbClean) tgtPartition.databaseId = tgtDbClean;
+
+            for (const item of plan) {
+                if (controller.signal.aborted) break;
+
+                const collected: any[] = [];
+                if (item.type === 'key') {
+                    // Try name lookup
+                    const keyName = { partitionId: srcPartition, path: [{ kind: item.kind, name: item.val }] };
+                    const resName = await Api.lookupEntities(src, [keyName], srcDbClean, controller.signal);
+                    if (resName.found && resName.found.length > 0) {
+                        for (const f of resName.found) if (f.entity) collected.push(f.entity);
+                    } else {
+                        // Try id lookup if numeric
+                        const keyId = { partitionId: srcPartition, path: [{ kind: item.kind, id: item.val }] };
+                        const resId = await Api.lookupEntities(src, [keyId], srcDbClean, controller.signal);
+                        if (resId.found && resId.found.length > 0) {
+                            for (const f of resId.found) if (f.entity) collected.push(f.entity);
+                        } else {
+                            // Fallback: query kind
+                            const queryRes = await Api.runDatastoreQuery(src, {
+                                partitionId: srcPartition,
+                                query: { kind: [{ name: item.kind }], limit: 10 }
+                            }, srcDbClean, controller.signal);
+                            for (const r of queryRes.batch?.entityResults || []) {
+                                if (r.entity) collected.push(r.entity);
+                            }
+                        }
+                    }
+                } else {
+                    // Property filter query
+                    const queryBody: any = {
+                        partitionId: srcPartition,
+                        query: {
+                            kind: [{ name: item.kind }],
+                            filter: {
+                                propertyFilter: {
+                                    property: { name: item.prop! },
+                                    op: 'EQUAL',
+                                    value: { stringValue: item.val }
+                                }
+                            },
+                            limit: 300
+                        }
+                    };
+                    const queryRes = await Api.runDatastoreQuery(src, queryBody, srcDbClean, controller.signal);
+                    for (const r of queryRes.batch?.entityResults || []) {
+                        if (r.entity) collected.push(r.entity);
+                    }
+                }
+
+                item.entities = collected;
+                totalSrcEntities += collected.length;
+
+                // Check matches in target
+                if (collected.length > 0) {
+                    const targetLookupKeys = collected.map(ent => {
+                        const copyKey = cloneDatastoreValue(ent.key);
+                        copyKey.partitionId = cloneDatastoreValue(tgtPartition);
+                        return copyKey;
+                    });
+                    const tgtLookup = await Api.lookupEntities(tgt, targetLookupKeys, tgtDbClean, controller.signal);
+                    item.targetMatchCount = (tgtLookup.found || []).length;
+                    totalNewInTgt += (collected.length - item.targetMatchCount);
+                }
+            }
+
+            // Save analysis state
+            State.ds.lastDistaAnalysis = {
+                src,
+                tgt,
+                srcDb,
+                tgtDb,
+                workflow: wf,
+                totalSrcEntities,
+                totalNewInTgt,
+                plan
+            };
+
+            // Render table
+            const tbody = Utils.$('ds-dista-analysis-tbody');
+            if (tbody) {
+                tbody.replaceChildren();
+                plan.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-white/5 transition-colors';
+
+                    const newInTgt = Math.max(0, item.entities.length - item.targetMatchCount);
+                    const targetStatusHtml = newInTgt === item.entities.length
+                        ? `<span class="badge-pill bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] px-2 py-0.5">0 in Target (New Kind)</span>`
+                        : item.targetMatchCount > 0
+                        ? `<span class="badge-pill bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] px-2 py-0.5">${item.targetMatchCount} Existing in Target</span>`
+                        : `<span class="badge-pill bg-zinc-700/50 text-zinc-300 text-[11px] px-2 py-0.5">None</span>`;
+
+                    tr.innerHTML = `
+                        <td class="px-3.5 py-2.5 font-bold ${wf === 'taskmaster' ? 'text-amber-300' : 'text-purple-300'} font-mono">${Utils.escapeHtml(item.kind)}</td>
+                        <td class="px-3.5 py-2.5 font-mono text-cyan-400 text-xs">${Utils.escapeHtml(item.filterDesc)}</td>
+                        <td class="px-3.5 py-2.5 text-center font-bold text-emerald-400 font-mono">${item.entities.length} ${item.entities.length === 1 ? 'entity' : 'entities'}</td>
+                        <td class="px-3.5 py-2.5 text-center">${targetStatusHtml}</td>
+                        <td class="px-3.5 py-2.5 text-right text-emerald-400 font-bold text-xs"><i class="fa-solid fa-check text-[10px] mr-1"></i> Ready to Replicate</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Update summary badges
+            const sumSrcBadge = Utils.$('ds-dista-summary-src');
+            const sumNewBadge = Utils.$('ds-dista-summary-new');
+            if (sumSrcBadge) sumSrcBadge.textContent = `${totalSrcEntities} Total in Source`;
+            if (sumNewBadge) sumNewBadge.textContent = `${totalNewInTgt} New in Target`;
+
+            Utils.show('ds-dista-analysis-results');
+
+            if (isDryRun) {
+                Utils.toast(`Dry run complete: Found ${totalSrcEntities} entities across ${plan.length} kinds. All filters valid.`, 'ok');
+                SoundFX.playChime();
+            } else {
+                Utils.toast(`Analysis complete: Found ${totalSrcEntities} entities across ${plan.length} kinds. Ready to copy.`, 'ok');
+                SoundFX.playChime();
+            }
+        } catch (err: any) {
+            console.error('Error during Dista relational analysis:', err);
+            Utils.toast(err.message || 'Failed to analyze entities across kinds', 'err');
+        }
+    },
+
+    startDistaRelationalCopy: (): void => {
+        const analysis = State.ds.lastDistaAnalysis;
+        if (!analysis || analysis.totalSrcEntities === 0) {
+            Utils.toast('Please run Analyze & Compare first to discover entities across the kinds.', 'err');
+            return;
+        }
+
+        const backupMethod = ((Utils.$('ds-dista-backup-method') as HTMLSelectElement)?.value || 'both') as 'file' | 'firestore' | 'both';
+        const applyAuditTracking = Boolean((Utils.$('chk-dista-audit-tracking') as HTMLInputElement)?.checked);
+        const activeRules = (State.ds.modRules || []).filter(r => r && r.target);
+
+        const kindBreakdown = (analysis.plan || []).map((p: any) => ({
+            kind: p.kind,
+            count: p.entities.length,
+            filter: p.filterDesc
+        }));
+
+        UI.openDistaConfirmModal({
+            src: analysis.src,
+            tgt: analysis.tgt,
+            srcDb: analysis.srcDb,
+            tgtDb: analysis.tgtDb,
+            workflow: analysis.workflow,
+            kindBreakdown,
+            totalEntities: analysis.totalSrcEntities,
+            backupMethod,
+            applyAuditTracking,
+            rules: activeRules
+        }, () => {
+            void App.executeDistaRelationalCopy({
+                src: analysis.src,
+                tgt: analysis.tgt,
+                srcDb: analysis.srcDb,
+                tgtDb: analysis.tgtDb,
+                workflow: analysis.workflow,
+                backupMethod,
+                applyAuditTracking,
+                rules: activeRules,
+                plan: analysis.plan
+            });
+        });
+    },
+
+    executeDistaRelationalCopy: async (config: {
+        src: string;
+        tgt: string;
+        srcDb: string;
+        tgtDb: string;
+        workflow: 'taskmaster' | 'entities';
+        backupMethod: 'file' | 'firestore' | 'both';
+        applyAuditTracking: boolean;
+        rules: any[];
+        plan: any[];
+    }): Promise<void> => {
+        UI.closeModal();
+        Utils.show('sec-loading');
+        Utils.hide('load-ds-stats');
+        Utils.show('btn-cancel-ds');
+        Utils.$('load-title')!.textContent = `Copying Relational Templates & Entities...`;
+        Utils.$('load-msg')!.textContent = 'Initializing copy pipeline and backup snapshot...';
+        State.cancelDs = false;
+
+        const controller = beginDsOperation();
+        const userAuditName = formatAuditUserName(State.authEmail);
+        let totalCopied = 0;
+        let totalReplacements = 0;
+        const backupData: any[] = [];
+
+        try {
+            const srcDbClean = (config.srcDb === '(default)' || !config.srcDb) ? '' : config.srcDb;
+            const tgtDbClean = (config.tgtDb === '(default)' || !config.tgtDb) ? '' : config.tgtDb;
+            const tgtPartitionId: any = { projectId: config.tgt };
+            if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
+
+            await AuditLog.addLog(
+                'DATASTORE_DISTA_COPY',
+                config.src,
+                config.tgt,
+                `Initiated relational copy for ${config.workflow === 'taskmaster' ? 'Task Master Template' : 'Dista Entities'} across ${config.plan.length} kinds.`,
+                'IN_PROGRESS'
+            );
+
+            // Collect all mutations across kinds
+            const allMutations: any[] = [];
+
+            for (const item of config.plan) {
+                if (State.cancelDs || controller.signal.aborted) {
+                    Utils.toast('Copying cancelled.', 'info');
+                    break;
+                }
+
+                for (const rawEntity of item.entities) {
+                    const entity = cloneDatastoreValue(rawEntity);
+                    if (!entity.key || !Array.isArray(entity.key.path) || entity.key.path.length === 0) continue;
+
+                    // Retarget key partitionId
+                    entity.key.partitionId = cloneDatastoreValue(tgtPartitionId);
+                    const formattedTargetKeyStr = App.formatKey(entity.key);
+
+                    // Apply Find & Replace string transformations
+                    if (config.rules && config.rules.length > 0) {
+                        const replaced = replaceDatastoreRules(entity.properties || {}, config.rules);
+                        if (replaced > 0) totalReplacements += replaced;
+                    }
+
+                    // Apply audit tracking if enabled
+                    if (config.applyAuditTracking) {
+                        applyEntityAuditTracking(entity, rawEntity, false, userAuditName, []);
+                    }
+
+                    // Minify JSON strings
+                    if (entity.properties) {
+                        Diff.minifyJsonProperties(entity.properties);
+                    }
+
+                    allMutations.push({ upsert: entity });
+
+                    // Rollback delete entry for safety
+                    backupData.push({
+                        keyStr: formattedTargetKeyStr,
+                        action: 'delete',
+                        prevEntity: { key: cloneDatastoreValue(entity.key) }
+                    });
+                }
+            }
+
+            // Save backup file if requested
+            if ((config.backupMethod === 'file' || config.backupMethod === 'both') && backupData.length > 0) {
+                try {
+                    const backupPayload = {
+                        version: '1.0',
+                        createdAt: new Date().toISOString(),
+                        type: 'DATASTORE_BACKUP',
+                        src: config.src,
+                        tgt: config.tgt,
+                        srcDb: config.srcDb,
+                        tgtDb: config.tgtDb,
+                        workflow: config.workflow,
+                        totalEntities: backupData.length,
+                        backupData
+                    };
+                    const blob = await compressJsonToGzipBlob(backupPayload);
+                    const filename = `dista-copy-backup-${config.workflow}-${Date.now()}.json.gz`;
+                    downloadBlobFile(blob, filename);
+                    Utils.toast(`Safety rollback file downloaded: ${filename}`, 'ok');
+                } catch (backupErr: any) {
+                    console.warn('Local file backup compression failed:', backupErr);
+                }
+            }
+
+            // Commit mutations in batches of 250
+            const BATCH_SIZE = 250;
+            for (let i = 0; i < allMutations.length; i += BATCH_SIZE) {
+                if (State.cancelDs || controller.signal.aborted) break;
+
+                const batch = allMutations.slice(i, i + BATCH_SIZE);
+                await Api.commitDatastore(config.tgt, batch, config.tgtDb, controller.signal);
+                totalCopied += batch.length;
+                Utils.$('load-msg')!.textContent = `Replicating entities into target project (${totalCopied} of ${allMutations.length})...`;
+            }
+
+            // Final audit log
+            const summaryDetails = `Successfully copied ${totalCopied} entities across ${config.plan.length} kinds (${config.workflow === 'taskmaster' ? 'Task Master Template' : 'Dista Entities'}). Find & Replace modifications: ${totalReplacements}.`;
+            await AuditLog.addLog(
+                'DATASTORE_DISTA_COPY',
+                config.src,
+                config.tgt,
+                summaryDetails,
+                'SUCCESS',
+                backupData.length > 0 ? backupData : undefined
+            );
+
+            SoundFX.playChime();
+            Utils.hide('sec-loading');
+            Utils.toast(summaryDetails, 'ok');
+
+            // Refresh analysis view status
+            void App.analyzeDistaRelational(false);
+
+        } catch (err: any) {
+            console.error('Error during Dista relational copy:', err);
+            Utils.hide('sec-loading');
+            Utils.toast(err.message || 'Copy operation failed', 'err');
+            await AuditLog.addLog(
+                'DATASTORE_DISTA_COPY',
+                config.src,
+                config.tgt,
+                `Copy failed: ${err.message}`,
+                'FAILED'
+            );
+        }
     }
 };
 

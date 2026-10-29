@@ -366,6 +366,9 @@ FROM `source-project-prod.analytics.orders`</code></pre>
                     <button id="tab-ds-sub-clone" type="button" class="tab-btn flex-1 text-center py-2 px-3 text-xs flex items-center justify-center gap-2">
                         <i class="fa-solid fa-clone text-amber-400"></i> Fast Kind Cloner (Replicate to New Kind)
                     </button>
+                    <button id="tab-ds-sub-dista" type="button" class="tab-btn flex-1 text-center py-2 px-3 text-xs flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-layer-group text-rose-400"></i> DistaEntities / Template Copying
+                    </button>
                 </div>
 
                 <!-- SUBVIEW 1: COMPARE & SYNC -->
@@ -536,6 +539,257 @@ FROM `source-project-prod.analytics.orders`</code></pre>
                     <button id="btn-ds-start-clone" class="btn btn-p w-full py-3 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-black flex items-center justify-center gap-2 shadow-lg">
                         <i class="fa-solid fa-clone"></i> Clone Whole Kind to Destination
                     </button>
+                </div>
+
+                <!-- SUBVIEW 3: DISTAENTITIES / TEMPLATE COPYING -->
+                <div id="ds-subview-dista" style="display:none">
+                    <div class="p-4 rounded-xl mb-4" style="background: linear-gradient(135deg, rgba(244,63,94,0.12), rgba(168,85,247,0.08), rgba(0,0,0,0.5)); border: 1px solid rgba(244,63,94,0.35);">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-wider">
+                                <i class="fa-solid fa-layer-group text-sm"></i>
+                                <span>Relational Template &amp; Entity Copy Engine</span>
+                            </div>
+                            <span class="badge-pill" style="font-size:11px;padding:2px 8px;background:rgba(244,63,94,0.2);color:#f43f5e;border:1px solid rgba(244,63,94,0.4)">2 Workflows Configured</span>
+                        </div>
+                        <p class="text-xs text-zinc-300 mb-3 leading-relaxed">
+                            Select a copy workflow below, enter the required IDs, and run <strong>Analyze &amp; Compare</strong>. The engine automatically constructs the exact key lookups and relational property queries across all dependent Kinds.
+                        </p>
+
+                        <!-- 2 WORKFLOW SELECTION CARDS -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <!-- CARD 1: Task Master Template -->
+                            <div id="card-dista-wf-taskmaster" class="p-3.5 rounded-xl border border-amber-500/50 bg-black/60 cursor-pointer space-y-2 transition-all hover:border-amber-400" style="box-shadow: 0 0 0 1px rgba(245,158,11,0.4)">
+                                <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-5 h-5 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">1</span>
+                                        <span class="font-bold text-xs text-amber-300">Task Master Template</span>
+                                    </div>
+                                    <span class="badge-pill bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] px-2 py-0.5 font-mono font-bold">templateId</span>
+                                </div>
+                                <div class="space-y-1 text-xs font-mono">
+                                    <div class="flex justify-between text-zinc-300">
+                                        <span>1) TaskMasterTemplate</span>
+                                        <span class="text-cyan-400 font-bold">Key (templateId)</span>
+                                    </div>
+                                    <div class="flex justify-between text-zinc-300">
+                                        <span>2) TaskMasterEntitySections</span>
+                                        <span class="text-amber-400 font-bold">WHERE templateId</span>
+                                    </div>
+                                    <div class="flex justify-between text-zinc-300">
+                                        <span>3) TaskMasterEntityFields</span>
+                                        <span class="text-amber-400 font-bold">WHERE templateId</span>
+                                    </div>
+                                </div>
+                                <div class="text-[11px] text-zinc-400 pt-1 border-t border-white/5">
+                                    Copies master task definition, sections, and fields by <code>templateId</code>.
+                                </div>
+                            </div>
+
+                            <!-- CARD 2: Dista Entities -->
+                            <div id="card-dista-wf-entities" class="p-3.5 rounded-xl border border-slate-700 bg-black/40 cursor-pointer space-y-2 transition-all hover:border-purple-400">
+                                <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-5 h-5 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs font-bold">2</span>
+                                        <span class="font-bold text-xs text-purple-300">Dista Entities</span>
+                                    </div>
+                                    <span class="badge-pill bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] px-2 py-0.5 font-mono font-bold">distaEntitiesId &amp; templateId</span>
+                                </div>
+                                <div class="space-y-1 text-xs font-mono">
+                                    <div class="flex justify-between text-zinc-300">
+                                        <span>1) DistaEntities</span>
+                                        <span class="text-cyan-400 font-bold">Key (distaEntitiesId)</span>
+                                    </div>
+                                    <div class="flex justify-between text-zinc-300">
+                                        <span>2) DistaEntityFields</span>
+                                        <span class="text-purple-400 font-bold">WHERE distaEntitiesId</span>
+                                    </div>
+                                    <div class="flex justify-between text-zinc-300">
+                                        <span>3) DistaEntitySections</span>
+                                        <span class="text-purple-400 font-bold">WHERE distaEntitiesId</span>
+                                    </div>
+                                    <div class="flex justify-between text-zinc-300">
+                                        <span>4) DistaEntityTemplate</span>
+                                        <span class="text-purple-400 font-bold">WHERE distaEntitiesId</span>
+                                    </div>
+                                    <div class="flex justify-between text-zinc-300">
+                                        <span>5) DistaEntityDynamicSelectBox</span>
+                                        <span class="text-emerald-400 font-bold">WHERE templateId</span>
+                                    </div>
+                                </div>
+                                <div class="text-[11px] text-zinc-400 pt-1 border-t border-white/5">
+                                    Copies entity records, fields, sections, template via <code>distaEntitiesId</code> and select box via <code>templateId</code>.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PROJECT & DATABASE DROPDOWNS -->
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE PROJECT</label>
+                            <input id="ds-dista-src" class="inp" placeholder="Search...">
+                            <div id="dd-ds-dista-src" class="dropdown-menu"></div>
+                        </div>
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET PROJECT</label>
+                            <input id="ds-dista-tgt" class="inp" placeholder="Search...">
+                            <div id="dd-ds-dista-tgt" class="dropdown-menu"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">SOURCE DATABASE</label>
+                            <input id="ds-dista-src-db" class="inp" placeholder="Select project first...">
+                            <div id="dd-ds-dista-src-db" class="dropdown-menu"></div>
+                        </div>
+                        <div class="dropdown-wrapper">
+                            <label class="block text-xs font-semibold mb-1" style="color:var(--muted)">TARGET DATABASE</label>
+                            <input id="ds-dista-tgt-db" class="inp" placeholder="Select project first...">
+                            <div id="dd-ds-dista-tgt-db" class="dropdown-menu"></div>
+                        </div>
+                    </div>
+
+                    <!-- WORKFLOW 1 ID INPUT: TASK MASTER TEMPLATE -->
+                    <div id="section-dista-tm-inputs" class="mb-4 p-3.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold text-amber-300 uppercase tracking-wider">
+                                Task Master Template ID (<code>templateId</code>)
+                            </label>
+                            <span class="text-[11px] text-zinc-400">Single ID or key name</span>
+                        </div>
+                        <input id="ds-dista-tm-id" class="inp font-mono text-xs" placeholder="e.g. TM-ONBOARDING-V1, TM-1001...">
+                        <div class="text-[11px] text-zinc-400 mt-1.5 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-amber-400 text-[10px]"></i>
+                            <span>Fetches <code>TaskMasterTemplate</code> by key, then queries <code>TaskMasterEntitySections</code> and <code>TaskMasterEntityFields</code> matching <code>templateId</code>.</span>
+                        </div>
+                    </div>
+
+                    <!-- WORKFLOW 2 ID INPUTS: DISTA ENTITIES -->
+                    <div id="section-dista-ent-inputs" style="display:none" class="mb-4 p-3.5 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-purple-300 uppercase tracking-wider mb-1">
+                                    Dista Entities ID (<code>distaEntitiesId</code>)
+                                </label>
+                                <input id="ds-dista-ent-id" class="inp font-mono text-xs" placeholder="e.g. ENT-RECORD-9901, ENT-1001...">
+                                <span class="text-[11px] text-zinc-400 mt-1 block">Key for <code>DistaEntities</code>; query filter for Fields, Sections, Template</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
+                                    Template ID (<code>templateId</code>)
+                                </label>
+                                <input id="ds-dista-tmpl-id" class="inp font-mono text-xs" placeholder="e.g. TMPL-DYNAMIC-22...">
+                                <span class="text-[11px] text-zinc-400 mt-1 block">Query filter strictly for <code>DistaEntityDynamicSelectBox</code></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LIVE APPLIED FILTERS BOX -->
+                    <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-xs font-semibold text-cyan-400"><i class="fa-solid fa-filter mr-1"></i> LIVE FILTER RULES APPLIED ON KINDS</label>
+                                <span id="ds-dista-kinds-count-badge" class="badge-pill" style="font-size:10px;padding:1px 6px;background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">3 Kinds Configured</span>
+                            </div>
+                            <span class="text-[10px] text-zinc-400 font-mono">Auto-generated</span>
+                        </div>
+                        <div id="ds-dista-live-filters" class="space-y-1.5 font-mono text-xs">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- FIND & REPLACE STRING RULES -->
+                    <div class="mb-4 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)" id="ds-dista-replace-fields">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-1.5">
+                                <label class="text-xs font-semibold" style="color:var(--muted)">FIND &amp; REPLACE STRING RULES (OPTIONAL)</label>
+                                <span id="ds-dista-rules-count-badge" class="badge-pill" style="font-size:10px;padding:1px 6px;background:rgba(0,212,255,0.15);color:#00d4ff;border:1px solid rgba(0,212,255,0.3)">1 rule</span>
+                            </div>
+                            <button id="btn-add-ds-dista-rule" type="button" class="btn btn-xs py-1 px-2 text-[11px] font-semibold flex items-center gap-1" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#10b981">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Add Rule
+                            </button>
+                        </div>
+                        <div id="ds-dista-rules-container" class="space-y-2.5 mb-2"></div>
+                        <div class="text-[11px] text-zinc-400 mt-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-info text-cyan-400 text-[10px]"></i>
+                            <span>Replaces text values losslessly across copied records. Use * for property field to replace across all string properties.</span>
+                        </div>
+                    </div>
+
+                    <!-- BACKUP & TRACKING OPTIONS -->
+                    <div class="mb-5 p-3 rounded-lg" style="background:var(--bg);border:1px solid var(--brd2)">
+                        <label class="block text-xs font-semibold mb-2" style="color:var(--muted)">ROLLBACK &amp; TRACKING OPTIONS</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[11px] text-zinc-400 mb-1">Safety Rollback Snapshot</label>
+                                <select id="ds-dista-backup-method" class="inp text-xs">
+                                    <option value="both" selected>Both: Local File (.json.gz) + Cloud Snapshot (Recommended)</option>
+                                    <option value="file">Local File Only (.json.gz)</option>
+                                    <option value="firestore">Cloud Snapshot Only (1-Click Revert)</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col justify-center">
+                                <label class="flex items-center gap-2 cursor-pointer mt-3">
+                                    <input type="checkbox" id="chk-dista-audit-tracking" class="rounded text-rose-500 focus:ring-rose-400" />
+                                    <span class="text-xs text-zinc-200">Schema Audit Tracking (updatedAt / updatedByName)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACTION BUTTONS: DRY RUN & ANALYZE -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <button id="btn-dista-dry-run" type="button" class="btn btn-s w-full py-2.5 text-xs font-semibold" style="border-color: rgba(0, 212, 255, 0.35);">
+                            <i class="fa-solid fa-flask text-cyan-400 mr-1.5"></i> Dry Run (Simulate Filters)
+                        </button>
+                        <button id="btn-dista-analyze" type="button" class="btn btn-p w-full py-2.5 text-xs font-bold flex items-center justify-center gap-2" style="background: linear-gradient(135deg, #f43f5e, #a855f7); border: none; color: white;">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i> Analyze &amp; Compare Entities Across Kinds
+                        </button>
+                    </div>
+
+                    <!-- ANALYSIS & COMPARISON RESULTS BREAKDOWN CONTAINER -->
+                    <div id="ds-dista-analysis-results" style="display:none" class="p-4 rounded-xl border border-[var(--brd2)] bg-black/50 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+                                <span class="text-xs font-bold text-white uppercase tracking-wider">Analysis &amp; Entity Comparison Breakdown</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span id="ds-dista-summary-src" class="badge-pill bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px] px-2.5 py-0.5">0 Total in Source</span>
+                                <span id="ds-dista-summary-new" class="badge-pill bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] px-2.5 py-0.5">0 New in Target</span>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-lg border border-white/10 bg-zinc-950/60">
+                            <table class="w-full text-xs text-left" style="border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background:var(--bg2); border-bottom:1px solid var(--brd2)">
+                                        <th class="px-3.5 py-2 font-semibold text-zinc-300">Entity Kind</th>
+                                        <th class="px-3.5 py-2 font-semibold text-zinc-300">Applied Filter Strategy</th>
+                                        <th class="px-3.5 py-2 font-semibold text-center text-zinc-300">Source Count</th>
+                                        <th class="px-3.5 py-2 font-semibold text-center text-zinc-300">Target Status</th>
+                                        <th class="px-3.5 py-2 font-semibold text-right text-zinc-300">Action Ready</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ds-dista-analysis-tbody" class="divide-y divide-white/5 font-sans">
+                                    <!-- Populated by App.analyzeDistaRelational -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-lg border border-emerald-500/30" style="background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(0,0,0,0.6));">
+                            <div>
+                                <div class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-check-double"></i> Verified and Ready to Replicate
+                                </div>
+                                <div class="text-[11px] text-zinc-400 mt-0.5">Includes automatic rollback snapshot backup &amp; string replacements.</div>
+                            </div>
+                            <button id="btn-dista-start-copy" type="button" class="btn btn-p px-5 py-2.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-black flex items-center justify-center gap-2 shadow-lg">
+                                <i class="fa-solid fa-bolt"></i> Start Relational Copy / Sync
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

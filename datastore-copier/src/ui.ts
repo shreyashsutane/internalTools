@@ -152,6 +152,25 @@ export const UI = {
             if (cloneTgtDb) cloneTgtDb.value = '(default)';
         });
 
+        // Dista Template / Entities Project Dropdowns
+        setupDD('ds-dista-src', 'dd-ds-dista-src', id => {
+            State.ds.src = id;
+            const dsSrc = Utils.$('ds-src') as HTMLInputElement | null;
+            if (dsSrc) dsSrc.value = id;
+            UI.loadDatabases(id, 'src');
+            UI.loadKinds(id, State.ds.srcDb);
+            const distaSrcDb = Utils.$('ds-dista-src-db') as HTMLInputElement | null;
+            if (distaSrcDb) distaSrcDb.value = '(default)';
+        });
+        setupDD('ds-dista-tgt', 'dd-ds-dista-tgt', id => {
+            State.ds.tgt = id;
+            const dsTgt = Utils.$('ds-tgt') as HTMLInputElement | null;
+            if (dsTgt) dsTgt.value = id;
+            UI.loadDatabases(id, 'tgt');
+            const distaTgtDb = Utils.$('ds-dista-tgt-db') as HTMLInputElement | null;
+            if (distaTgtDb) distaTgtDb.value = '(default)';
+        });
+
         const cloneSrcKindInp = Utils.$('ds-clone-src-kind') as HTMLInputElement | null;
         const cloneSrcKindMenu = Utils.$('dd-ds-clone-src-kind');
         if (cloneSrcKindInp && cloneSrcKindMenu) {
@@ -260,6 +279,10 @@ export const UI = {
             await UI.loadKinds(State.ds.src, dbId);
         });
         if (State.ds.databasesTgt) setupSimpleDD('ds-clone-tgt-db', 'dd-ds-clone-tgt-db', State.ds.databasesTgt, 'tgtDb', null);
+        if (State.ds.databasesSrc) setupSimpleDD('ds-dista-src-db', 'dd-ds-dista-src-db', State.ds.databasesSrc, 'srcDb', null, async (dbId) => {
+            await UI.loadKinds(State.ds.src, dbId);
+        });
+        if (State.ds.databasesTgt) setupSimpleDD('ds-dista-tgt-db', 'dd-ds-dista-tgt-db', State.ds.databasesTgt, 'tgtDb', null);
     },
     toggleKind: (kind: string) => {
         const kInp = Utils.$('ds-kind') as HTMLInputElement | null;
@@ -886,6 +909,108 @@ export const UI = {
             confirmBtn.onclick = onConfirm;
         }
     },
+    openDistaConfirmModal: (config: {
+        src: string;
+        tgt: string;
+        srcDb: string;
+        tgtDb: string;
+        workflow: 'taskmaster' | 'entities';
+        kindBreakdown: { kind: string; count: number; filter: string }[];
+        totalEntities: number;
+        backupMethod: 'file' | 'firestore' | 'both';
+        applyAuditTracking: boolean;
+        rules: any[];
+    }, onConfirm: () => void) => {
+        const rulesListHtml = config.rules.length > 0
+            ? config.rules.map(r => `
+                <div class="flex items-center gap-2 p-2 rounded bg-black/40 border border-white/5 text-xs font-mono">
+                    <span class="text-zinc-400">Field: <strong class="text-cyan-400">${Utils.escapeHtml(r.field || '*')}</strong></span>
+                    <span class="text-zinc-500">|</span>
+                    <span class="text-rose-400">"${Utils.escapeHtml(r.target)}"</span>
+                    <i class="fa-solid fa-arrow-right text-[10px] text-zinc-500"></i>
+                    <span class="text-emerald-400">"${Utils.escapeHtml(r.replacement)}"</span>
+                </div>
+            `).join('')
+            : `<div class="text-xs text-zinc-500 italic p-2">No Find &amp; Replace rules configured (raw copy).</div>`;
+
+        const kindsListHtml = config.kindBreakdown.map(kb => `
+            <div class="flex items-center justify-between p-2 rounded bg-zinc-900 border border-white/5 text-xs">
+                <div>
+                    <span class="font-bold text-zinc-200">${Utils.escapeHtml(kb.kind)}</span>
+                    <span class="text-[11px] text-zinc-400 font-mono ml-2">(${Utils.escapeHtml(kb.filter)})</span>
+                </div>
+                <span class="font-bold text-emerald-400 font-mono">${kb.count} ${kb.count === 1 ? 'entity' : 'entities'}</span>
+            </div>
+        `).join('');
+
+        const modalHtml = `
+            <div class="p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-[var(--brd2)] pb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-base text-zinc-100">Confirm Relational Copy</h3>
+                            <p class="text-xs text-zinc-400">${config.workflow === 'taskmaster' ? 'Task Master Template' : 'Dista Entities'} (${config.totalEntities} total entities)</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-dista-modal-close text-zinc-400 hover:text-white text-base">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="p-4 rounded-xl bg-black/60 border border-[var(--brd2)] space-y-3">
+                    <div class="text-xs uppercase tracking-wider font-semibold text-zinc-400">Pipeline Route</div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex-1 p-3 rounded-lg bg-zinc-900 border border-white/10">
+                            <div class="text-[10px] uppercase text-zinc-500 font-bold">SOURCE</div>
+                            <div class="font-mono text-sm text-cyan-300 font-bold truncate">${Utils.escapeHtml(config.src)}</div>
+                            <div class="text-[11px] text-zinc-500 mt-1">DB: ${Utils.escapeHtml(config.srcDb)}</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-rose-400 text-lg"></i>
+                        <div class="flex-1 p-3 rounded-lg bg-zinc-900 border border-rose-500/30">
+                            <div class="text-[10px] uppercase text-rose-500 font-bold">DESTINATION</div>
+                            <div class="font-mono text-sm text-rose-300 font-bold truncate">${Utils.escapeHtml(config.tgt)}</div>
+                            <div class="text-[11px] text-zinc-500 mt-1">DB: ${Utils.escapeHtml(config.tgtDb)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-wider font-semibold text-zinc-400">Kinds &amp; Entities to Copy (${config.kindBreakdown.length} Kinds, ${config.totalEntities} Entities)</div>
+                    <div class="space-y-1.5 max-h-40 overflow-y-auto">${kindsListHtml}</div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="text-xs uppercase tracking-wider font-semibold text-zinc-400">Find &amp; Replace Rules (${config.rules.length})</div>
+                    <div class="space-y-1.5 max-h-32 overflow-y-auto">${rulesListHtml}</div>
+                </div>
+
+                <div class="p-3 rounded-lg bg-zinc-900 border border-white/5 text-xs text-zinc-300 flex items-center justify-between">
+                    <span><i class="fa-solid fa-shield-halved text-emerald-400 mr-1.5"></i> Backup: <strong>${config.backupMethod === 'both' ? 'Local File + Cloud Snapshot' : config.backupMethod === 'file' ? 'Local File (.json.gz)' : 'Cloud Snapshot'}</strong></span>
+                    <span><i class="fa-solid fa-user-tag text-purple-400 mr-1.5"></i> Audit Tracking: <strong>${config.applyAuditTracking ? 'Enabled' : 'Disabled'}</strong></span>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-3 border-t border-[var(--brd2)]">
+                    <button type="button" class="btn btn-s btn-dista-modal-close px-4 py-2 text-xs">Cancel</button>
+                    <button type="button" id="btn-dista-confirm-execute" class="btn btn-p px-5 py-2 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-black flex items-center gap-1.5">
+                        <i class="fa-solid fa-bolt"></i> Confirm &amp; Start Copy
+                    </button>
+                </div>
+            </div>
+        `;
+
+        UI.openModal(modalHtml, true);
+
+        const closeBtns = document.querySelectorAll('.btn-dista-modal-close');
+        closeBtns.forEach((b: any) => b.onclick = UI.closeModal);
+
+        const confirmBtn = Utils.$('btn-dista-confirm-execute');
+        if (confirmBtn) {
+            confirmBtn.onclick = onConfirm;
+        }
+    },
     showTokenRenewalModal: (): Promise<string> => {
         return new Promise((resolve, reject) => {
             const tmpl = Utils.$('template-renew-token-modal') as HTMLTemplateElement;
@@ -1017,6 +1142,10 @@ export const UI = {
         if (cloneBadge && !isModal) {
             cloneBadge.textContent = `${State.ds.modRules.length} ${State.ds.modRules.length === 1 ? 'rule' : 'rules'}`;
         }
+        const distaBadge = Utils.$('ds-dista-rules-count-badge');
+        if (distaBadge && !isModal) {
+            distaBadge.textContent = `${State.ds.modRules.length} ${State.ds.modRules.length === 1 ? 'rule' : 'rules'}`;
+        }
 
         container.replaceChildren();
 
@@ -1049,6 +1178,7 @@ export const UI = {
                     }
                     UI.renderDsRules('ds-rules-container', false);
                     UI.renderDsRules('ds-clone-rules-container', false);
+                    UI.renderDsRules('ds-dista-rules-container', false);
                     const modalList = document.querySelector('.modal-ds-rules-list') as HTMLElement | null;
                     if (modalList) UI.renderDsRules('modal-ds-rules-list', true);
                 };

@@ -208,7 +208,19 @@ export const Api = {
     },
     getKinds: async (pid: string, databaseId?: string, signal?: AbortSignal): Promise<string[]> => {
         if (pid === 'my-first-project' || pid === 'my-second-project') {
-            return ['UserProfile', 'Orders', 'Settings'];
+            return [
+                'UserProfile',
+                'Orders',
+                'Settings',
+                'TaskMasterTemplate',
+                'TaskMasterEntitySections',
+                'TaskMasterEntityFields',
+                'DistaEntities',
+                'DistaEntityFields',
+                'DistaEntitySections',
+                'DistaEntityTemplate',
+                'DistaEntityDynamicSelectBox'
+            ];
         }
         const db = cleanDatabaseId(databaseId);
         const url = CONFIG.DATASTORE_RUN_QUERY_URL(pid, db);
@@ -386,6 +398,127 @@ export const Api = {
                         }
                     }
                 );
+            } else if (kind === 'TaskMasterTemplate') {
+                if (pid === 'my-first-project') {
+                    const reqVal = body?.query?.filter?.propertyFilter?.value?.stringValue || 'TM-ONBOARDING-V1';
+                    entities.push({
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'TaskMasterTemplate', name: reqVal }] },
+                            properties: {
+                                templateId: { stringValue: reqVal },
+                                title: { stringValue: 'Default Onboarding Flow' },
+                                status: { stringValue: 'ACTIVE' },
+                                createdAt: { timestampValue: '2026-04-01T10:00:00Z' }
+                            }
+                        }
+                    });
+                }
+            } else if (kind === 'TaskMasterEntitySections') {
+                if (pid === 'my-first-project') {
+                    const reqVal = body?.query?.filter?.propertyFilter?.value?.stringValue || 'TM-ONBOARDING-V1';
+                    ['General Details', 'Checklist Items', 'Signoff Section'].forEach((secName, idx) => {
+                        entities.push({
+                            entity: {
+                                key: { partitionId: { projectId: pid }, path: [{ kind: 'TaskMasterEntitySections', id: String(5001 + idx) }] },
+                                properties: {
+                                    templateId: { stringValue: reqVal },
+                                    sectionName: { stringValue: secName },
+                                    orderIndex: { integerValue: String(idx + 1) }
+                                }
+                            }
+                        });
+                    });
+                }
+            } else if (kind === 'TaskMasterEntityFields') {
+                if (pid === 'my-first-project') {
+                    const reqVal = body?.query?.filter?.propertyFilter?.value?.stringValue || 'TM-ONBOARDING-V1';
+                    ['Employee ID', 'Department', 'Access Tier', 'Review Date', 'Manager Approval'].forEach((fName, idx) => {
+                        entities.push({
+                            entity: {
+                                key: { partitionId: { projectId: pid }, path: [{ kind: 'TaskMasterEntityFields', id: String(6001 + idx) }] },
+                                properties: {
+                                    templateId: { stringValue: reqVal },
+                                    fieldName: { stringValue: fName },
+                                    fieldType: { stringValue: idx === 3 ? 'DATE' : 'STRING' }
+                                }
+                            }
+                        });
+                    });
+                }
+            } else if (kind === 'DistaEntities') {
+                if (pid === 'my-first-project') {
+                    const reqVal = body?.query?.filter?.propertyFilter?.value?.stringValue || 'ENT-RECORD-9901';
+                    entities.push({
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'DistaEntities', name: reqVal }] },
+                            properties: {
+                                distaEntitiesId: { stringValue: reqVal },
+                                entityName: { stringValue: 'Production Logistics Unit' },
+                                status: { stringValue: 'ACTIVE' }
+                            }
+                        }
+                    });
+                }
+            } else if (kind === 'DistaEntityFields') {
+                if (pid === 'my-first-project') {
+                    const reqVal = body?.query?.filter?.propertyFilter?.value?.stringValue || 'ENT-RECORD-9901';
+                    ['Tracking Number', 'Warehouse Location', 'Carrier Code', 'Weight Class'].forEach((fName, idx) => {
+                        entities.push({
+                            entity: {
+                                key: { partitionId: { projectId: pid }, path: [{ kind: 'DistaEntityFields', id: String(7001 + idx) }] },
+                                properties: {
+                                    distaEntitiesId: { stringValue: reqVal },
+                                    fieldName: { stringValue: fName },
+                                    fieldKey: { stringValue: `field_${idx + 1}` }
+                                }
+                            }
+                        });
+                    });
+                }
+            } else if (kind === 'DistaEntitySections') {
+                if (pid === 'my-first-project') {
+                    const reqVal = body?.query?.filter?.propertyFilter?.value?.stringValue || 'ENT-RECORD-9901';
+                    ['Shipping Header', 'Customs Declaration'].forEach((secName, idx) => {
+                        entities.push({
+                            entity: {
+                                key: { partitionId: { projectId: pid }, path: [{ kind: 'DistaEntitySections', id: String(8001 + idx) }] },
+                                properties: {
+                                    distaEntitiesId: { stringValue: reqVal },
+                                    sectionName: { stringValue: secName }
+                                }
+                            }
+                        });
+                    });
+                }
+            } else if (kind === 'DistaEntityTemplate') {
+                if (pid === 'my-first-project') {
+                    const reqVal = body?.query?.filter?.propertyFilter?.value?.stringValue || 'ENT-RECORD-9901';
+                    entities.push({
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'DistaEntityTemplate', id: '9001' }] },
+                            properties: {
+                                distaEntitiesId: { stringValue: reqVal },
+                                templateName: { stringValue: 'Global Distribution Schema' }
+                            }
+                        }
+                    });
+                }
+            } else if (kind === 'DistaEntityDynamicSelectBox') {
+                if (pid === 'my-first-project') {
+                    const reqVal = body?.query?.filter?.propertyFilter?.value?.stringValue || 'TMPL-DYNAMIC-22';
+                    ['Priority Air Freight', 'Economy Ground Transport'].forEach((opt, idx) => {
+                        entities.push({
+                            entity: {
+                                key: { partitionId: { projectId: pid }, path: [{ kind: 'DistaEntityDynamicSelectBox', id: String(9501 + idx) }] },
+                                properties: {
+                                    templateId: { stringValue: reqVal },
+                                    optionLabel: { stringValue: opt },
+                                    optionValue: { stringValue: `OPT_${idx + 1}` }
+                                }
+                            }
+                        });
+                    });
+                }
             } else {
                 entities.push({
                     entity: {
@@ -422,8 +555,39 @@ export const Api = {
                     missing.push({ entity: { key } });
                     continue;
                 }
+                // Simulate new kinds missing in target
+                if (pid === 'my-second-project' && (
+                    kind?.startsWith('TaskMaster') ||
+                    kind?.startsWith('DistaEntity') ||
+                    kind === 'DistaEntities'
+                )) {
+                    missing.push({ entity: { key } });
+                    continue;
+                }
 
-                if (kind === 'UserProfile') {
+                if (kind === 'TaskMasterTemplate') {
+                    found.push({
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'TaskMasterTemplate', name: idOrName }] },
+                            properties: {
+                                templateId: { stringValue: idOrName },
+                                title: { stringValue: 'Default Onboarding Flow' },
+                                status: { stringValue: 'ACTIVE' }
+                            }
+                        }
+                    });
+                } else if (kind === 'DistaEntities') {
+                    found.push({
+                        entity: {
+                            key: { partitionId: { projectId: pid }, path: [{ kind: 'DistaEntities', name: idOrName }] },
+                            properties: {
+                                distaEntitiesId: { stringValue: idOrName },
+                                entityName: { stringValue: 'Production Logistics Unit' },
+                                status: { stringValue: 'ACTIVE' }
+                            }
+                        }
+                    });
+                } else if (kind === 'UserProfile') {
                     found.push({
                         entity: {
                             key: { partitionId: { projectId: pid }, path: [{ kind: 'UserProfile', name: idOrName }] },

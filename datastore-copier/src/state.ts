@@ -99,6 +99,8 @@ export interface StateType {
             applyMod?: boolean;
             applyAuditTracking?: boolean;
         };
+        distaWorkflow?: 'taskmaster' | 'entities';
+        lastDistaAnalysis?: any;
     };
     subscribe: (event: string, cb: () => void) => void;
     notify: (event: string) => void;
