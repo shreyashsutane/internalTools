@@ -9,9 +9,11 @@ import { AssistManager } from './assist';
 import { SoundFX } from './sound';
 import { D0198EasterEgg } from './easter-egg';
 import { QuotesManager } from './quotes';
+import { generateComparisonHtmlReport } from './html-report';
+import { sendFormspreeOperationEmail } from './notifier';
 import {
     applyEntityAuditTracking,
-    buildDatastoreFilterObject,
+    buildChunkedDatastoreFilterSets,
     cloneDatastoreValue,
     compressJsonToBase64,
     compressJsonToGzipBlob,
@@ -37,6 +39,66 @@ const beginDsOperation = (): AbortController => {
 
 const isCancellationError = (error: any): boolean =>
     error?.name === 'AbortError' || error?.message === 'Process Cancelled';
+
+const reportAndDownloadDsError = (
+    operation: string,
+    errorMsg: string,
+    context: Record<string, any> = {}
+): void => {
+    const timestamp = new Date().toISOString();
+    const safeOp = operation.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    const safeTs = timestamp.slice(0, 19).replace(/[:T]/g, '-');
+    const report = {
+        timestamp,
+        operation,
+        operator: State.authEmail || 'unknown',
+        sourceProject: context.sourceProject ?? (State.ds.src || '—'),
+        targetProject: context.targetProject ?? (State.ds.tgt || '—'),
+        srcDb: context.srcDb ?? (State.ds.srcDb || '(default)'),
+        tgtDb: context.tgtDb ?? (State.ds.tgtDb || '(default)'),
+        error: errorMsg,
+        ...context
+    };
+    const filename = `datastore_error_${safeOp}_${safeTs}.json`;
+    try {
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        downloadBlobFile(blob, filename);
+    } catch (downErr) {
+        console.warn('Auto error report download failed:', downErr);
+    }
+
+    Utils.toast(`${operation} failed: ${errorMsg}`, 'err');
+    UI.openModal(`
+        <div class="p-6 text-left" style="max-width:540px; margin:0 auto; background:#0c101d; border-radius:16px;">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.35); color:#fb7185; font-size:18px;">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-base text-fg leading-tight">${Utils.escapeHtml(operation)} Failed</h3>
+                    <p class="text-xs text-muted">An error report (${Utils.escapeHtml(filename)}) was automatically downloaded.</p>
+                </div>
+            </div>
+            <div class="p-3 rounded-lg mb-4 text-xs font-mono text-rose-200" style="background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.3); max-height:220px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;">${Utils.escapeHtml(errorMsg)}</div>
+            <div class="flex justify-end gap-2">
+                <button type="button" class="btn btn-s text-xs" id="btn-ds-err-redownload" style="border-color:rgba(244,63,94,0.4); color:#fda4af;">
+                    <i class="fa-solid fa-file-arrow-down mr-1"></i> Download Error Report
+                </button>
+                <button type="button" class="btn btn-p text-xs" id="btn-ds-err-close">Close</button>
+            </div>
+        </div>
+    `, 'modal-medium');
+
+    const redownloadBtn = Utils.$('btn-ds-err-redownload');
+    if (redownloadBtn) {
+        redownloadBtn.onclick = () => {
+            const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+            downloadBlobFile(blob, filename);
+        };
+    }
+    const closeBtn = Utils.$('btn-ds-err-close');
+    if (closeBtn) closeBtn.onclick = () => UI.closeModal();
+};
 
 export const App = {
     cancelDsOperation: (): void => {
@@ -219,6 +281,9 @@ export const App = {
 
         const dsExportMdBtn = Utils.$('btn-ds-export-md');
         if (dsExportMdBtn) dsExportMdBtn.onclick = App.exportDsMarkdown;
+
+        const dsExportHtmlBtn = Utils.$('btn-ds-export-html');
+        if (dsExportHtmlBtn) dsExportHtmlBtn.onclick = App.exportDsHtml;
 
         const dsDryRunBtn = Utils.$('btn-ds-dry-run');
         if (dsDryRunBtn) dsDryRunBtn.onclick = App.runDsDryRun;
@@ -475,6 +540,7 @@ export const App = {
             await UI.showWelcomeAnimation(welcomeName);
 
             Utils.hide('sec-auth'); Utils.show('sec-modes'); Utils.show('sec-audit-logs'); UI.initDropdowns();
+            App.selectMode('ds');
             Utils.$('header-right')!.innerHTML = `<span class="text-xs mono" style="color:var(--muted)">${Utils.escapeHtml(State.authEmail)}</span>`;
             const logged = await AuditLog.addLog(
                 "AUTHENTICATION",
@@ -1415,119 +1481,133 @@ export const App = {
                 if (State.cancelDs || controller.signal.aborted) return;
                 const kindPrefix = `[${kIdx + 1}/${kindsToProcess.length}] Kind "${currentKind}"`;
 
-                // Filter props that are either for 'all' kinds or specifically for this kind
-                const applicableFilters = rawFilters
-                    .filter(f => f.kindScope === 'all' || f.kindScope === currentKind)
-                    .map(f => buildDatastoreFilterObject(f.prop, f.op, f.val, f.type, currentKind, State.ds.src, State.ds.srcDb));
+                // Filter props that are either for 'all' kinds or specifically for this kind.
+                // Any IN filter with >30 values is automatically split into <=30-value query sets.
+                const matchingRawFilters = rawFilters.filter(f => f.kindScope === 'all' || f.kindScope === currentKind);
+                const filterSets = buildChunkedDatastoreFilterSets(matchingRawFilters, currentKind, State.ds.src, State.ds.srcDb);
 
                 const srcPartitionId: any = { projectId: State.ds.src };
                 const dbClean = (State.ds.srcDb === '(default)' || !State.ds.srcDb) ? '' : State.ds.srcDb;
                 if (dbClean) srcPartitionId.databaseId = dbClean;
 
-                const body: any = { partitionId: srcPartitionId, query: { kind: [{ name: currentKind }] } };
-                if (applicableFilters.length === 1) {
-                    body.query.filter = applicableFilters[0];
-                } else if (applicableFilters.length > 1) {
-                    body.query.filter = { compositeFilter: { op: 'AND', filters: applicableFilters } };
-                }
+                const seenKeys = new Set<string>();
 
-                let cursor = null;
-                let nextBatchPromise: Promise<any> | null = null;
-
-                do {
-                    if (State.cancelDs || controller.signal.aborted) throw new DOMException("Process Cancelled", 'AbortError');
-
-                    Utils.$('load-msg')!.textContent = `${kindPrefix}: Fetching batch (${totalScanned} scanned)...`;
-
-                    // Pipelined fetch: use pre-fetched batch if available, otherwise fetch
-                    const res = nextBatchPromise
-                        ? await nextBatchPromise
-                        : await Api.runDatastoreQuery(State.ds.src, body, State.ds.srcDb, controller.signal);
-
-                    const srcEntities = res.batch?.entityResults || [];
-                    cursor = res.batch?.moreResults === 'NO_MORE_RESULTS' ? null : (res.batch?.endCursor || null);
-
-                    // Pipeline: If there is a next cursor, start pre-fetching it in parallel while we process current batch
-                    if (cursor) {
-                        const nextBody = { ...body, query: { ...body.query, startCursor: cursor } };
-                        nextBatchPromise = Api.runDatastoreQuery(State.ds.src, nextBody, State.ds.srcDb, controller.signal);
-                    } else {
-                        nextBatchPromise = null;
+                for (let fIdx = 0; fIdx < filterSets.length; fIdx++) {
+                    const applicableFilters = filterSets[fIdx];
+                    const body: any = { partitionId: srcPartitionId, query: { kind: [{ name: currentKind }] } };
+                    if (applicableFilters.length === 1) {
+                        body.query.filter = applicableFilters[0];
+                    } else if (applicableFilters.length > 1) {
+                        body.query.filter = { compositeFilter: { op: 'AND', filters: applicableFilters } };
                     }
 
-                    if (srcEntities.length === 0) break;
+                    const chunkLabel = filterSets.length > 1 ? ` [IN chunk ${fIdx + 1}/${filterSets.length}]` : '';
+                    let cursor = null;
+                    let nextBatchPromise: Promise<any> | null = null;
 
-                    // Collect property names
-                    srcEntities.forEach((result: any) => {
-                        Object.keys(result.entity?.properties || {}).forEach(name => discoveredProperties.add(name));
-                    });
+                    do {
+                        if (State.cancelDs || controller.signal.aborted) throw new DOMException("Process Cancelled", 'AbortError');
 
-                    // Prepare 100-key chunks for parallel lookup
-                    const CHUNK_SIZE = 100;
-                    const chunks: any[][] = [];
-                    for (let i = 0; i < srcEntities.length; i += CHUNK_SIZE) {
-                        chunks.push(srcEntities.slice(i, i + CHUNK_SIZE));
-                    }
+                        Utils.$('load-msg')!.textContent = `${kindPrefix}${chunkLabel}: Fetching batch (${totalScanned} scanned)...`;
 
-                    Utils.$('load-msg')!.textContent = `${kindPrefix}: Comparing ${srcEntities.length} entities in parallel...`;
+                        // Pipelined fetch: use pre-fetched batch if available, otherwise fetch
+                        const res = nextBatchPromise
+                            ? await nextBatchPromise
+                            : await Api.runDatastoreQuery(State.ds.src, body, State.ds.srcDb, controller.signal);
 
-                    // Parallel target lookup across all chunks with Promise.all
-                    const lookupResults = await Promise.all(
-                        chunks.map(chunk => {
-                            const keysToLookup = chunk.map((e: any) => {
-                                const keyCopy = cloneDatastoreValue(e.entity.key);
-                                const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
-                                const tgtPartitionId: any = { projectId: State.ds.tgt };
-                                if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
-                                keyCopy.partitionId = tgtPartitionId;
-                                return keyCopy;
-                            });
-                            return Api.lookupEntities(State.ds.tgt, keysToLookup, State.ds.tgtDb, controller.signal);
-                        })
-                    );
+                        const rawSrcEntities = res.batch?.entityResults || [];
+                        cursor = res.batch?.moreResults === 'NO_MORE_RESULTS' ? null : (res.batch?.endCursor || null);
 
-                    // Process results per chunk
-                    chunks.forEach((chunk, cIdx) => {
-                        const tgtRes = lookupResults[cIdx];
-                        const tgtMap = new Map((tgtRes.found || []).map((e: any) => [App.formatKey(e.entity.key), e.entity]));
-                        const missingSet = new Set((tgtRes.missing || []).map((e: any) => App.formatKey(e.entity.key)));
+                        // Pipeline: If there is a next cursor, start pre-fetching it in parallel while we process current batch
+                        if (cursor) {
+                            const nextBody = { ...body, query: { ...body.query, startCursor: cursor } };
+                            nextBatchPromise = Api.runDatastoreQuery(State.ds.src, nextBody, State.ds.srcDb, controller.signal);
+                        } else {
+                            nextBatchPromise = null;
+                        }
 
-                        for (const srcE of chunk) {
-                            const kStr = App.formatKey(srcE.entity.key);
-                            State.ds.stats.total++;
-                            totalScanned++;
-                            const tgtEnt = tgtMap.get(kStr);
-                            const disp = extractEntityDisplayName(srcE.entity) || (tgtEnt ? extractEntityDisplayName(tgtEnt) : null);
-                            const displayName = disp ? disp.value : undefined;
-                            const displayField = disp ? disp.fieldName : undefined;
+                        if (rawSrcEntities.length === 0) break;
 
-                            if (missingSet.has(kStr) || !tgtEnt) {
-                                State.ds.stats.missing++;
-                                State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'missing', diffSum: 'Missing in Target', srcEntity: srcE.entity, tgtEntity: null, displayName, displayField });
-                            } else {
-                                const diff = App.compareEntities(srcE.entity, tgtEnt);
-                                const hasRealDiff = diff.some(d => d.type !== 'mapped');
-                                const hasMapped = diff.some(d => d.type === 'mapped');
+                        const srcEntities = rawSrcEntities.filter((result: any) => {
+                            const kStr = App.formatKey(result.entity.key);
+                            if (seenKeys.has(kStr)) return false;
+                            seenKeys.add(kStr);
+                            return true;
+                        });
+                        if (srcEntities.length === 0) continue;
 
-                                if (hasRealDiff) {
-                                    State.ds.stats.different++;
-                                    const diffSum = diff.filter(d => d.type !== 'mapped').map(d => d.prop).join(', ');
-                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'different', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
-                                } else if (hasMapped) {
-                                    State.ds.stats.mapped++;
-                                    const diffSum = diff.map(d => `${d.prop} (project mapped)`).join(', ');
-                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'mapped', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
+                        // Collect property names
+                        srcEntities.forEach((result: any) => {
+                            Object.keys(result.entity?.properties || {}).forEach(name => discoveredProperties.add(name));
+                        });
+
+                        // Prepare 100-key chunks for parallel lookup
+                        const CHUNK_SIZE = 100;
+                        const chunks: any[][] = [];
+                        for (let i = 0; i < srcEntities.length; i += CHUNK_SIZE) {
+                            chunks.push(srcEntities.slice(i, i + CHUNK_SIZE));
+                        }
+
+                        Utils.$('load-msg')!.textContent = `${kindPrefix}${chunkLabel}: Comparing ${srcEntities.length} entities in parallel...`;
+
+                        // Parallel target lookup across all chunks with Promise.all
+                        const lookupResults = await Promise.all(
+                            chunks.map(chunk => {
+                                const keysToLookup = chunk.map((e: any) => {
+                                    const keyCopy = cloneDatastoreValue(e.entity.key);
+                                    const tgtDbClean = (State.ds.tgtDb === '(default)' || !State.ds.tgtDb) ? '' : State.ds.tgtDb;
+                                    const tgtPartitionId: any = { projectId: State.ds.tgt };
+                                    if (tgtDbClean) tgtPartitionId.databaseId = tgtDbClean;
+                                    keyCopy.partitionId = tgtPartitionId;
+                                    return keyCopy;
+                                });
+                                return Api.lookupEntities(State.ds.tgt, keysToLookup, State.ds.tgtDb, controller.signal);
+                            })
+                        );
+
+                        // Process results per chunk
+                        chunks.forEach((chunk, cIdx) => {
+                            const tgtRes = lookupResults[cIdx];
+                            const tgtMap = new Map((tgtRes.found || []).map((e: any) => [App.formatKey(e.entity.key), e.entity]));
+                            const missingSet = new Set((tgtRes.missing || []).map((e: any) => App.formatKey(e.entity.key)));
+
+                            for (const srcE of chunk) {
+                                const kStr = App.formatKey(srcE.entity.key);
+                                State.ds.stats.total++;
+                                totalScanned++;
+                                const tgtEnt = tgtMap.get(kStr);
+                                const disp = extractEntityDisplayName(srcE.entity) || (tgtEnt ? extractEntityDisplayName(tgtEnt) : null);
+                                const displayName = disp ? disp.value : undefined;
+                                const displayField = disp ? disp.fieldName : undefined;
+
+                                if (missingSet.has(kStr) || !tgtEnt) {
+                                    State.ds.stats.missing++;
+                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'missing', diffSum: 'Missing in Target', srcEntity: srcE.entity, tgtEntity: null, displayName, displayField });
                                 } else {
-                                    State.ds.stats.identical++;
-                                    State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff: [], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
+                                    const diff = App.compareEntities(srcE.entity, tgtEnt);
+                                    const hasRealDiff = diff.some(d => d.type !== 'mapped');
+                                    const hasMapped = diff.some(d => d.type === 'mapped');
+
+                                    if (hasRealDiff) {
+                                        State.ds.stats.different++;
+                                        const diffSum = diff.filter(d => d.type !== 'mapped').map(d => d.prop).join(', ');
+                                        State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'different', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
+                                    } else if (hasMapped) {
+                                        State.ds.stats.mapped++;
+                                        const diffSum = diff.map(d => `${d.prop} (project mapped)`).join(', ');
+                                        State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'mapped', diff, diffSum, srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
+                                    } else {
+                                        State.ds.stats.identical++;
+                                        State.ds.results.push({ kind: currentKind, keyStr: kStr, rawKey: srcE.entity.key, status: 'identical', diff: [], diffSum: '—', srcEntity: srcE.entity, tgtEntity: tgtEnt, displayName, displayField });
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
 
-                    updateStatsDisplay();
-                    await new Promise(resolve => setTimeout(resolve, 0));
-                } while (cursor);
+                        updateStatsDisplay();
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    } while (cursor);
+                }
             });
 
             State.ds.properties = [...discoveredProperties].sort();
@@ -1552,6 +1632,21 @@ export const App = {
                 'SUCCESS'
             );
             if (!logged) Utils.toast('Datastore analysis completed, but the action could not be logged.', 'warn');
+
+            const appliedFilters = rawFilters.map(f => `[${f.kindScope}] ${f.prop} ${f.op} (${f.type}): ${f.val}`);
+            void sendFormspreeOperationEmail({
+                operation: 'Datastore Analyze & Compare',
+                status: 'SUCCESS',
+                operatorEmail: State.authEmail,
+                srcProject: State.ds.src,
+                tgtProject: State.ds.tgt,
+                srcDb: State.ds.srcDb,
+                tgtDb: State.ds.tgtDb,
+                kinds: kindsToProcess,
+                summary: `Total: ${State.ds.stats.total}; Different: ${State.ds.stats.different}; Missing: ${State.ds.stats.missing}; Mapped: ${State.ds.stats.mapped}; Identical: ${State.ds.stats.identical}`,
+                filters: appliedFilters,
+                entities: State.ds.results.map(r => ({ keyStr: r.keyStr, name: r.displayName, status: r.status }))
+            });
         } catch(e: any) {
             Utils.hide('sec-loading'); Utils.show('sec-forms');
             if(isCancellationError(e)) {
@@ -1564,15 +1659,31 @@ export const App = {
                     'CANCELLED'
                 );
             } else {
+                const errMsg = e?.message || String(e);
+                const appliedFilters = rawFilters.map(f => `[${f.kindScope}] ${f.prop} ${f.op} (${f.type}): ${f.val}`);
                 void AuditLog.addLog(
                     'DATASTORE_ANALYZE',
                     State.ds.src || '—',
                     State.ds.tgt || '—',
-                    `Datastore analysis failed: ${e.message || String(e)}`,
+                    `Datastore analysis failed: ${errMsg}`,
                     'FAILED'
                 );
-                const { ErrorBoundary } = await import('./utils');
-                await ErrorBoundary.handle(e, 'App.runDsAnalyze');
+                void sendFormspreeOperationEmail({
+                    operation: 'Datastore Analyze & Compare',
+                    status: 'FAILED',
+                    operatorEmail: State.authEmail,
+                    srcProject: State.ds.src,
+                    tgtProject: State.ds.tgt,
+                    srcDb: State.ds.srcDb,
+                    tgtDb: State.ds.tgtDb,
+                    kinds: kindsToProcess,
+                    summary: 'Analysis failed before completion.',
+                    filters: appliedFilters,
+                    errorMessage: errMsg
+                });
+                reportAndDownloadDsError('Datastore Analyze & Compare', errMsg, {
+                    kinds: State.ds.selectedKinds.size > 0 ? [...State.ds.selectedKinds] : [State.ds.kind || 'all']
+                });
             }
         } finally {
             Utils.hide('btn-cancel-ds');
@@ -1651,6 +1762,27 @@ export const App = {
         ).then(logged => {
             if (!logged) Utils.toast('CSV exported, but the export action could not be logged.', 'warn');
         });
+    },
+    exportDsHtml: (): void => {
+        if (!State.ds.results || State.ds.results.length === 0) {
+            Utils.toast('No comparison results to export.', 'warn');
+            return;
+        }
+        const html = generateComparisonHtmlReport(State.ds.results, {
+            srcProject: State.ds.src || '—',
+            tgtProject: State.ds.tgt || '—',
+            srcDb: State.ds.srcDb || '(default)',
+            tgtDb: State.ds.tgtDb || '(default)',
+            operatorEmail: State.authEmail || '—',
+            generatedAt: new Date().toISOString(),
+            stats: { ...State.ds.stats }
+        });
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const safeSrc = (State.ds.src || 'src').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const safeTgt = (State.ds.tgt || 'tgt').replace(/[^a-zA-Z0-9_-]/g, '_');
+        downloadBlobFile(blob, `ds_compare_${safeSrc}_vs_${safeTgt}_${dateStr}.html`);
+        Utils.toast('Downloaded interactive HTML comparison report.', 'ok');
     },
     exportDsMarkdown: (): void => {
         const kindLabel = State.ds.selectedKinds.size > 0 ? [...State.ds.selectedKinds].join(', ') : (State.ds.kind || 'All');
@@ -2346,17 +2478,25 @@ export const App = {
         };
 
         const handleSave = async (side: 'src' | 'tgt') => {
+            try {
             const pid = side === 'src' ? State.ds.src : State.ds.tgt;
             let props: any;
             try {
                 props = getPropertiesFromUI(side);
             } catch (error: any) {
-                Utils.toast(`Cannot save: ${error.message}`, 'err');
+                reportAndDownloadDsError(`Save to ${side === 'src' ? 'Source' : 'Target'}`, error?.message || String(error), {
+                    keyStr,
+                    side,
+                    targetProject: pid
+                });
                 return;
             }
 
             const confirmTmpl = Utils.$('template-ds-save-confirm') as HTMLTemplateElement;
-            if (!confirmTmpl) return;
+            if (!confirmTmpl) {
+                Utils.toast('Save confirmation modal template not found.', 'err');
+                return;
+            }
             const fragment = confirmTmpl.content.cloneNode(true) as DocumentFragment;
 
             fragment.querySelector('.entity-key-strong')!.textContent = keyStr;
@@ -2380,14 +2520,16 @@ export const App = {
 
             UI.openModal(fragment);
 
-            const cancelBtn = Utils.$('modal-root')!.querySelector('.btn-cancel') as HTMLButtonElement;
-            const confirmBtn = Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement;
+            const cancelBtn = Utils.$('modal-root')!.querySelector('.btn-cancel') as HTMLButtonElement | null;
+            const confirmBtn = Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement | null;
 
-            cancelBtn.onclick = () => {
-                UI.closeModal();
-            };
+            if (cancelBtn) {
+                cancelBtn.onclick = () => {
+                    UI.closeModal();
+                };
+            }
 
-            confirmBtn.onclick = async () => {
+            if (confirmBtn) confirmBtn.onclick = async () => {
                 UI.closeModal();
                 Utils.show('sec-loading');
                 Utils.$('load-title')!.textContent = "Saving Entity...";
@@ -2406,6 +2548,49 @@ export const App = {
                         referenceName: dispInfo ? dispInfo.value : undefined,
                         referenceField: dispInfo ? dispInfo.fieldName : undefined
                     };
+                    const entity = {
+                        key: cloneDatastoreValue(r.rawKey),
+                        properties: props
+                    };
+                    const db = (dbId === '(default)' || !dbId) ? '' : dbId;
+                    const partitionId: any = { projectId: pid };
+                    if (db) partitionId.databaseId = db;
+                    entity.key.partitionId = partitionId;
+
+                    // Download restorable local backup (.json.gz) in the same DATASTORE_BACKUP format
+                    const entityKind = r.kind || entity.key?.path?.[entity.key.path.length - 1]?.kind || State.ds.kind || 'Entity';
+                    const backupTs = new Date().toISOString();
+                    const safeBackupDate = backupTs.slice(0, 19).replace(/[:T]/g, '-');
+                    const safeBackupKind = entityKind.replace(/[^a-zA-Z0-9_-]/g, '_');
+                    const backupPayload: any = {
+                        backupVersion: '1.1',
+                        type: 'DATASTORE_BACKUP',
+                        timestamp: backupTs,
+                        sourceProject: State.ds.src || pid,
+                        targetProject: pid,
+                        srcDb: State.ds.srcDb || '(default)',
+                        tgtDb: dbId || '(default)',
+                        kinds: [entityKind],
+                        totalEntities: 1,
+                        backupData: [
+                            {
+                                kind: entityKind,
+                                keyStr,
+                                action: prevEntity ? 'upsert' : 'delete',
+                                prevEntity: prevEntity
+                                    ? cloneDatastoreValue(prevEntity)
+                                    : { key: cloneDatastoreValue(entity.key) }
+                            }
+                        ],
+                        entityDisplayNames: dispInfo
+                            ? { [keyStr]: { fieldName: dispInfo.fieldName, value: dispInfo.value } }
+                            : {}
+                    };
+                    const backupFilename = `backup_${pid}_${safeBackupKind}_${safeBackupDate}.json.gz`;
+                    const gzipBlob = await compressJsonToGzipBlob(backupPayload);
+                    downloadBlobFile(gzipBlob, backupFilename);
+                    Utils.toast(`📥 Restorable backup saved: ${backupFilename}`, 'ok');
+
                     const refSuffix = dispInfo ? ` [${dispInfo.fieldName}: "${dispInfo.value}"]` : '';
                     editAuditLogId = await AuditLog.addLog(
                         'DATASTORE_EDIT',
@@ -2418,28 +2603,35 @@ export const App = {
                     if (!editAuditLogId) {
                         throw new Error('The centralized audit backup could not be persisted. The entity was not changed.');
                     }
-                    const entity = {
-                        key: cloneDatastoreValue(r.rawKey),
-                        properties: props
-                    };
-                    const db = (dbId === '(default)' || !dbId) ? '' : dbId;
-                    const partitionId: any = { projectId: pid };
-                    if (db) partitionId.databaseId = db;
-                    entity.key.partitionId = partitionId;
 
                     await Api.commitDatastore(pid, [{ upsert: entity }], dbId);
                     Utils.toast(`Successfully saved entity to ${side === 'src' ? 'source' : 'target'} project.`, "ok");
 
-                    const logged = await AuditLog.updateLog(
-                        editAuditLogId,
-                        'SUCCESS',
-                        `Inline edited entity properties for ${keyStr}.`
-                    );
-                    if (!logged) {
-                        Utils.toast(
-                            'Entity saved, but its audit status could not be finalized. The pre-mutation revert backup remains available.',
-                            'warn'
+                    void sendFormspreeOperationEmail({
+                        operation: `Inline Save to ${side === 'src' ? 'Source' : 'Target'}`,
+                        status: 'SUCCESS',
+                        operatorEmail: State.authEmail,
+                        srcProject: State.ds.src,
+                        tgtProject: pid,
+                        srcDb: State.ds.srcDb,
+                        tgtDb: side === 'src' ? State.ds.srcDb : State.ds.tgtDb,
+                        kinds: [entityKind],
+                        summary: `Saved inline edit for 1 entity (${keyStr}).`,
+                        entities: [{ keyStr, name: dispInfo?.value, status: 'SAVED' }]
+                    });
+
+                    if (editAuditLogId) {
+                        const logged = await AuditLog.updateLog(
+                            editAuditLogId,
+                            'SUCCESS',
+                            `Inline edited entity properties for ${keyStr}.`
                         );
+                        if (!logged) {
+                            Utils.toast(
+                                'Entity saved, but its audit status could not be finalized. Local backup file was downloaded.',
+                                'warn'
+                            );
+                        }
                     }
 
                     const expandedKey = keyStr;
@@ -2453,17 +2645,39 @@ export const App = {
                     }, 800);
                 } catch(err: any) {
                     console.error("Save failed:", err);
+                    const errMsg = err?.message || String(err);
                     if (editAuditLogId) {
                         await AuditLog.updateLog(
                             editAuditLogId,
                             'FAILED',
-                            `Inline edit failed for entity ${keyStr}: ${err.message}`
+                            `Inline edit failed for entity ${keyStr}: ${errMsg}`
                         );
                     }
-                    Utils.toast(`Save failed: ${err.message}`, "err");
                     Utils.hide('sec-loading');
+                    void sendFormspreeOperationEmail({
+                        operation: `Inline Save to ${side === 'src' ? 'Source' : 'Target'}`,
+                        status: 'FAILED',
+                        operatorEmail: State.authEmail,
+                        srcProject: State.ds.src,
+                        tgtProject: pid,
+                        srcDb: State.ds.srcDb,
+                        tgtDb: side === 'src' ? State.ds.srcDb : State.ds.tgtDb,
+                        kinds: [r.kind || State.ds.kind || 'Entity'],
+                        summary: `Failed to save inline edit for ${keyStr}.`,
+                        errorMessage: errMsg,
+                        entities: [{ keyStr, name: dispInfo?.value, status: 'FAILED' }]
+                    });
+                    reportAndDownloadDsError(`Save to ${side === 'src' ? 'Source' : 'Target'}`, errMsg, {
+                        keyStr,
+                        side,
+                        targetProject: pid
+                    });
                 }
             };
+            } catch (modalErr: any) {
+                console.error('Failed to open save confirmation modal:', modalErr);
+                Utils.toast(`Cannot open save dialog: ${modalErr?.message || modalErr}`, 'err');
+            }
         };
 
         (expTr.querySelector('.btn-save-src') as HTMLButtonElement).onclick = () => handleSave('src');
@@ -2572,77 +2786,23 @@ export const App = {
         const confirmBtn = Utils.$('modal-root')!.querySelector('.btn-confirm') as HTMLButtonElement | null;
         if (confirmBtn) {
             confirmBtn.onclick = () => {
-                const selectedMethod = ((Utils.$('modal-root')!.querySelector('input[name="ds-backup-method"]:checked') as HTMLInputElement)?.value || 'both') as 'file' | 'firestore' | 'both';
                 const chkAuditTrackingEl = Utils.$('modal-root')!.querySelector('#chk-apply-audit-tracking') as HTMLInputElement | null;
                 const isAuditSelected = Boolean(chkAuditTrackingEl?.checked);
                 const isApplyMod = Boolean(chkReplace?.classList.contains('on'));
 
                 State.ds.copyOptions = {
-                    backupMethod: selectedMethod,
+                    backupMethod: 'file',
                     applyMod: isApplyMod,
                     applyAuditTracking: isAuditSelected
                 };
 
-                if (selectedMethod === 'firestore' || selectedMethod === 'both') {
-                    App.openFirestoreTermsModal(selectedMethod, isAuditSelected, isApplyMod);
-                } else {
-                    App.executeDsCopy('file', false, isAuditSelected, isApplyMod);
-                }
+                App.executeDsCopy('file', false, isAuditSelected, isApplyMod);
             };
         }
-    },
-    openFirestoreTermsModal: (
-        backupMethod: 'firestore' | 'both' = 'both',
-        applyAuditTracking = false,
-        applyMod = false
-    ): void => {
-        const tmpl = Utils.$('template-terms-consent-modal') as HTMLTemplateElement;
-        if (!tmpl) {
-            App.executeDsCopy(backupMethod, true, applyAuditTracking, applyMod);
-            return;
-        }
-        const fragment = tmpl.content.cloneNode(true) as DocumentFragment;
-        UI.openModal(fragment, 'modal-medium');
-
-        const modalRoot = Utils.$('modal-root')!;
-        const chkConsent = modalRoot.querySelector('#chk-firestore-consent') as HTMLInputElement | null;
-        const btnAgree = modalRoot.querySelector('#btn-consent-agree') as HTMLButtonElement | null;
-        const btnSwitchLocal = modalRoot.querySelector('#btn-consent-switch-local') as HTMLButtonElement | null;
-
-        if (chkConsent && btnAgree) {
-            chkConsent.onchange = () => {
-                if (chkConsent.checked) {
-                    btnAgree.disabled = false;
-                    btnAgree.classList.remove('opacity-50', 'cursor-not-allowed');
-                } else {
-                    btnAgree.disabled = true;
-                    btnAgree.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-            };
-        }
-
-        if (btnAgree) {
-            btnAgree.onclick = () => {
-                UI.closeModal();
-                App.executeDsCopy(backupMethod, true, applyAuditTracking, applyMod);
-            };
-        }
-
-        if (btnSwitchLocal) {
-            btnSwitchLocal.onclick = () => {
-                UI.closeModal();
-                Utils.toast('Switched to Local File Only backup.', 'info');
-                App.executeDsCopy('file', false, applyAuditTracking, applyMod);
-            };
-        }
-
-        modalRoot.querySelectorAll('.btn-consent-cancel').forEach(btn => {
-            (btn as HTMLElement).onclick = () => UI.closeModal();
-        });
     },
     executeDsCopy: async (
-        backupMethod: 'file' | 'firestore' | 'both' = 'both',
-        termsConsented = false,
+        backupMethod: 'file' = 'file',
+        _termsConsented = false,
         applyAuditTrackingParam?: boolean,
         applyModParam?: boolean
     ): Promise<void> => {
@@ -2686,6 +2846,7 @@ export const App = {
         const resultByKey = new Map(State.ds.results.map(result => [result.keyStr, result]));
         let ok = 0;
         let fail = 0;
+        const failedBatches: Array<{ batch: number; totalBatches: number; kinds: string[]; keys: string[]; error: string; timestamp: string }> = [];
         let replacementCount = 0;
         const CHUNK_SIZE = 50;
         const chunks: string[][] = [];
@@ -2781,6 +2942,34 @@ export const App = {
             targetKeyByString.set(keyStr, keyCopy);
         }
 
+        // Pre-flight IAM permission check on target project before Phase 1 backup
+        Utils.$('load-msg')!.textContent = `Checking write permissions on ${State.ds.tgt}...`;
+        const permCheck = await Api.checkDatastoreWritePermissions(State.ds.tgt, controller.signal);
+        if (!permCheck.ok) {
+            Utils.hide('sec-loading');
+            Utils.hide('btn-cancel-ds');
+            if (dsAbortController === controller) dsAbortController = null;
+            const permErrMsg = `Missing required IAM permission(s) on target project "${State.ds.tgt}": ${permCheck.missing.join(', ')}.`;
+            void sendFormspreeOperationEmail({
+                operation: 'Datastore Copy',
+                status: 'FAILED',
+                operatorEmail: State.authEmail,
+                srcProject: State.ds.src,
+                tgtProject: State.ds.tgt,
+                srcDb: State.ds.srcDb,
+                tgtDb: State.ds.tgtDb,
+                kinds: [...new Set(keysToCopy.map(k => resultByKey.get(k)?.kind).filter(Boolean) as string[])],
+                summary: `Copy blocked by missing IAM permissions (${keysToCopy.length} entities selected).`,
+                errorMessage: permErrMsg,
+                entities: keysToCopy.map(k => ({ keyStr: k, name: resultByKey.get(k)?.displayName, status: 'BLOCKED' }))
+            });
+            reportAndDownloadDsError('Datastore Copy (IAM Pre-flight)', permErrMsg, {
+                missingPermissions: permCheck.missing,
+                entityCount: keysToCopy.length
+            });
+            return;
+        }
+
         // PHASE 1: Prepare & Download Backup File(s) to User's Machine FIRST
         Utils.$('load-title')!.textContent = "Backing Up Existing Entities...";
         Utils.$('load-msg')!.textContent = `Reading destination state for ${keysToCopy.length} entities and downloading backup...`;
@@ -2858,16 +3047,30 @@ export const App = {
             if (isCancellationError(backupErr)) return;
             Utils.hide('sec-loading');
             Utils.hide('btn-cancel-ds');
-            Utils.toast(`Backup creation failed: ${backupErr.message}. No entities were changed.`, 'err');
             if (dsAbortController === controller) dsAbortController = null;
+            const errMsg = backupErr?.message || String(backupErr);
+            void sendFormspreeOperationEmail({
+                operation: 'Datastore Copy',
+                status: 'FAILED',
+                operatorEmail: State.authEmail,
+                srcProject: State.ds.src,
+                tgtProject: State.ds.tgt,
+                srcDb: State.ds.srcDb,
+                tgtDb: State.ds.tgtDb,
+                kinds: [...new Set(keysToCopy.map(k => resultByKey.get(k)?.kind).filter(Boolean) as string[])],
+                summary: `Pre-mutation backup failed (${keysToCopy.length} entities selected).`,
+                errorMessage: errMsg,
+                entities: keysToCopy.map(k => ({ keyStr: k, name: resultByKey.get(k)?.displayName, status: 'FAILED' }))
+            });
+            reportAndDownloadDsError('Datastore Copy (Pre-Mutation Backup)', errMsg, {
+                entityCount: keysToCopy.length
+            });
             return;
         }
 
         // PHASE 2: Perform Copy & Write Mutations to Destination Project
         Utils.$('load-title')!.textContent = "Copying Entities...";
-        Utils.$('load-msg')!.textContent = backupMethod === 'firestore'
-            ? `Copying entities (0 of ${keysToCopy.length} completed)...`
-            : `📥 Backup downloaded! Copying entities (0 of ${keysToCopy.length} completed)...`;
+        Utils.$('load-msg')!.textContent = `📥 Backup downloaded! Copying entities (0 of ${keysToCopy.length} completed)...`;
 
         await mapConcurrent(chunks, 3, async (chunkStrs, batchIdx) => {
             if (State.cancelDs || controller.signal.aborted) return;
@@ -3110,12 +3313,21 @@ export const App = {
             } catch (e: any) {
                 if (isCancellationError(e)) return;
                 fail += batchFailureCount;
-                Utils.toast(`Batch ${batchNum} failed: ${e.message}`, "err");
+                const errMsg = e?.message || String(e);
+                failedBatches.push({
+                    batch: batchNum,
+                    totalBatches,
+                    kinds: [...new Set(chunkStrs.map(k => resultByKey.get(k)?.kind).filter(Boolean) as string[])],
+                    keys: [...chunkStrs],
+                    error: errMsg,
+                    timestamp: new Date().toISOString()
+                });
+                Utils.toast(`Batch ${batchNum} failed: ${errMsg}`, "err");
                 if (batchAuditLogId) {
                     await AuditLog.updateLog(
                         batchAuditLogId,
                         'FAILED',
-                        `Batch ${batchNum}/${totalBatches} failed: ${e.message}`,
+                        `Batch ${batchNum}/${totalBatches} failed: ${errMsg}`,
                         undefined,
                         true
                     );
@@ -3144,20 +3356,84 @@ export const App = {
         if (dsAbortController === controller) dsAbortController = null;
         await AuditLog.renderLogs(true);
 
-        // If operation was cancelled or had 0 successful entities copied, navigate back without modal
-        if (cancelled || ok === 0) {
+        // If operation was cancelled or nothing was attempted, navigate back without modal
+        if (cancelled || (ok === 0 && fail === 0)) {
             Utils.hide('sec-results');
             Utils.show('sec-forms');
             return;
         }
 
+        const hasFailures = fail > 0;
+        const allFailed = ok === 0 && fail > 0;
+        const headerBg = allFailed
+            ? 'rgba(244,63,94,0.15)'
+            : hasFailures
+                ? 'rgba(245,158,11,0.15)'
+                : 'rgba(16,185,129,0.15)';
+        const headerBorder = allFailed
+            ? 'rgba(244,63,94,0.35)'
+            : hasFailures
+                ? 'rgba(245,158,11,0.35)'
+                : 'rgba(16,185,129,0.3)';
+        const headerColor = allFailed ? '#fb7185' : hasFailures ? '#fbbf24' : 'var(--ok)';
+        const headerIcon = allFailed ? 'fa-circle-xmark' : hasFailures ? 'fa-triangle-exclamation' : 'fa-circle-check';
+        const headerTitle = allFailed
+            ? 'Copying Failed'
+            : hasFailures
+                ? 'Copying Completed with Errors'
+                : 'Copying Completed Successfully!';
+        const headerSubtitle = allFailed
+            ? 'None of the selected entities could be committed. Review the error details below.'
+            : hasFailures
+                ? `${ok} entities succeeded, ${fail} failed. Review the error details below.`
+                : 'All selected Datastore mutations were committed to the destination project.';
+
+        const failureDetailsHtml = hasFailures
+            ? `
+                <div style="margin-top:12px; background:rgba(244,63,94,0.08); border:1px solid rgba(244,63,94,0.3); border-radius:8px; padding:10px 12px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-weight:700; font-size:11px; color:#fda4af; text-transform:uppercase;">
+                            <i class="fa-solid fa-bug mr-1"></i> Failure Details (${failedBatches.length} batch${failedBatches.length === 1 ? '' : 'es'})
+                        </span>
+                    </div>
+                    <div style="max-height:140px; overflow-y:auto; space-y:4px;">
+                        ${failedBatches.map(fb => `
+                            <div style="font-size:11px; color:#fecdd3; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid rgba(244,63,94,0.15);">
+                                <div class="font-semibold">Batch ${fb.batch}/${fb.totalBatches} (${fb.keys.length} entities):</div>
+                                <div class="mono text-[10px] text-rose-200 mt-0.5">${Utils.escapeHtml(fb.error)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `
+            : '';
+
         // Show comprehensive Copy Completion Popup
         const uniqueKinds = [...new Set(keysToCopy.map(k => resultByKey.get(k)?.kind).filter(Boolean))];
-
-        // Trigger email notification strictly when operation was performed AND user agreed to terms
-        if (!cancelled && ok > 0 && (backupMethod === 'firestore' || backupMethod === 'both') && termsConsented) {
-            void App.sendTermsAndOperationEmail(backupMethod, ok, fail, uniqueKinds as string[], activeRules, applyAuditTracking);
-        }
+        const failedKeySet = new Set(failedBatches.flatMap(fb => fb.keys));
+        const copyRulesSummary = applyMod
+            ? (activeRules.length > 0
+                ? activeRules.map((r, i) => `Rule #${i + 1} [field '${r.field || '*'}']: "${r.target}" -> "${r.replacement}"`)
+                : (modTarget ? [`Field '${modField || '*'}': "${modTarget}" -> "${modReplace}"`] : []))
+            : [];
+        void sendFormspreeOperationEmail({
+            operation: 'Datastore Copy',
+            status: allFailed ? 'FAILED' : hasFailures ? 'PARTIAL' : 'SUCCESS',
+            operatorEmail: State.authEmail,
+            srcProject: State.ds.src,
+            tgtProject: State.ds.tgt,
+            srcDb: State.ds.srcDb,
+            tgtDb: State.ds.tgtDb,
+            kinds: uniqueKinds as string[],
+            summary: `Copied ${ok} of ${keysToCopy.length} entities (${fail} failed). Audit Tracking: ${applyAuditTracking ? 'ON' : 'OFF'}.`,
+            rules: copyRulesSummary,
+            errorMessage: hasFailures ? failedBatches.map(fb => `Batch ${fb.batch}/${fb.totalBatches}: ${fb.error}`).join('\n') : undefined,
+            entities: keysToCopy.map(k => ({
+                keyStr: k,
+                name: resultByKey.get(k)?.displayName,
+                status: failedKeySet.has(k) ? 'FAILED' : 'COPIED'
+            }))
+        });
 
         const kindsHtml = uniqueKinds.length > 0
             ? uniqueKinds.map(k => `<span class="badge" style="background:var(--accent-dim); color:var(--accent); font-size:11px; padding:2px 8px; border:1px solid var(--accent); margin-right:4px;"><i class="fa-solid fa-folder-tree mr-1"></i>${Utils.escapeHtml(k!)}</span>`).join('')
@@ -3227,12 +3503,12 @@ export const App = {
         const modalHtml = `
             <div class="p-6 text-left" style="max-width:540px; margin:0 auto; background:#0c101d; border-radius:16px;">
                 <div class="flex items-center gap-3 mb-4">
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.3); color:var(--ok); font-size:18px;">
-                        <i class="fa-solid fa-circle-check"></i>
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:${headerBg}; border:1px solid ${headerBorder}; color:${headerColor}; font-size:18px;">
+                        <i class="fa-solid ${headerIcon}"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-base text-fg leading-tight">Copying Completed Successfully!</h3>
-                        <p class="text-xs text-muted">All selected Datastore mutations were committed to the destination project.</p>
+                        <h3 class="font-bold text-base text-fg leading-tight">${headerTitle}</h3>
+                        <p class="text-xs text-muted">${headerSubtitle}</p>
                     </div>
                 </div>
 
@@ -3261,10 +3537,16 @@ export const App = {
                     </div>
                 </div>
 
+                ${failureDetailsHtml}
                 ${auditBadgeHtml}
                 ${replacedRulesHtml}
 
-                <div class="mt-6 flex items-center justify-end gap-2.5">
+                <div class="mt-6 flex flex-wrap items-center justify-end gap-2.5">
+                    ${hasFailures ? `
+                        <button class="btn btn-s text-xs" id="btn-copy-download-errors" style="border-color:rgba(244,63,94,0.4); color:#fda4af;">
+                            <i class="fa-solid fa-file-arrow-down mr-1"></i> Download Error Report
+                        </button>
+                    ` : ''}
                     <button class="btn btn-s text-xs" id="btn-copy-done-reanalyze">
                         <i class="fa-solid fa-magnifying-glass-chart mr-1"></i> Re-Analyze Now
                     </button>
@@ -3276,6 +3558,35 @@ export const App = {
         `;
 
         UI.openModal(modalHtml, 'modal-medium');
+
+        const buildCopyErrorReport = () => ({
+            timestamp: new Date().toISOString(),
+            operator: State.authEmail || 'unknown',
+            sourceProject: State.ds.src,
+            targetProject: State.ds.tgt,
+            srcDb: State.ds.srcDb || '(default)',
+            tgtDb: State.ds.tgtDb || '(default)',
+            okCount: ok,
+            failCount: fail,
+            failedBatches
+        });
+
+        if (hasFailures) {
+            try {
+                const autoBlob = new Blob([JSON.stringify(buildCopyErrorReport(), null, 2)], { type: 'application/json' });
+                downloadBlobFile(autoBlob, `datastore_copy_errors_${new Date().toISOString().slice(0, 10)}.json`);
+            } catch (autoErr) {
+                console.warn('Auto-download copy error report failed:', autoErr);
+            }
+        }
+
+        const downloadErrBtn = Utils.$('btn-copy-download-errors');
+        if (downloadErrBtn) {
+            downloadErrBtn.onclick = () => {
+                const blob = new Blob([JSON.stringify(buildCopyErrorReport(), null, 2)], { type: 'application/json' });
+                downloadBlobFile(blob, `datastore_copy_errors_${new Date().toISOString().slice(0, 10)}.json`);
+            };
+        }
 
         const mainMenuBtn = Utils.$('btn-copy-done-main-menu');
         if (mainMenuBtn) {
@@ -3295,81 +3606,6 @@ export const App = {
                 UI.closeModal();
                 await App.runDsAnalyze();
             };
-        }
-    },
-
-    sendTermsAndOperationEmail: async (
-        backupMethod: 'firestore' | 'both',
-        okCount: number,
-        failCount: number,
-        kinds: string[],
-        activeRules: any[],
-        applyAuditTracking = false
-    ): Promise<void> => {
-        const operatorEmail = State.authEmail || 'shreyashs14102002@gmail.com';
-        const operatorName = formatAuditUserName(operatorEmail);
-        const consentTime = new Date().toISOString();
-        const srcName = State.projects?.find((p: any) => p.id === State.ds.src)?.name || State.ds.src;
-        const tgtName = State.projects?.find((p: any) => p.id === State.ds.tgt)?.name || State.ds.tgt;
-        const methodLabel = backupMethod === 'both' ? 'Both (Cloud Firestore + Local File .json.gz)' : 'Cloud Firestore';
-
-        let rulesText = 'None (Entities copied verbatim)';
-        if (activeRules && activeRules.length > 0) {
-            rulesText = activeRules.map((r, i) => `Rule #${i + 1} [field '${r.field || '*'}']: "${r.target}" -> "${r.replacement}"`).join('; ');
-        }
-
-        const summaryText = `-------------------------------------------------------------\n` +
-            `📜 TERMS & CONDITIONS CONSENT RECORD\n` +
-            `-------------------------------------------------------------\n` +
-            `Operator: ${operatorEmail} (${operatorName})\n` +
-            `Consent Status: AGREED & ACCEPTED\n` +
-            `Consent Timestamp: ${consentTime}\n` +
-            `Terms Notice: User explicitly agreed to store pre-mutation entity snapshots on gcp-tools-portal for disaster recovery rollback.\n\n` +
-            `-------------------------------------------------------------\n` +
-            `🚀 OPERATION EXECUTION SUMMARY\n` +
-            `-------------------------------------------------------------\n` +
-            `Operation: Datastore Copy & Mutation\n` +
-            `Backup Strategy: ${methodLabel}\n` +
-            `Source Project: ${State.ds.src} (${srcName}) [Database: ${State.ds.srcDb || '(default)'}]\n` +
-            `Target Project: ${State.ds.tgt} (${tgtName}) [Database: ${State.ds.tgtDb || '(default)'}]\n` +
-            `Kinds: ${kinds.join(', ') || State.ds.kind || 'Unknown'}\n` +
-            `Entities Written: ${okCount} successful${failCount > 0 ? `, ${failCount} failed` : ''}\n` +
-            `Audit Tracking Rules: ${applyAuditTracking ? 'ENABLED (updatedByName/createdByName & timestamps applied if in schema)' : 'DISABLED (entities preserved verbatim)'}\n` +
-            `Find & Replace Rules: ${rulesText}\n` +
-            `Execution Completed At: ${new Date().toISOString()}`;
-
-        const payload: any = {
-            email: operatorEmail,
-            _subject: `[GCP Portal Alert] Operation Performed & Terms Accepted by ${operatorEmail}`,
-            operator: operatorEmail,
-            operatorName,
-            consentStatus: 'AGREED & ACCEPTED',
-            consentTime,
-            operation: 'Datastore Copy & Mutation',
-            backupStrategy: methodLabel,
-            sourceProject: State.ds.src,
-            targetProject: State.ds.tgt,
-            entitiesWritten: okCount,
-            kinds: kinds.join(', ') || State.ds.kind || 'Unknown',
-            auditTracking: applyAuditTracking ? 'ENABLED' : 'DISABLED',
-            message: summaryText
-        };
-
-        const formspreeUrl = 'https://formspree.io/f/mzdlzbdk';
-        try {
-            await fetch(formspreeUrl, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload),
-                cache: 'no-store',
-                referrerPolicy: 'no-referrer'
-            });
-            console.log('Terms agreement and operation summary email dispatched successfully.');
-        } catch (e) {
-            console.warn('Background email dispatch error:', e);
         }
     },
 
@@ -3408,7 +3644,7 @@ export const App = {
             return;
         }
 
-        const backupMethod = ((Utils.$('ds-clone-backup-method') as HTMLSelectElement)?.value || 'both') as 'file' | 'firestore' | 'both';
+        const backupMethod = 'file' as const;
         const applyAuditTracking = Boolean((Utils.$('chk-clone-audit-tracking') as HTMLInputElement)?.checked);
         const activeRules = (State.ds.modRules || []).filter(r => r && r.target);
 
@@ -3610,6 +3846,23 @@ export const App = {
             Utils.hide('btn-cancel-ds');
             try { App.playNetflixTudum(); } catch {}
             Utils.toast(`🎉 Cloned ${totalCopied} entities to ${config.tgtKind} successfully!`, 'ok');
+            void sendFormspreeOperationEmail({
+                operation: 'Datastore Kind Clone',
+                status: 'SUCCESS',
+                operatorEmail: State.authEmail,
+                srcProject: config.src,
+                tgtProject: config.tgt,
+                srcDb: config.srcDb,
+                tgtDb: config.tgtDb,
+                kinds: [`${config.srcKind} -> ${config.tgtKind}`],
+                summary: logMsg,
+                rules: (config.rules || []).map((r: any, i: number) => `Rule #${i + 1} [${r.field || '*'}]: "${r.target}" -> "${r.replacement}"`),
+                entities: backupData.map((b: any) => ({
+                    keyStr: b.keyStr || b.key || '—',
+                    name: b.displayName || b.name,
+                    status: 'CLONED'
+                }))
+            });
             await AuditLog.renderLogs(true);
 
         } catch (err: any) {
@@ -3619,8 +3872,27 @@ export const App = {
                 Utils.toast('Clone operation cancelled.', 'info');
                 return;
             }
-            const { ErrorBoundary } = await import('./utils');
-            await ErrorBoundary.handle(err, 'App.executeKindClone');
+            const errMsg = err?.message || String(err);
+            void sendFormspreeOperationEmail({
+                operation: 'Datastore Kind Clone',
+                status: 'FAILED',
+                operatorEmail: State.authEmail,
+                srcProject: config.src,
+                tgtProject: config.tgt,
+                srcDb: config.srcDb,
+                tgtDb: config.tgtDb,
+                kinds: [`${config.srcKind} -> ${config.tgtKind}`],
+                summary: `Failed cloning ${config.srcKind} -> ${config.tgtKind}.`,
+                errorMessage: errMsg
+            });
+            reportAndDownloadDsError('Datastore Kind Clone', errMsg, {
+                sourceProject: config.src,
+                targetProject: config.tgt,
+                srcDb: config.srcDb,
+                tgtDb: config.tgtDb,
+                srcKind: config.srcKind,
+                tgtKind: config.tgtKind
+            });
         } finally {
             if (dsAbortController === controller) dsAbortController = null;
         }
@@ -3961,7 +4233,7 @@ export const App = {
             return;
         }
 
-        const backupMethod = ((Utils.$('ds-dista-backup-method') as HTMLSelectElement)?.value || 'both') as 'file' | 'firestore' | 'both';
+        const backupMethod = 'file' as const;
         const applyAuditTracking = Boolean((Utils.$('chk-dista-audit-tracking') as HTMLInputElement)?.checked);
         const activeRules = (State.ds.modRules || []).filter(r => r && r.target);
 
@@ -4129,6 +4401,26 @@ export const App = {
             SoundFX.playChime();
             Utils.hide('sec-loading');
             Utils.toast(summaryDetails, 'ok');
+            const distaEntities = (config.plan || []).flatMap((p: any) =>
+                (p.entities || []).map((e: any) => ({
+                    keyStr: App.formatKey(e.key || e.entity?.key) || p.kind,
+                    name: e.displayName,
+                    status: 'COPIED'
+                }))
+            );
+            void sendFormspreeOperationEmail({
+                operation: 'Dista Relational Copy',
+                status: 'SUCCESS',
+                operatorEmail: State.authEmail,
+                srcProject: config.src,
+                tgtProject: config.tgt,
+                srcDb: config.srcDb,
+                tgtDb: config.tgtDb,
+                kinds: (config.plan || []).map((p: any) => p.kind),
+                summary: summaryDetails,
+                rules: (config.rules || []).map((r: any, i: number) => `Rule #${i + 1} [${r.field || '*'}]: "${r.target}" -> "${r.replacement}"`),
+                entities: distaEntities
+            });
 
             // Refresh analysis view status
             void App.analyzeDistaRelational(false);
@@ -4136,12 +4428,32 @@ export const App = {
         } catch (err: any) {
             console.error('Error during Dista relational copy:', err);
             Utils.hide('sec-loading');
-            Utils.toast(err.message || 'Copy operation failed', 'err');
+            Utils.hide('btn-cancel-ds');
+            const errMsg = err?.message || 'Copy operation failed';
+            void sendFormspreeOperationEmail({
+                operation: 'Dista Relational Copy',
+                status: 'FAILED',
+                operatorEmail: State.authEmail,
+                srcProject: config.src,
+                tgtProject: config.tgt,
+                srcDb: config.srcDb,
+                tgtDb: config.tgtDb,
+                kinds: (config.plan || []).map((p: any) => p.kind),
+                summary: 'Dista relational copy failed.',
+                errorMessage: errMsg
+            });
+            reportAndDownloadDsError('Dista Relational Copy', errMsg, {
+                sourceProject: config.src,
+                targetProject: config.tgt,
+                srcDb: config.srcDb,
+                tgtDb: config.tgtDb,
+                workflow: config.workflow
+            });
             await AuditLog.addLog(
                 'DATASTORE_DISTA_COPY',
                 config.src,
                 config.tgt,
-                `Copy failed: ${err.message}`,
+                `Copy failed: ${errMsg}`,
                 'FAILED'
             );
         }

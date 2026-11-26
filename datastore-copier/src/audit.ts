@@ -3,6 +3,7 @@ import { Utils } from './utils';
 import { Api } from './api';
 import { CONFIG } from './config';
 import { executeDatastoreRevert, executeScheduledQueryRevert, validateBackupPayload, sortBackupFiles } from './revert';
+import { sendFormspreeOperationEmail, EmailEntityItem } from './notifier';
 import { compressJsonToBase64, decompressJsonFromBase64, mapConcurrent, decompressFileToJson } from './datastore-utils';
 
 const MAX_AUDIT_PREV_STATE_BYTES = 700_000;
@@ -224,6 +225,23 @@ export const AuditLog = {
         }
         return state;
     },
+    setCloudAuditStatus: (available: boolean): void => {
+        const badge = Utils.$('audit-mode-badge');
+        if (!badge) return;
+        if (available) {
+            badge.style.background = 'rgba(16,185,129,0.1)';
+            badge.style.color = '#34d399';
+            badge.style.borderColor = 'rgba(16,185,129,0.25)';
+            badge.innerHTML = '<i class="fa-solid fa-shield-halved text-[9px] mr-1"></i> Firestore Verified';
+            badge.title = 'Centralized Firestore audit logging is active.';
+        } else {
+            badge.style.background = 'rgba(245,158,11,0.14)';
+            badge.style.color = '#fbbf24';
+            badge.style.borderColor = 'rgba(245,158,11,0.35)';
+            badge.innerHTML = '<i class="fa-solid fa-hard-drive text-[9px] mr-1"></i> Audit: Local Only';
+            badge.title = 'Centralized audit service unavailable; logs are saved locally in browser storage.';
+        }
+    },
     addLog: async (operation: string, srcProject: string, tgtProject: string, details: string, status: string, prevState: any = null, skipRender = false): Promise<string | null> => {
         try {
             let logId: string | null = null;
@@ -242,6 +260,7 @@ export const AuditLog = {
                         prevState: prepared.inline
                     });
                     if (typeof result?.id === 'string') {
+                        AuditLog.setCloudAuditStatus(true);
                         logId = result.id;
                         finalManifest = prepared.inline;
                         if (prepared.chunks) {
@@ -257,6 +276,7 @@ export const AuditLog = {
                 } catch (cloudErr) {
                     console.warn("Centralized audit service unavailable; persisting audit log locally:", cloudErr);
                     isLocalOnly = true;
+                    AuditLog.setCloudAuditStatus(false);
                 }
             }
 
@@ -465,11 +485,36 @@ export const AuditLog = {
                         status
                     );
                     if (!logged) Utils.toast('Revert completed, but its audit result could not be persisted.', 'warn');
+                    const revertEntities: EmailEntityItem[] = Array.isArray(state.backupData)
+                        ? state.backupData.map((b: any) => ({
+                            keyStr: b.keyStr || '—',
+                            name: state.entityDisplayNames?.[b.keyStr]?.value || b.displayName,
+                            status: b.action === 'delete' ? 'DELETED' : 'RESTORED'
+                        }))
+                        : [{ keyStr: state.keyStr || '—', name: state.referenceName, status: 'RESTORED' }];
+                    void sendFormspreeOperationEmail({
+                        operation: 'Datastore Revert',
+                        status,
+                        operatorEmail: State.authEmail,
+                        tgtProject: log.tgtProject,
+                        tgtDb: state.tgtDb || state.dbId || '(default)',
+                        kinds: Array.isArray(state.kinds) ? state.kinds : (state.kind ? [state.kind] : []),
+                        summary: `Reverted ${subject}. Restored: ${result.restored}, Deleted: ${result.deleted}, Skipped: ${result.skippedDeletes}.`,
+                        entities: revertEntities
+                    });
                     if (State.mode === 'ds' && State.ds.src) await App.runDsAnalyze();
                 }
             } catch(err: any) {
                 console.error("Revert failed:", err);
-                Utils.toast(`Revert failed: ${err.message}`, "err");
+                const errMsg = err?.message || String(err);
+                void sendFormspreeOperationEmail({
+                    operation: 'Datastore Revert',
+                    status: 'FAILED',
+                    operatorEmail: State.authEmail,
+                    summary: `Revert failed for log ${logId}.`,
+                    errorMessage: errMsg
+                });
+                Utils.toast(`Revert failed: ${errMsg}`, "err");
             } finally {
                 Utils.hide('sec-loading');
                 await AuditLog.renderLogs();
@@ -649,32 +694,121 @@ export const AuditLog = {
                 let totalRestored = 0;
                 let totalDeleted = 0;
                 let totalSkipped = 0;
+                const restoredEntities: EmailEntityItem[] = [];
+                const restoredKinds = new Set<string>();
 
                 try {
                     for (let i = 0; i < selectedFiles.length; i++) {
                         const file = selectedFiles[i];
                         Utils.$('load-msg')!.textContent = `Restoring part ${i + 1} of ${selectedFiles.length} (${file.name})...`;
                         const payload = await decompressFileToJson(file);
+                        if (Array.isArray(payload?.kinds)) {
+                            payload.kinds.forEach((k: string) => restoredKinds.add(k));
+                        }
+                        if (Array.isArray(payload?.backupData)) {
+                            payload.backupData.forEach((b: any) => {
+                                restoredEntities.push({
+                                    keyStr: b.keyStr || '—',
+                                    name: payload.entityDisplayNames?.[b.keyStr]?.value || b.displayName,
+                                    status: b.action === 'delete' ? 'DELETED' : 'RESTORED'
+                                });
+                            });
+                        }
                         const result = await executeDatastoreRevert(Api, targetProject, payload, 250);
                         totalRestored += result.restored;
                         totalDeleted += result.deleted;
                         totalSkipped += (result.skippedDeletes || 0);
                     }
 
+                    const hasSkipped = totalSkipped > 0;
                     Utils.toast(
-                        `Restore complete! Restored ${totalRestored} entities, deleted ${totalDeleted} entities${totalSkipped > 0 ? ` (${totalSkipped} deletes skipped)` : ''} across ${selectedFiles.length} file part(s).`,
-                        'ok'
+                        `Restore complete! Restored ${totalRestored} entities, deleted ${totalDeleted} entities${hasSkipped ? ` (${totalSkipped} deletes skipped)` : ''} across ${selectedFiles.length} file part(s).`,
+                        hasSkipped ? 'warn' : 'ok'
                     );
                     void AuditLog.addLog(
                         'DATASTORE_REVERT',
                         '—',
                         targetProject,
                         `Restored from ${selectedFiles.length} local backup part(s): ${totalRestored} entities restored, ${totalDeleted} entities deleted.`,
-                        'SUCCESS'
+                        hasSkipped ? 'PARTIAL' : 'SUCCESS'
                     );
+                    void sendFormspreeOperationEmail({
+                        operation: 'Datastore Restore from File',
+                        status: hasSkipped ? 'PARTIAL' : 'SUCCESS',
+                        operatorEmail: State.authEmail,
+                        tgtProject: targetProject,
+                        kinds: [...restoredKinds],
+                        summary: `Restored from ${selectedFiles.length} backup file(s). Restored: ${totalRestored}, Deleted: ${totalDeleted}, Skipped: ${totalSkipped}.`,
+                        entities: restoredEntities
+                    });
+                    Utils.hide('sec-loading');
+                    UI.openModal(`
+                        <div class="p-6 text-left" style="max-width:500px; margin:0 auto; background:#0c101d; border-radius:16px;">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:${hasSkipped ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)'}; border:1px solid ${hasSkipped ? 'rgba(245,158,11,0.35)' : 'rgba(16,185,129,0.3)'}; color:${hasSkipped ? '#fbbf24' : 'var(--ok)'}; font-size:18px;">
+                                    <i class="fa-solid ${hasSkipped ? 'fa-triangle-exclamation' : 'fa-circle-check'}"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-base text-fg leading-tight">${hasSkipped ? 'Restore Completed with Skipped Deletes' : 'Restore Completed Successfully!'}</h3>
+                                    <p class="text-xs text-muted">Backup state has been applied to <code class="mono text-emerald-400">${Utils.escapeHtml(targetProject)}</code>.</p>
+                                </div>
+                            </div>
+                            <div class="p-3.5 rounded-lg mb-4 text-xs space-y-2" style="background:var(--bg2); border:1px solid var(--brd2);">
+                                <div class="flex justify-between"><span class="text-muted">Backup Files Processed:</span><span class="font-bold mono text-fg">${selectedFiles.length}</span></div>
+                                <div class="flex justify-between"><span class="text-muted">Entities Restored (Upserted):</span><span class="font-bold mono text-emerald-400">${totalRestored}</span></div>
+                                <div class="flex justify-between"><span class="text-muted">Entities Deleted (Created by Copy):</span><span class="font-bold mono text-amber-400">${totalDeleted}</span></div>
+                                ${hasSkipped ? `<div class="flex justify-between"><span class="text-muted">Deletes Skipped (Permissions):</span><span class="font-bold mono text-rose-400">${totalSkipped}</span></div>` : ''}
+                            </div>
+                            <div class="flex justify-end gap-2">
+                                ${State.mode === 'ds' && State.ds.src ? '<button type="button" class="btn btn-s text-xs" id="btn-restore-done-reanalyze"><i class="fa-solid fa-magnifying-glass-chart mr-1"></i> Re-Analyze Now</button>' : ''}
+                                <button type="button" class="btn btn-p text-xs" id="btn-restore-done-close">Done</button>
+                            </div>
+                        </div>
+                    `, 'modal-medium');
+                    const closeDoneBtn = Utils.$('btn-restore-done-close');
+                    if (closeDoneBtn) closeDoneBtn.onclick = () => UI.closeModal();
+                    const reanalyzeDoneBtn = Utils.$('btn-restore-done-reanalyze');
+                    if (reanalyzeDoneBtn) {
+                        reanalyzeDoneBtn.onclick = async () => {
+                            UI.closeModal();
+                            const { App } = await import('./app');
+                            await App.runDsAnalyze();
+                        };
+                    }
                 } catch (err: any) {
                     console.error('File restore failed:', err);
-                    Utils.toast(`Restore failed: ${err.message}`, 'err');
+                    const errMsg = err?.message || String(err);
+                    void sendFormspreeOperationEmail({
+                        operation: 'Datastore Restore from File',
+                        status: 'FAILED',
+                        operatorEmail: State.authEmail,
+                        tgtProject: targetProject,
+                        kinds: [...restoredKinds],
+                        summary: `Restore failed across ${selectedFiles.length} backup file(s).`,
+                        errorMessage: errMsg,
+                        entities: restoredEntities
+                    });
+                    Utils.hide('sec-loading');
+                    Utils.toast(`Restore failed: ${errMsg}`, 'err');
+                    UI.openModal(`
+                        <div class="p-6 text-left" style="max-width:500px; margin:0 auto; background:#0c101d; border-radius:16px;">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background:rgba(244,63,94,0.15); border:1px solid rgba(244,63,94,0.35); color:#fb7185; font-size:18px;">
+                                    <i class="fa-solid fa-circle-xmark"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-base text-fg leading-tight">Restore Failed</h3>
+                                    <p class="text-xs text-muted">Could not restore backup to <code class="mono text-rose-300">${Utils.escapeHtml(targetProject)}</code>.</p>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-lg mb-4 text-xs font-mono text-rose-200" style="background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.3); max-height:180px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;">${Utils.escapeHtml(errMsg)}</div>
+                            <div class="flex justify-end">
+                                <button type="button" class="btn btn-p text-xs" id="btn-restore-err-close">Close</button>
+                            </div>
+                        </div>
+                    `, 'modal-medium');
+                    const closeErrBtn = Utils.$('btn-restore-err-close');
+                    if (closeErrBtn) closeErrBtn.onclick = () => UI.closeModal();
                 } finally {
                     Utils.hide('sec-loading');
                     await AuditLog.renderLogs();

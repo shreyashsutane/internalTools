@@ -677,5 +677,33 @@ export const Api = {
             results.push(res);
         }
         return results.length === 1 ? results[0] : { mutationResults: results.flatMap(r => r.mutationResults || []) };
+    },
+    checkDatastoreWritePermissions: async (pid: string, signal?: AbortSignal): Promise<{ ok: boolean; missing: string[] }> => {
+        const required = ['datastore.entities.create', 'datastore.entities.update'];
+        if (!activeToken || !pid || pid === 'my-first-project' || pid === 'my-second-project') {
+            return { ok: true, missing: [] };
+        }
+        try {
+            const res = await fetch(`https://cloudresourcemanager.googleapis.com/v1/projects/${encodeURIComponent(pid)}:testIamPermissions`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${activeToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ permissions: required }),
+                signal
+            });
+            if (!res.ok) {
+                // Do not block copy if Resource Manager testIamPermissions itself is unavailable
+                return { ok: true, missing: [] };
+            }
+            const data = await res.json();
+            const granted = new Set<string>(Array.isArray(data?.permissions) ? data.permissions : []);
+            const missing = required.filter(p => !granted.has(p));
+            return { ok: missing.length === 0, missing };
+        } catch (err: any) {
+            if (err?.name === 'AbortError') throw err;
+            return { ok: true, missing: [] };
+        }
     }
 };

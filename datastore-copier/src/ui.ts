@@ -305,7 +305,7 @@ export const UI = {
                 if (kScope === kind) hasFilter = true;
             });
             if (!hasFilter) {
-                UI.addDsFilter(undefined, undefined, undefined, undefined, kind);
+                UI.addDsFilter(undefined, 'IN', undefined, undefined, kind);
             }
         }
         State.ds.kind = [...State.ds.selectedKinds].join(',');
@@ -549,7 +549,10 @@ export const UI = {
             let valStr = val ? `"${val}"` : '...';
             if (type === 'integer' || type === 'double' || type === 'boolean' || type === 'null') {
                 valStr = val || (type === 'null' ? 'null' : '0');
-            } else if (op === 'IN' || op === 'NOT_IN') {
+            } else if (op === 'IN') {
+                const items = val ? val.split(/[\r\n,]+/).map(x => x.trim()).filter(Boolean) : [];
+                valStr = `[${items.length > 0 ? items.join(', ') : '...'}]`;
+            } else if (op === 'NOT_IN') {
                 valStr = `[${val || '...'}]`;
             } else if (op === 'HAS_ANCESTOR') {
                 valStr = `KEY(${val || '...'})`;
@@ -702,7 +705,7 @@ export const UI = {
             let placeholder = "Value";
             if (currentProp === '__key__') {
                 if (currentOp === 'IN' || currentOp === 'NOT_IN') {
-                    placeholder = "Comma-separated IDs (e.g. 1001, 1002)";
+                    placeholder = "Comma or newline-separated IDs (e.g. 1001, 1002)";
                 } else if (currentOp === 'HAS_ANCESTOR') {
                     placeholder = "Ancestor Path (e.g. UserMaster:1001)";
                 } else {
@@ -736,9 +739,26 @@ export const UI = {
             } else {
                 valContainer.innerHTML = `
                     <textarea class="inp filter-val text-xs filter-val-width resize-none" rows="1" placeholder="${placeholder}" style="min-height:32px; height:32px; line-height:1.4; overflow-y:auto;"></textarea>
+                    <div class="filter-in-count text-[10px] text-cyan-400/90 mt-1 mono" style="display:none"></div>
                 `;
             }
             const valInput = valContainer.querySelector('.filter-val') as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+            const inCountEl = valContainer.querySelector('.filter-in-count') as HTMLElement | null;
+            const updateInCountBadge = () => {
+                if (!inCountEl || !(valInput instanceof HTMLTextAreaElement)) return;
+                if (currentOp !== 'IN') {
+                    inCountEl.style.display = 'none';
+                    return;
+                }
+                const uniqueVals = [...new Set(valInput.value.split(/[\r\n,]+/).map(x => x.trim()).filter(Boolean))];
+                if (uniqueVals.length === 0) {
+                    inCountEl.style.display = 'none';
+                    return;
+                }
+                const batches = Math.ceil(uniqueVals.length / 30);
+                inCountEl.textContent = `${uniqueVals.length} value${uniqueVals.length === 1 ? '' : 's'}${batches > 1 ? ` · ${batches} query batches` : ''}`;
+                inCountEl.style.display = 'block';
+            };
             const adjustValSizing = () => {
                 if (valInput instanceof HTMLTextAreaElement) {
                     valInput.style.height = 'auto';
@@ -751,6 +771,7 @@ export const UI = {
                     const ch = Math.min(Math.max(textLen + 3, 22), 65);
                     valInput.style.minWidth = ch + 'ch';
                 }
+                updateInCountBadge();
             };
             if (valInput) {
                 if (presetVal) valInput.value = presetVal;

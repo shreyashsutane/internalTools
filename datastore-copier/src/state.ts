@@ -95,7 +95,7 @@ export interface StateType {
         databasesSrc: string[];
         databasesTgt: string[];
         copyOptions?: {
-            backupMethod?: 'file' | 'firestore' | 'both';
+            backupMethod?: 'file';
             applyMod?: boolean;
             applyAuditTracking?: boolean;
         };
@@ -163,7 +163,7 @@ export const State: StateType = {
         databasesSrc: [],
         databasesTgt: [],
         copyOptions: {
-            backupMethod: 'both',
+            backupMethod: 'file',
             applyMod: true,
             applyAuditTracking: false
         }

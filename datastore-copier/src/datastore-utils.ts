@@ -917,6 +917,27 @@ export const parseDatastoreKeyFilter = (
     return { keyValue: { path, partitionId } };
 };
 
+export const DATASTORE_IN_LIMIT = 30;
+
+export const splitInFilterValues = (val: string): string[] =>
+    val.split(/[\r\n,]+/).map(x => x.trim()).filter(x => x !== '');
+
+const buildInFilterObject = (
+    prop: string,
+    vals: string[],
+    type: string,
+    currentKind: string,
+    projectId: string,
+    databaseId?: string
+): any => {
+    if (prop === '__key__') {
+        const keyVals = vals.map(v => parseDatastoreKeyFilter(v, currentKind, projectId, databaseId));
+        return { propertyFilter: { property: { name: '__key__' }, op: 'IN', value: { arrayValue: { values: keyVals } } } };
+    }
+    const arrayVal = { arrayValue: { values: vals.map(v => parseTypedFilterVal(v, type)) } };
+    return { propertyFilter: { property: { name: prop }, op: 'IN', value: arrayVal } };
+};
+
 export const buildDatastoreFilterObject = (
     prop: string,
     op: string,
@@ -926,11 +947,15 @@ export const buildDatastoreFilterObject = (
     projectId: string,
     databaseId?: string
 ): any => {
+    if (op === 'IN') {
+        return buildInFilterObject(prop, splitInFilterValues(val), type, currentKind, projectId, databaseId);
+    }
+
     if (prop === '__key__') {
         if (op === 'HAS_ANCESTOR') {
             const keyVal = parseDatastoreKeyFilter(val, currentKind, projectId, databaseId);
             return { propertyFilter: { property: { name: '__key__' }, op: 'HAS_ANCESTOR', value: keyVal } };
-        } else if (op === 'IN' || op === 'NOT_IN') {
+        } else if (op === 'NOT_IN') {
             const vals = val.split(',').map(x => x.trim()).filter(x => x !== '');
             const keyVals = vals.map(v => parseDatastoreKeyFilter(v, currentKind, projectId, databaseId));
             return { propertyFilter: { property: { name: '__key__' }, op, value: { arrayValue: { values: keyVals } } } };
@@ -940,13 +965,47 @@ export const buildDatastoreFilterObject = (
         }
     }
 
-    if (op === 'IN' || op === 'NOT_IN') {
+    if (op === 'NOT_IN') {
         const vals = val.split(',').map(x => x.trim()).filter(x => x !== '');
         const arrayVal = { arrayValue: { values: vals.map(v => parseTypedFilterVal(v, type)) } };
         return { propertyFilter: { property: { name: prop }, op, value: arrayVal } };
     }
 
     return { propertyFilter: { property: { name: prop }, op, value: parseTypedFilterVal(val, type) } };
+};
+
+/**
+ * Expands applicable filters into one or more filter sets so that any `IN` filter
+ * with more than DATASTORE_IN_LIMIT (30) values is chunked into <=30-value queries.
+ */
+export const buildChunkedDatastoreFilterSets = (
+    filters: Array<{ prop: string; op: string; type: string; val: string }>,
+    currentKind: string,
+    projectId: string,
+    databaseId?: string
+): any[][] => {
+    if (filters.length === 0) return [[]];
+
+    let filterSets: any[][] = [[]];
+    for (const f of filters) {
+        let variants: any[];
+        if (f.op === 'IN') {
+            const uniqueVals = [...new Set(splitInFilterValues(f.val))];
+            if (uniqueVals.length > DATASTORE_IN_LIMIT) {
+                variants = [];
+                for (let i = 0; i < uniqueVals.length; i += DATASTORE_IN_LIMIT) {
+                    const chunk = uniqueVals.slice(i, i + DATASTORE_IN_LIMIT);
+                    variants.push(buildInFilterObject(f.prop, chunk, f.type, currentKind, projectId, databaseId));
+                }
+            } else {
+                variants = [buildInFilterObject(f.prop, uniqueVals, f.type, currentKind, projectId, databaseId)];
+            }
+        } else {
+            variants = [buildDatastoreFilterObject(f.prop, f.op, f.val, f.type, currentKind, projectId, databaseId)];
+        }
+        filterSets = filterSets.flatMap(set => variants.map(v => [...set, v]));
+    }
+    return filterSets;
 };
 
 export const formatAuditUserName = (emailOrName: string): string => {
